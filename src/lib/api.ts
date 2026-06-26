@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { Parada, Tarea, TaskStatus } from '../types'
+import type { Parada, Recurso, Tarea, TaskStatus } from '../types'
 
 const TAREA_FIELDS =
   'id, nombre, descripcion, secuencia, status, es_critica, porcentaje_completado, duracion_estimada_horas, turno_asignado, responsable_id, bloqueado_por, razon_bloqueo'
@@ -57,6 +57,19 @@ export async function getTareasByParada(paradaId: string): Promise<Tarea[]> {
 
   if (error) throw new Error(error.message)
   return (data as unknown as Tarea[]) ?? []
+}
+
+/** Trae el inventario de recursos (catálogo global en el MVP). */
+export async function getRecursos(): Promise<Recurso[]> {
+  const { data, error } = await supabase
+    .from('recurso')
+    .select(
+      'id, nombre, tipo, codigo_activo, estado, ubicacion_real, stock_total, stock_disponible, costo_diario_alquiler, es_alquilable',
+    )
+    .order('nombre', { ascending: true })
+
+  if (error) throw new Error(error.message)
+  return (data as unknown as Recurso[]) ?? []
 }
 
 /** Actualiza el estado de una tarea (mover tarjeta en el Kanban). */

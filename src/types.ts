@@ -34,6 +34,35 @@ export interface Tarea {
   razon_bloqueo?: string | null
 }
 
+export type ResourceType =
+  | 'Personal'
+  | 'Herramienta'
+  | 'Equipo'
+  | 'Repuesto'
+  | 'Material'
+
+export type ResourceStatus =
+  | 'Disponible'
+  | 'En_Uso'
+  | 'En_Mantenimiento'
+  | 'Dañado'
+  | 'Perdido'
+  | 'Devuelto'
+  | 'En_Almacen'
+
+export interface Recurso {
+  id: string
+  nombre: string
+  tipo: ResourceType
+  codigo_activo: string | null
+  estado: ResourceStatus
+  ubicacion_real: string | null
+  stock_total: number
+  stock_disponible: number
+  costo_diario_alquiler: number | null
+  es_alquilable: boolean
+}
+
 export interface Parada {
   id: string
   nombre: string

@@ -63,6 +63,16 @@ export interface Recurso {
   es_alquilable: boolean
 }
 
+export interface Progreso {
+  id: string
+  tarea_id: string
+  porcentaje_completado: number
+  comentario: string | null
+  foto_url: string | null
+  registrado_por: string | null
+  created_at: string
+}
+
 export interface Parada {
   id: string
   nombre: string

@@ -10,6 +10,7 @@ import {
 } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { getTareasByParada, updateTareaStatus } from '../lib/api'
+import { TaskDetailModal } from './TaskDetailModal'
 import type { Tarea, TaskStatus } from '../types'
 
 // Columnas del Kanban (Pantalla 1 del diseño).
@@ -32,6 +33,7 @@ export function KanbanBoard({ paradaId }: { paradaId: string }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState<string | null>(null)
+  const [selected, setSelected] = useState<Tarea | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -95,21 +97,43 @@ export function KanbanBoard({ paradaId }: { paradaId: string }) {
       </div>
     )
 
+  function onSaved(porcentaje: number, status: TaskStatus) {
+    const id = selected?.id
+    if (!id) return
+    setTareas((ts) =>
+      ts.map((t) =>
+        t.id === id
+          ? { ...t, porcentaje_completado: porcentaje, status }
+          : t,
+      ),
+    )
+  }
+
   return (
-    <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {COLUMNS.map((col) => (
-          <Column
-            key={col.id}
-            id={col.id}
-            title={col.title}
-            accent={col.accent}
-            tareas={porColumna[col.id]}
-            saving={saving}
-          />
-        ))}
-      </div>
-    </DndContext>
+    <>
+      <DndContext sensors={sensors} onDragEnd={onDragEnd}>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {COLUMNS.map((col) => (
+            <Column
+              key={col.id}
+              id={col.id}
+              title={col.title}
+              accent={col.accent}
+              tareas={porColumna[col.id]}
+              saving={saving}
+              onOpenTask={setSelected}
+            />
+          ))}
+        </div>
+      </DndContext>
+      {selected && (
+        <TaskDetailModal
+          tarea={selected}
+          onClose={() => setSelected(null)}
+          onSaved={onSaved}
+        />
+      )}
+    </>
   )
 }
 
@@ -119,12 +143,14 @@ function Column({
   accent,
   tareas,
   saving,
+  onOpenTask,
 }: {
   id: TaskStatus
   title: string
   accent: string
   tareas: Tarea[]
   saving: string | null
+  onOpenTask: (t: Tarea) => void
 }) {
   const { setNodeRef, isOver } = useDroppable({ id })
   return (
@@ -142,7 +168,12 @@ function Column({
       </div>
       <div className="flex min-h-[120px] flex-col gap-2">
         {tareas.map((t) => (
-          <Card key={t.id} tarea={t} saving={saving === t.id} />
+          <Card
+            key={t.id}
+            tarea={t}
+            saving={saving === t.id}
+            onOpen={() => onOpenTask(t)}
+          />
         ))}
         {tareas.length === 0 && (
           <div className="grid flex-1 place-items-center rounded-lg border-2 border-dashed border-slate-200 py-6 text-xs text-slate-300">
@@ -154,7 +185,15 @@ function Column({
   )
 }
 
-function Card({ tarea, saving }: { tarea: Tarea; saving: boolean }) {
+function Card({
+  tarea,
+  saving,
+  onOpen,
+}: {
+  tarea: Tarea
+  saving: boolean
+  onOpen: () => void
+}) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id: tarea.id })
   const style = {
@@ -169,6 +208,10 @@ function Card({ tarea, saving }: { tarea: Tarea; saving: boolean }) {
       style={style}
       {...listeners}
       {...attributes}
+      onClick={() => {
+        // Sólo abrir si no fue un arrastre.
+        if (!isDragging) onOpen()
+      }}
       className={`cursor-grab touch-none rounded-lg border bg-white p-3 shadow-sm active:cursor-grabbing ${
         bloqueada ? 'border-red-200' : 'border-slate-200'
       }`}

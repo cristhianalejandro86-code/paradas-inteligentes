@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { Parada, Recurso, Tarea, TaskStatus } from '../types'
+import type { Parada, Progreso, Recurso, Tarea, TaskStatus } from '../types'
 
 const TAREA_FIELDS =
   'id, nombre, descripcion, secuencia, status, es_critica, porcentaje_completado, duracion_estimada_horas, turno_asignado, responsable_id, bloqueado_por, razon_bloqueo'
@@ -83,4 +83,44 @@ export async function updateTareaStatus(
     .eq('id', id)
 
   if (error) throw new Error(error.message)
+}
+
+/** Historial de avances de una tarea (más reciente primero). */
+export async function getProgresoByTarea(tareaId: string): Promise<Progreso[]> {
+  const { data, error } = await supabase
+    .from('progreso')
+    .select('*')
+    .eq('tarea_id', tareaId)
+    .order('created_at', { ascending: false })
+
+  if (error) throw new Error(error.message)
+  return (data as unknown as Progreso[]) ?? []
+}
+
+/**
+ * Registra un avance: inserta una fila en `progreso` y actualiza la tarea
+ * (porcentaje y estado). Devuelve la tarea con los valores nuevos.
+ */
+export async function registrarAvance(
+  tareaId: string,
+  input: { porcentaje: number; status: TaskStatus; comentario?: string },
+): Promise<{ porcentaje_completado: number; status: TaskStatus }> {
+  const { error: insErr } = await supabase.from('progreso').insert({
+    tarea_id: tareaId,
+    porcentaje_completado: input.porcentaje,
+    comentario: input.comentario || null,
+  })
+  if (insErr) throw new Error(insErr.message)
+
+  const { error: updErr } = await supabase
+    .from('tarea')
+    .update({
+      porcentaje_completado: input.porcentaje,
+      status: input.status,
+      fecha_actualizacion: new Date().toISOString(),
+    })
+    .eq('id', tareaId)
+  if (updErr) throw new Error(updErr.message)
+
+  return { porcentaje_completado: input.porcentaje, status: input.status }
 }

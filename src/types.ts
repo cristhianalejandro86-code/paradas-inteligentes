@@ -17,12 +17,21 @@ export type ParadaStatus =
   | 'Cerrada'
   | 'Cancelada'
 
+export type ShiftType = 'Mañana' | 'Noche' | 'Completo'
+
 export interface Tarea {
   id: string
   nombre: string
+  descripcion?: string | null
+  secuencia?: number | null
   status: TaskStatus
   es_critica: boolean
   porcentaje_completado: number
+  duracion_estimada_horas?: number | null
+  turno_asignado?: ShiftType | null
+  responsable_id?: string | null
+  bloqueado_por?: string | null
+  razon_bloqueo?: string | null
 }
 
 export interface Parada {

@@ -21,6 +21,32 @@ export async function getPrimeraParada(): Promise<Parada | null> {
   return (data as unknown as Parada) ?? null
 }
 
+const PARADA_FIELDS =
+  'id, nombre, descripcion, equipo_afectado, fecha_inicio_planeada, fecha_fin_planeada, status, status_aprobacion, duracion_planeada_horas'
+
+/** Trae todas las paradas con sus tareas (para el dashboard). */
+export async function getParadas(): Promise<Parada[]> {
+  const { data, error } = await supabase
+    .from('parada')
+    .select(PARADA_FIELDS + ', tarea(id, nombre, status, es_critica, porcentaje_completado)')
+    .order('fecha_inicio_planeada', { ascending: false })
+
+  if (error) throw new Error(error.message)
+  return (data as unknown as Parada[]) ?? []
+}
+
+/** Trae una parada por id (sin tareas; el Kanban las carga aparte). */
+export async function getParadaById(id: string): Promise<Parada | null> {
+  const { data, error } = await supabase
+    .from('parada')
+    .select(PARADA_FIELDS)
+    .eq('id', id)
+    .maybeSingle()
+
+  if (error) throw new Error(error.message)
+  return (data as unknown as Parada) ?? null
+}
+
 /** Trae todas las tareas de una parada. */
 export async function getTareasByParada(paradaId: string): Promise<Tarea[]> {
   const { data, error } = await supabase

@@ -44,5 +44,5 @@ export interface Parada {
   status: ParadaStatus
   status_aprobacion: string
   duracion_planeada_horas: number | null
-  tarea: Tarea[]
+  tarea?: Tarea[]
 }

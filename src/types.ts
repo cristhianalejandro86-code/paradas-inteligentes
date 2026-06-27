@@ -32,6 +32,8 @@ export interface Tarea {
   responsable_id?: string | null
   bloqueado_por?: string | null
   razon_bloqueo?: string | null
+  fecha_inicio_prog?: string | null
+  fecha_fin_prog?: string | null
 }
 
 export type ResourceType =

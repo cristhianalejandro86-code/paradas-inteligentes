@@ -2,7 +2,7 @@ import { supabase } from './supabase'
 import type { Parada, Progreso, Recurso, Tarea, TaskStatus } from '../types'
 
 const TAREA_FIELDS =
-  'id, nombre, descripcion, secuencia, status, es_critica, porcentaje_completado, duracion_estimada_horas, turno_asignado, responsable_id, bloqueado_por, razon_bloqueo'
+  'id, nombre, descripcion, secuencia, status, es_critica, porcentaje_completado, duracion_estimada_horas, turno_asignado, responsable_id, bloqueado_por, razon_bloqueo, fecha_inicio_prog, fecha_fin_prog'
 
 /** Trae la parada más reciente (la "activa" en el MVP de una sola parada). */
 export async function getPrimeraParada(): Promise<Parada | null> {

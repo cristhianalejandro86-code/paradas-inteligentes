@@ -7,7 +7,7 @@ const H = 3600000
 const DAY = 86400000
 const ROW = 32
 const HEAD = 46
-const LEFT = 540
+const LEFT = 636
 
 const COLOR: Record<TaskStatus, string> = {
   Por_Hacer: '#64748b',
@@ -98,6 +98,22 @@ export function GanttPage() {
     .filter((t) => t.bloqueado_por && rowOf[t.id] != null && rowOf[t.bloqueado_por] != null && fechas[t.id] && fechas[t.bloqueado_por])
     .map((t) => ({ from: t.bloqueado_por as string, to: t.id }))
 
+  const secById: Record<string, number> = {}
+  for (const t of tareas) secById[t.id] = t.secuencia ?? 0
+
+  // Histograma: técnicos activos por hora exacta
+  const horas = totalDias * 24
+  const histo = new Array(horas).fill(0)
+  for (const t of tareas) {
+    const f = fechas[t.id]
+    if (!f) continue
+    const tec = Number((t.especificaciones_tecnicas?.tec as number) ?? 0)
+    const h0 = Math.max(0, Math.floor((f.s - base) / H))
+    const h1 = Math.min(horas, Math.ceil((f.e - base) / H))
+    for (let h = h0; h < h1; h++) histo[h] += tec
+  }
+  const peak = Math.max(1, ...histo)
+
   function onDown(e: React.PointerEvent, t: Tarea, mode: 'move' | 'resize') {
     e.preventDefault(); e.stopPropagation()
     const f = fechas[t.id]
@@ -150,7 +166,7 @@ export function GanttPage() {
           {/* ===== HEADER ===== */}
           <div className="sticky top-0 z-30 flex bg-white" style={{ height: HEAD }}>
             <div className="sticky left-0 z-40 flex shrink-0 items-stretch border-b border-r border-slate-200 bg-slate-50 text-[10px] font-semibold uppercase tracking-wide text-slate-400" style={{ width: LEFT }}>
-              <Cell w={232} l>Actividad</Cell><Cell w={46}>Grupo</Cell><Cell w={36}>Téc</Cell><Cell w={40}>Hrs</Cell><Cell w={92}>Inicio</Cell><Cell w={92}>Fin</Cell>
+              <Cell w={34}>#</Cell><Cell w={210} l>Actividad</Cell><Cell w={44}>Grupo</Cell><Cell w={34}>Téc</Cell><Cell w={36}>Hrs</Cell><Cell w={88}>Comienzo</Cell><Cell w={88}>Fin</Cell><Cell w={50}>Pred</Cell><Cell w={40}>%</Cell>
             </div>
             <div className="relative shrink-0 border-b border-slate-200" style={{ width: timelineW }}>
               {dias.map(({ i, d }) => (
@@ -225,15 +241,18 @@ export function GanttPage() {
               return (
                 <div key={t.id} className={`absolute flex w-full border-b border-slate-50 ${idx % 2 ? 'bg-white' : 'bg-slate-50/30'}`} style={{ top, height: ROW }}>
                   <div className="sticky left-0 z-20 flex shrink-0 items-stretch border-r border-slate-200 bg-inherit text-[11px] text-slate-600" style={{ width: LEFT }}>
-                    <Cell w={232} l>
+                    <Cell w={34}><span className="text-slate-400">{t.secuencia}</span></Cell>
+                    <Cell w={210} l>
                       <span className="mr-1 inline-block h-2 w-2 shrink-0 rounded-full align-middle" style={{ background: COLOR[t.status] }} />
                       <span className="truncate align-middle" title={t.nombre}>{t.nombre}</span>
                     </Cell>
-                    <Cell w={46}><span className="rounded px-1 text-white" style={{ background: hsl(grpOf(t)) }}>{grpOf(t)}</span></Cell>
-                    <Cell w={36}>{tecOf(t)}</Cell>
-                    <Cell w={40}>{t.duracion_estimada_horas}h</Cell>
-                    <Cell w={92}>{fmtFull(fch.s)}</Cell>
-                    <Cell w={92}>{fmtFull(fch.e)}</Cell>
+                    <Cell w={44}><span className="rounded px-1 text-white" style={{ background: hsl(grpOf(t)) }}>{grpOf(t)}</span></Cell>
+                    <Cell w={34}>{tecOf(t)}</Cell>
+                    <Cell w={36}>{t.duracion_estimada_horas}h</Cell>
+                    <Cell w={88}>{fmtFull(fch.s)}</Cell>
+                    <Cell w={88}>{fmtFull(fch.e)}</Cell>
+                    <Cell w={50}>{t.bloqueado_por ? `#${secById[t.bloqueado_por]}` : ''}</Cell>
+                    <Cell w={40}>{t.porcentaje_completado}%</Cell>
                   </div>
                   <div className="relative shrink-0" style={{ width: timelineW }}>
                     <div onPointerDown={(e) => onDown(e, t, 'move')} title={`${t.nombre}\n${fmtFull(fch.s)} → ${fmtFull(fch.e)} · ${t.duracion_estimada_horas}h · ${t.porcentaje_completado}%`}
@@ -247,6 +266,32 @@ export function GanttPage() {
                 </div>
               )
             })}
+          </div>
+
+          {/* ===== HISTOGRAMA: técnicos por hora ===== */}
+          <div className="sticky bottom-0 z-30 flex border-t-2 border-slate-300 bg-white" style={{ height: 70 }}>
+            <div className="sticky left-0 z-40 flex shrink-0 flex-col justify-center border-r border-slate-200 bg-slate-50 px-2 text-[10px] font-semibold uppercase leading-tight text-slate-500" style={{ width: LEFT }}>
+              <span>Técnicos / hora</span>
+              <span className="text-[11px] font-bold text-amber-600">Pico: {peak} téc</span>
+              <span className="text-[9px] font-normal normal-case text-slate-400">rojo = supera 21 (cuadrilla C4)</span>
+            </div>
+            <div className="relative shrink-0" style={{ width: timelineW }}>
+              {dias.map(({ i }) => (
+                <div key={i} className="absolute bottom-0 top-0 border-l border-slate-100" style={{ left: i * 24 * hourW }} />
+              ))}
+              {histo.map((c, h) =>
+                c > 0 ? (
+                  <div key={h} className="absolute bottom-3.5" style={{ left: h * hourW, width: Math.max(hourW - 1, 2) }}>
+                    <div className="mx-auto w-[80%] rounded-t" style={{ height: Math.max((c / peak) * 46, 2), background: c > 21 ? '#dc2626' : c > peak * 0.66 ? '#f59e0b' : '#10b981' }} />
+                  </div>
+                ) : null,
+              )}
+              {histo.map((c, h) =>
+                h % horasTick === 0 && c > 0 ? (
+                  <span key={'n' + h} className="absolute bottom-0 text-[8px] font-medium text-slate-500" style={{ left: h * hourW + 1 }}>{c}</span>
+                ) : null,
+              )}
+            </div>
           </div>
         </div>
       </div>

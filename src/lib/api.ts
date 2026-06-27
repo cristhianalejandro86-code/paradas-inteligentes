@@ -2,7 +2,7 @@ import { supabase } from './supabase'
 import type { Parada, Progreso, Recurso, Tarea, TaskStatus } from '../types'
 
 const TAREA_FIELDS =
-  'id, nombre, descripcion, secuencia, status, es_critica, porcentaje_completado, duracion_estimada_horas, turno_asignado, responsable_id, bloqueado_por, razon_bloqueo, fecha_inicio_prog, fecha_fin_prog'
+  'id, nombre, descripcion, secuencia, status, es_critica, porcentaje_completado, duracion_estimada_horas, turno_asignado, responsable_id, bloqueado_por, razon_bloqueo, fecha_inicio_prog, fecha_fin_prog, especificaciones_tecnicas'
 
 /** Trae la parada más reciente (la "activa" en el MVP de una sola parada). */
 export async function getPrimeraParada(): Promise<Parada | null> {
@@ -151,6 +151,25 @@ export async function updateTareaStatus(
     .update({ status, fecha_actualizacion: new Date().toISOString() })
     .eq('id', id)
 
+  if (error) throw new Error(error.message)
+}
+
+/** Actualiza la programación de una tarea (mover/redimensionar en el Gantt). */
+export async function updateTareaSchedule(
+  id: string,
+  startISO: string,
+  endISO: string,
+  durHoras: number,
+): Promise<void> {
+  const { error } = await supabase
+    .from('tarea')
+    .update({
+      fecha_inicio_prog: startISO,
+      fecha_fin_prog: endISO,
+      duracion_estimada_horas: durHoras,
+      fecha_actualizacion: new Date().toISOString(),
+    })
+    .eq('id', id)
   if (error) throw new Error(error.message)
 }
 

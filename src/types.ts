@@ -34,6 +34,7 @@ export interface Tarea {
   razon_bloqueo?: string | null
   fecha_inicio_prog?: string | null
   fecha_fin_prog?: string | null
+  especificaciones_tecnicas?: Record<string, unknown> | null
 }
 
 export type ResourceType =

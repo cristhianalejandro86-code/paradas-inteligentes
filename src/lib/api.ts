@@ -35,6 +35,75 @@ export async function getParadas(): Promise<Parada[]> {
   return (data as unknown as Parada[]) ?? []
 }
 
+/** Lista de usuarios (para asignar responsables). */
+export async function getUsuarios(): Promise<
+  { id: string; nombre: string; rol: string }[]
+> {
+  const { data, error } = await supabase
+    .from('usuario')
+    .select('id, nombre, rol')
+    .eq('es_activo', true)
+    .order('nombre')
+  if (error) throw new Error(error.message)
+  return data ?? []
+}
+
+/** Crea una parada nueva. El creador es jefe y autor. */
+export async function createParada(
+  input: {
+    nombre: string
+    equipo_afectado?: string
+    fecha_inicio_planeada: string
+    fecha_fin_planeada: string
+    duracion_planeada_horas?: number
+  },
+  creadorId: string,
+): Promise<Parada> {
+  const { data, error } = await supabase
+    .from('parada')
+    .insert({
+      ...input,
+      jefe_parada_id: creadorId,
+      creado_por: creadorId,
+      status: 'Planificada',
+      status_aprobacion: 'Pendiente',
+    })
+    .select('id, nombre, status')
+    .single()
+  if (error) throw new Error(error.message)
+  return data as unknown as Parada
+}
+
+/** Crea una tarea dentro de una parada. */
+export async function createTarea(
+  paradaId: string,
+  input: {
+    nombre: string
+    duracion_estimada_horas: number
+    turno_asignado?: string | null
+    es_critica?: boolean
+    responsable_id?: string | null
+    secuencia?: number | null
+  },
+): Promise<Tarea> {
+  const { data, error } = await supabase
+    .from('tarea')
+    .insert({
+      parada_id: paradaId,
+      nombre: input.nombre,
+      duracion_estimada_horas: input.duracion_estimada_horas,
+      turno_asignado: input.turno_asignado || null,
+      es_critica: input.es_critica ?? false,
+      responsable_id: input.responsable_id || null,
+      secuencia: input.secuencia ?? null,
+      status: 'Por_Hacer',
+    })
+    .select('*')
+    .single()
+  if (error) throw new Error(error.message)
+  return data as unknown as Tarea
+}
+
 /** Trae una parada por id (sin tareas; el Kanban las carga aparte). */
 export async function getParadaById(id: string): Promise<Parada | null> {
   const { data, error } = await supabase

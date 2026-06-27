@@ -9,6 +9,7 @@ import type { Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 
 interface Perfil {
+  id: string
   nombre: string
   rol: string
 }
@@ -52,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     supabase
       .from('usuario')
-      .select('nombre, rol')
+      .select('id, nombre, rol')
       .eq('email', email)
       .maybeSingle()
       .then(({ data }) => setPerfil((data as Perfil) ?? null))

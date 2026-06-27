@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { isSupabaseConfigured } from '../lib/supabase'
 import { getParadas } from '../lib/api'
+import { NuevaParadaModal } from '../components/NuevaParadaModal'
 import type { Parada, ParadaStatus } from '../types'
 
 export function Dashboard() {
   const [paradas, setParadas] = useState<Parada[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [creando, setCreando] = useState(false)
+  const navigate = useNavigate()
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -23,10 +26,28 @@ export function Dashboard() {
 
   return (
     <>
-      <h2 className="mb-1 text-2xl font-bold text-slate-900">Paradas</h2>
-      <p className="mb-6 text-sm text-slate-500">
-        Selecciona una parada para ver su tablero.
-      </p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900">Paradas</h2>
+          <p className="text-sm text-slate-500">
+            Selecciona una parada para ver su tablero.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setCreando(true)}
+          className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600"
+        >
+          + Nueva parada
+        </button>
+      </div>
+
+      {creando && (
+        <NuevaParadaModal
+          onClose={() => setCreando(false)}
+          onCreated={(p) => navigate(`/parada/${p.id}`)}
+        />
+      )}
 
       {loading && <p className="text-sm text-slate-400">Cargando paradas…</p>}
       {error && (

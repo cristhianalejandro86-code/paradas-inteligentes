@@ -11,6 +11,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { getTareasByParada, updateTareaStatus } from '../lib/api'
 import { TaskDetailModal } from './TaskDetailModal'
+import { NuevaTareaModal } from './NuevaTareaModal'
 import type { Tarea, TaskStatus } from '../types'
 
 // Columnas del Kanban (Pantalla 1 del diseño).
@@ -34,6 +35,7 @@ export function KanbanBoard({ paradaId }: { paradaId: string }) {
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState<string | null>(null)
   const [selected, setSelected] = useState<Tarea | null>(null)
+  const [creando, setCreando] = useState(false)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -111,6 +113,15 @@ export function KanbanBoard({ paradaId }: { paradaId: string }) {
 
   return (
     <>
+      <div className="mb-4 flex justify-end">
+        <button
+          type="button"
+          onClick={() => setCreando(true)}
+          className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600"
+        >
+          + Nueva tarea
+        </button>
+      </div>
       <DndContext sensors={sensors} onDragEnd={onDragEnd}>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {COLUMNS.map((col) => (
@@ -131,6 +142,13 @@ export function KanbanBoard({ paradaId }: { paradaId: string }) {
           tarea={selected}
           onClose={() => setSelected(null)}
           onSaved={onSaved}
+        />
+      )}
+      {creando && (
+        <NuevaTareaModal
+          paradaId={paradaId}
+          onClose={() => setCreando(false)}
+          onCreated={(t) => setTareas((ts) => [...ts, t])}
         />
       )}
     </>

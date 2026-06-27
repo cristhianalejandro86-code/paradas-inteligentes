@@ -17,6 +17,12 @@ const COLOR: Record<TaskStatus, string> = {
   Cancelada: '#cbd5e1',
 }
 
+function hslSistema(name: string): string {
+  let h = 0
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360
+  return `hsl(${h} 58% 50%)`
+}
+
 interface Dates {
   s: number
   e: number
@@ -35,6 +41,8 @@ export function GanttPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [colapsados, setColapsados] = useState<Set<string>>(new Set())
+  const [colorMode, setColorMode] = useState<'sistema' | 'estado'>('sistema')
+  const [vw, setVw] = useState(typeof window !== 'undefined' ? window.innerWidth : 1400)
   const [draft, setDraft] = useState<{ id: string; dS: number; dD: number } | null>(null)
   const dragRef = useRef<{ id: string; mode: 'move' | 'resize'; x0: number; s0: number; d0: number; dh: number } | null>(null)
 
@@ -45,6 +53,12 @@ export function GanttPage() {
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
   }, [id])
+
+  useEffect(() => {
+    const f = () => setVw(window.innerWidth)
+    window.addEventListener('resize', f)
+    return () => window.removeEventListener('resize', f)
+  }, [])
 
   // --- Fechas por tarea (reales o sintetizadas secuencialmente) ---
   const fechas = useMemo(() => {
@@ -92,9 +106,10 @@ export function GanttPage() {
     const base = new Date(minS).setHours(0, 0, 0, 0)
     const totalDias = Math.max(1, Math.ceil((maxE - base) / DAY))
     const totalH = (totalDias * DAY) / H
-    const hourW = Math.max(6, Math.min(24, Math.round(1500 / totalH)))
+    const disponible = vw - LEFT - 120
+    const hourW = Math.max(8, Math.min(48, Math.floor(disponible / totalH)))
     return { grupos, base, totalDias, hourW }
-  }, [tareas, fechas])
+  }, [tareas, fechas, vw])
 
   const timelineW = totalDias * 24 * hourW
   const x = (ms: number) => ((ms - base) / H) * hourW
@@ -165,13 +180,25 @@ export function GanttPage() {
           Gantt · {tareas.length} tareas · {grupos.length} sistemas
         </h3>
         <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
-          <span className="text-slate-400">Arrastra una barra para mover · borde derecho para alargar</span>
-          {(['Por_Hacer', 'En_Progreso', 'Completada', 'Bloqueada'] as TaskStatus[]).map((s) => (
-            <span key={s} className="flex items-center gap-1">
-              <span className="inline-block h-2 w-3 rounded-sm" style={{ background: COLOR[s] }} />
-              {s.replace('_', ' ')}
-            </span>
-          ))}
+          <span>Arrastra para mover · borde derecho para alargar</span>
+          <div className="flex overflow-hidden rounded-md border border-slate-200">
+            {(['sistema', 'estado'] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => setColorMode(m)}
+                className={`px-2 py-0.5 capitalize ${colorMode === m ? 'bg-amber-500 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
+          {colorMode === 'estado' &&
+            (['Por_Hacer', 'En_Progreso', 'Completada', 'Bloqueada'] as TaskStatus[]).map((s) => (
+              <span key={s} className="flex items-center gap-1">
+                <span className="inline-block h-2 w-3 rounded-sm" style={{ background: COLOR[s] }} />
+                {s.replace('_', ' ')}
+              </span>
+            ))}
         </div>
       </div>
 
@@ -209,7 +236,7 @@ export function GanttPage() {
                     <span className="rounded-full bg-white px-1.5 text-[10px] text-slate-400">{g.tareas.length}</span>
                   </button>
                   <div className="relative shrink-0" style={{ width: timelineW }}>
-                    <div className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-slate-400/60" style={{ left: x(g.s), width: Math.max(x(g.e) - x(g.s), 4) }} />
+                    <div className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full" style={{ left: x(g.s), width: Math.max(x(g.e) - x(g.s), 4), background: hslSistema(g.nombre), opacity: 0.6 }} />
                   </div>
                 </div>
               )
@@ -224,7 +251,8 @@ export function GanttPage() {
               <div key={t.id} className={`flex border-b border-slate-50 ${yBg}`} style={{ height: ROW }}>
                 <div className="sticky left-0 z-10 flex shrink-0 items-center bg-inherit px-3" style={{ width: LEFT }}>
                   {t.es_critica && <span className="mr-1 text-[9px] text-red-500">●</span>}
-                  <span className="flex-1 truncate pl-3 text-xs text-slate-700" title={t.nombre}>{t.nombre}</span>
+                  <span className="mr-1.5 inline-block h-2 w-2 shrink-0 rounded-full" style={{ background: COLOR[t.status] }} title={t.status.replace('_', ' ')} />
+                  <span className="flex-1 truncate text-xs text-slate-700" title={t.nombre}>{t.nombre}</span>
                   <span className="w-12 text-right text-[11px] text-slate-400">{t.duracion_estimada_horas}h</span>
                   <span className="w-20 text-right text-[10px] text-slate-400">{new Date(fch.s).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit' })}</span>
                 </div>
@@ -233,7 +261,7 @@ export function GanttPage() {
                   <div
                     onPointerDown={(e) => onDown(e, t, 'move')}
                     className="group absolute top-1/2 flex h-4 -translate-y-1/2 cursor-grab items-center rounded active:cursor-grabbing"
-                    style={{ left, width, background: COLOR[t.status], boxShadow: t.es_critica ? '0 0 0 2px #ef4444' : undefined }}
+                    style={{ left, width, background: colorMode === 'sistema' ? hslSistema((t.especificaciones_tecnicas?.sistema as string) || 'General') : COLOR[t.status], boxShadow: t.es_critica ? '0 0 0 2px #ef4444' : undefined }}
                     title={`${t.nombre}\n${new Date(fch.s).toLocaleString('es-PE')} → ${new Date(fch.e).toLocaleString('es-PE')}\n${t.porcentaje_completado}%`}
                   >
                     {t.porcentaje_completado > 0 && (

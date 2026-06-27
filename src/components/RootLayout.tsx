@@ -6,7 +6,7 @@ export function RootLayout() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col">
       <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto max-w-6xl px-6 py-4 flex items-center justify-between gap-3">
+        <div className="mx-auto w-full max-w-none px-6 py-4 flex items-center justify-between gap-3 2xl:px-10">
           <Link to="/" className="flex items-center gap-3">
             <span className="grid h-9 w-9 place-items-center rounded-lg bg-amber-500 text-white font-bold">
               P
@@ -42,7 +42,7 @@ export function RootLayout() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
+      <main className="mx-auto w-full max-w-none flex-1 px-6 py-8 2xl:px-10">
         <Outlet />
       </main>
 

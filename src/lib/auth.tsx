@@ -57,7 +57,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .eq('email', email)
       .maybeSingle()
       .then(({ data }) => setPerfil((data as Perfil) ?? null))
-  }, [session])
+    // Solo refetch cuando cambia el email, no en cada refresh de token.
+  }, [session?.user?.email])
 
   async function signOut() {
     await supabase.auth.signOut()

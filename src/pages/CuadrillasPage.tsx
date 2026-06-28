@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { getTareasByParada, updateTareaEspec } from '../lib/api'
+import { getTareasByParada, updateTareaEspec, getCuadrillasConfig, setCuadrillasConfig } from '../lib/api'
 import { colorGrupo } from '../lib/palette'
 import type { Tarea } from '../types'
 
@@ -25,12 +25,20 @@ export function CuadrillasPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [mover, setMover] = useState<Tarea | null>(null)
+  const [config, setConfig] = useState<Record<string, { cap?: number; turno?: string }>>({})
   const [vw, setVw] = useState(typeof window !== 'undefined' ? window.innerWidth : 1600)
 
   useEffect(() => {
     if (!id) return
     getTareasByParada(id).then(setTareas).catch((e) => setError(e.message)).finally(() => setLoading(false))
+    getCuadrillasConfig(id).then(setConfig).catch(() => {})
   }, [id])
+
+  function setCap(crew: string, cap?: number) {
+    const next = { ...config, [crew]: { ...config[crew], cap } }
+    setConfig(next)
+    if (id) setCuadrillasConfig(id, next).catch((e) => setError(String(e)))
+  }
   useEffect(() => {
     const f = () => setVw(window.innerWidth)
     window.addEventListener('resize', f)
@@ -142,10 +150,14 @@ export function CuadrillasPage() {
                     <span className="rounded px-1.5 py-0.5 text-[11px] font-bold text-white" style={{ background: colorGrupo(c.nombre) }}>{c.nombre}</span>
                     {c.conflictos > 0 && <span className="rounded bg-red-100 px-1.5 text-[10px] font-semibold text-red-700">{c.conflictos} choques</span>}
                   </div>
-                  <div className="flex items-center gap-2 text-[10px] text-slate-500">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-slate-500">
                     <span>Util <b className={c.util > 85 ? 'text-red-600' : c.util < 35 ? 'text-amber-600' : 'text-slate-700'}>{c.util}%</b></span>
                     <span>{c.hh} HH</span>
                     <span>pico {c.peak}</span>
+                    <span className="flex items-center gap-0.5">cap
+                      <input type="number" min={0} value={config[c.nombre]?.cap ?? ''} onChange={(e) => setCap(c.nombre, e.target.value ? Number(e.target.value) : undefined)} className="w-9 rounded border border-slate-300 px-0.5 text-center" />
+                    </span>
+                    {config[c.nombre]?.cap != null && c.peak > (config[c.nombre]!.cap as number) && <span className="rounded bg-red-100 px-1 font-semibold text-red-700">pico &gt; cap</span>}
                   </div>
                 </div>
                 <div className="relative shrink-0" style={{ width: timelineW, height: laneH }}>

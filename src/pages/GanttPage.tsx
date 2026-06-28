@@ -3,7 +3,7 @@ import { useOutletContext, useParams } from 'react-router-dom'
 import { getTareasByParada, updateTareaSchedule, guardarLineaBase, restaurarLineaBase } from '../lib/api'
 import { colorGrupo, disciplina as discDe } from '../lib/palette'
 import { rutaCritica } from '../lib/criticalPath'
-import { nivelarPersonal, infoNivel } from '../lib/resourceLeveling'
+import { nivelarPersonal, nivelarSinExtender, infoNivel } from '../lib/resourceLeveling'
 import type { Parada, Tarea, TaskStatus } from '../types'
 
 const H = 3600000
@@ -159,6 +159,19 @@ export function GanttPage() {
     persistirFechas(snapshot)
     setSnapshot(null)
   }
+  function snapActual(): Record<string, { s: number; e: number }> {
+    const snap: Record<string, { s: number; e: number }> = {}
+    if (nivel) for (const t of nivel.dated) snap[t.id] = { s: new Date(t.fecha_inicio_prog!).getTime(), e: new Date(t.fecha_fin_prog!).getTime() }
+    return snap
+  }
+  function nivelarSE() {
+    if (!nivel) return
+    setSnapshot(snapActual())
+    const { res, C } = nivelarSinExtender(nivel.dated, nivel.baseMs, nivel.winH)
+    aplicarFechas(res)
+    persistirFechas(res)
+    setTargetC(C)
+  }
   async function guardarBase() {
     if (!id) return
     try {
@@ -209,6 +222,7 @@ export function GanttPage() {
               <input type="number" min={1} value={topeC} onChange={(e) => setTargetC(Math.max(1, Number(e.target.value)))} className="w-12 rounded border border-slate-300 px-1 py-0.5 text-center" />
               <span className="text-emerald-700">téc/h</span>
               <button onClick={nivelar} title="Re-programa las tareas para que ninguna hora supere el tope (respeta dependencias)" className="rounded bg-emerald-600 px-2 py-0.5 font-semibold text-white hover:bg-emerald-700">Auto-distribuir</button>
+              <button onClick={nivelarSE} title="Aplana al máximo SIN alargar la parada (usa solo la holgura disponible)" className="rounded bg-emerald-800 px-2 py-0.5 font-semibold text-white hover:bg-emerald-900">Sin extender</button>
               {snapshot && <button onClick={restaurar} className="rounded border border-slate-300 bg-white px-2 py-0.5 text-slate-600 hover:bg-slate-50">Restaurar</button>}
             </div>
           )}

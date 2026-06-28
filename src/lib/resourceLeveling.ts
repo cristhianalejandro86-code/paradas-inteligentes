@@ -71,6 +71,26 @@ export function nivelarPersonal(
   return res
 }
 
+/**
+ * Nivela SIN extender la parada: busca el menor tope de técnicos/hora con el
+ * que el makespan no supere el original (usa solo la holgura disponible).
+ */
+export function nivelarSinExtender(
+  tareas: Tarea[],
+  baseMs: number,
+  makespanOrigH: number,
+): { res: Record<string, { s: number; e: number }>; C: number } {
+  const totalTec = tareas.reduce((s, t) => s + tecDe(t), 0)
+  const maxTec = Math.max(1, ...tareas.map(tecDe))
+  for (let C = maxTec; C <= Math.max(maxTec, totalTec); C++) {
+    const res = nivelarPersonal(tareas, C, baseMs)
+    let mk = 0
+    for (const t of tareas) mk = Math.max(mk, (res[t.id].e - baseMs) / H)
+    if (mk <= makespanOrigH + 0.01) return { res, C }
+  }
+  return { res: nivelarPersonal(tareas, totalTec, baseMs), C: totalTec }
+}
+
 /** Datos para sugerir el tope recomendado de técnicos/hora. */
 export function infoNivel(tareas: Tarea[]) {
   const dated = tareas.filter((t) => t.fecha_inicio_prog && t.fecha_fin_prog)

@@ -4,6 +4,19 @@ import type { Parada, Progreso, Recurso, Tarea, TaskStatus } from '../types'
 const TAREA_FIELDS =
   'id, nombre, descripcion, secuencia, status, es_critica, porcentaje_completado, duracion_estimada_horas, turno_asignado, responsable_id, bloqueado_por, razon_bloqueo, fecha_inicio_prog, fecha_fin_prog, fecha_inicio_base, fecha_fin_base, especificaciones_tecnicas'
 
+/** Lee la configuración de cuadrillas (tamaño/turno) de una parada. */
+export async function getCuadrillasConfig(paradaId: string): Promise<Record<string, { cap?: number; turno?: string }>> {
+  const { data, error } = await supabase.from('parada').select('cuadrillas_config').eq('id', paradaId).maybeSingle()
+  if (error) throw new Error(error.message)
+  return (data?.cuadrillas_config as Record<string, { cap?: number; turno?: string }>) ?? {}
+}
+
+/** Guarda la configuración de cuadrillas de una parada. */
+export async function setCuadrillasConfig(paradaId: string, config: Record<string, { cap?: number; turno?: string }>): Promise<void> {
+  const { error } = await supabase.from('parada').update({ cuadrillas_config: config }).eq('id', paradaId)
+  if (error) throw new Error(error.message)
+}
+
 /** Actualiza las especificaciones técnicas (p. ej. mover de cuadrilla). */
 export async function updateTareaEspec(
   id: string,

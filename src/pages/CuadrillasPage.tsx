@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { getTareasByParada, updateTareaEspec, getCuadrillasConfig, setCuadrillasConfig } from '../lib/api'
+import { balancearCuadrillas } from '../lib/resourceLeveling'
 import { colorGrupo } from '../lib/palette'
 import type { Tarea } from '../types'
 
@@ -26,6 +27,7 @@ export function CuadrillasPage() {
   const [error, setError] = useState<string | null>(null)
   const [mover, setMover] = useState<Tarea | null>(null)
   const [config, setConfig] = useState<Record<string, { cap?: number; turno?: string }>>({})
+  const [snapGrupos, setSnapGrupos] = useState<Record<string, string> | null>(null)
   const [vw, setVw] = useState(typeof window !== 'undefined' ? window.innerWidth : 1600)
 
   useEffect(() => {
@@ -98,6 +100,24 @@ export function CuadrillasPage() {
   const timelineW = totalDias * 24 * hourW
   const x = (ms: number) => ((ms - base) / H) * hourW
 
+  function balancear() {
+    const map = balancearCuadrillas(tareas)
+    const cambios = tareas.filter((t) => map[t.id] && map[t.id] !== grpOf(t))
+    if (!cambios.length) { setError('Ya está balanceado (sin cambios).'); return }
+    const snap: Record<string, string> = {}
+    for (const t of cambios) snap[t.id] = grpOf(t)
+    setSnapGrupos(snap)
+    setTareas((ts) => ts.map((t) => (map[t.id] && map[t.id] !== grpOf(t) ? { ...t, especificaciones_tecnicas: { ...(t.especificaciones_tecnicas ?? {}), grupo: map[t.id] } } : t)))
+    Promise.all(cambios.map((t) => updateTareaEspec(t.id, { ...(t.especificaciones_tecnicas ?? {}), grupo: map[t.id] }))).catch((e) => setError(String(e)))
+  }
+  function deshacerBalance() {
+    if (!snapGrupos) return
+    const snap = snapGrupos
+    setTareas((ts) => ts.map((t) => (snap[t.id] ? { ...t, especificaciones_tecnicas: { ...(t.especificaciones_tecnicas ?? {}), grupo: snap[t.id] } } : t)))
+    Promise.all(Object.entries(snap).map(([idt, g]) => { const t = tareas.find((x) => x.id === idt); return t ? updateTareaEspec(idt, { ...(t.especificaciones_tecnicas ?? {}), grupo: g }) : Promise.resolve() })).catch((e) => setError(String(e)))
+    setSnapGrupos(null)
+  }
+
   async function reasignar(g: string) {
     if (!mover) return
     const espec = { ...(mover.especificaciones_tecnicas ?? {}), grupo: g }
@@ -119,7 +139,9 @@ export function CuadrillasPage() {
         <h3 className="text-sm font-semibold text-slate-700">Distribución por cuadrilla · {crews.length} grupos</h3>
         <div className="flex items-center gap-3 text-xs">
           <span className={totalConf ? 'font-semibold text-red-600' : 'text-emerald-600'}>{totalConf ? `${totalConf} tareas en conflicto de cuadrilla` : 'sin conflictos'}</span>
-          <span className="text-slate-400">Click en una barra para reasignar de cuadrilla</span>
+          <span className="text-slate-400">Click en una barra para reasignar</span>
+          <button onClick={balancear} title="Reasigna cada tarea a la cuadrilla más libre de su disciplina: equilibra la carga y reduce choques" className="rounded bg-teal-600 px-2 py-1 font-semibold text-white hover:bg-teal-700">Auto-balancear</button>
+          {snapGrupos && <button onClick={deshacerBalance} className="rounded border border-slate-300 bg-white px-2 py-1 text-slate-600 hover:bg-slate-50">Deshacer</button>}
         </div>
       </div>
 
@@ -155,7 +177,7 @@ export function CuadrillasPage() {
                     <span>{c.hh} HH</span>
                     <span>pico {c.peak}</span>
                     <span className="flex items-center gap-0.5">cap
-                      <input type="number" min={0} value={config[c.nombre]?.cap ?? ''} onChange={(e) => setCap(c.nombre, e.target.value ? Number(e.target.value) : undefined)} className="w-9 rounded border border-slate-300 px-0.5 text-center" />
+                      <input type="number" min={0} value={config[c.nombre]?.cap ?? ''} onChange={(e) => { const v = Number(e.target.value); setCap(c.nombre, e.target.value && Number.isFinite(v) && v >= 0 ? v : undefined) }} className="w-9 rounded border border-slate-300 px-0.5 text-center" />
                     </span>
                     {config[c.nombre]?.cap != null && c.peak > (config[c.nombre]!.cap as number) && <span className="rounded bg-red-100 px-1 font-semibold text-red-700">pico &gt; cap</span>}
                   </div>

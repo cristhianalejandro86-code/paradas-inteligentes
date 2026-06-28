@@ -52,6 +52,33 @@ export function TablaPage() {
     setTareas((ts) => ts.map((x) => (x.id === t.id ? { ...x, especificaciones_tecnicas: next } : x)))
     updateTareaEspec(t.id, next).catch((e) => setError(String(e)))
   }
+  // Descendientes (sucesores transitivos) para impedir ciclos de predecesora.
+  const descMap = useMemo(() => {
+    const succ: Record<string, string[]> = {}
+    for (const t of tareas) if (t.bloqueado_por) (succ[t.bloqueado_por] ??= []).push(t.id)
+    const m: Record<string, Set<string>> = {}
+    for (const t of tareas) {
+      const out = new Set<string>()
+      const stack = [t.id]
+      while (stack.length) { const x = stack.pop()!; for (const s of succ[x] ?? []) if (!out.has(s)) { out.add(s); stack.push(s) } }
+      m[t.id] = out
+    }
+    return m
+  }, [tareas])
+  // Editar fecha: revalida fin>inicio y recalcula la duración.
+  function editarFecha(t: Tarea, which: 'inicio' | 'fin', v: string) {
+    if (!v) return
+    const iso = new Date(v).toISOString()
+    const s = which === 'inicio' ? new Date(v).getTime() : t.fecha_inicio_prog ? new Date(t.fecha_inicio_prog).getTime() : NaN
+    const e = which === 'fin' ? new Date(v).getTime() : t.fecha_fin_prog ? new Date(t.fecha_fin_prog).getTime() : NaN
+    if (Number.isFinite(s) && Number.isFinite(e)) {
+      if (e <= s) { setError('La fecha de fin debe ser posterior al inicio.'); return }
+      const dur = Math.round(((e - s) / 3600000) * 10) / 10
+      save(t.id, which === 'inicio' ? { fecha_inicio_prog: iso, duracion_estimada_horas: dur } : { fecha_fin_prog: iso, duracion_estimada_horas: dur })
+    } else {
+      save(t.id, which === 'inicio' ? { fecha_inicio_prog: iso } : { fecha_fin_prog: iso })
+    }
+  }
 
   async function importar(file: File) {
     try {
@@ -129,14 +156,14 @@ export function TablaPage() {
                 <td className="px-1 py-1" style={{ width: 70 }}>
                   <input list="grupos-dl" defaultValue={grpOf(t)} onBlur={(e) => saveEspec(t, { grupo: e.target.value })} className={`${inp} text-center font-medium`} style={{ color: '#fff', background: grpOf(t) ? colorGrupo(grpOf(t)) : undefined, borderRadius: 4 }} />
                 </td>
-                <td className="px-1 py-1" style={{ width: 48 }}><input type="number" min={0} defaultValue={Number(esp(t).tec ?? 0)} onBlur={(e) => saveEspec(t, { tec: Number(e.target.value) })} className={`${inp} text-center`} /></td>
-                <td className="px-1 py-1" style={{ width: 56 }}><input type="number" min={0} step={0.5} defaultValue={Number(t.duracion_estimada_horas ?? 0)} onBlur={(e) => Number(e.target.value) !== Number(t.duracion_estimada_horas) && save(t.id, { duracion_estimada_horas: Number(e.target.value) })} className={`${inp} text-center`} /></td>
-                <td className="px-1 py-1" style={{ width: 168 }}><input type="datetime-local" defaultValue={toInput(t.fecha_inicio_prog)} onBlur={(e) => e.target.value && save(t.id, { fecha_inicio_prog: new Date(e.target.value).toISOString() })} className={`${inp} text-xs`} /></td>
-                <td className="px-1 py-1" style={{ width: 168 }}><input type="datetime-local" defaultValue={toInput(t.fecha_fin_prog)} onBlur={(e) => e.target.value && save(t.id, { fecha_fin_prog: new Date(e.target.value).toISOString() })} className={`${inp} text-xs`} /></td>
+                <td className="px-1 py-1" style={{ width: 48 }}><input type="number" min={0} defaultValue={Number(esp(t).tec ?? 0)} onBlur={(e) => { const v = Number(e.target.value); if (Number.isFinite(v) && v >= 0) saveEspec(t, { tec: v }) }} className={`${inp} text-center`} /></td>
+                <td className="px-1 py-1" style={{ width: 56 }}><input type="number" min={0} step={0.5} defaultValue={Number(t.duracion_estimada_horas ?? 0)} onBlur={(e) => { const v = Number(e.target.value); if (Number.isFinite(v) && v > 0 && v !== Number(t.duracion_estimada_horas)) save(t.id, { duracion_estimada_horas: v }) }} className={`${inp} text-center`} /></td>
+                <td className="px-1 py-1" style={{ width: 168 }}><input type="datetime-local" defaultValue={toInput(t.fecha_inicio_prog)} onBlur={(e) => editarFecha(t, 'inicio', e.target.value)} className={`${inp} text-xs`} /></td>
+                <td className="px-1 py-1" style={{ width: 168 }}><input type="datetime-local" defaultValue={toInput(t.fecha_fin_prog)} onBlur={(e) => editarFecha(t, 'fin', e.target.value)} className={`${inp} text-xs`} /></td>
                 <td className="px-1 py-1" style={{ width: 130 }}>
                   <select value={t.bloqueado_por ?? ''} onChange={(e) => save(t.id, { bloqueado_por: e.target.value || null })} className="w-full rounded border border-transparent bg-transparent py-0.5 text-xs hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none">
                     <option value="">—</option>
-                    {tareas.filter((o) => o.id !== t.id).map((o) => <option key={o.id} value={o.id}>#{o.secuencia} {o.nombre.slice(0, 22)}</option>)}
+                    {tareas.filter((o) => o.id !== t.id && !descMap[t.id]?.has(o.id)).map((o) => <option key={o.id} value={o.id}>#{o.secuencia} {o.nombre.slice(0, 22)}</option>)}
                   </select>
                 </td>
                 <td className="px-1 py-1" style={{ width: 170 }}>

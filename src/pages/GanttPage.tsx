@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useOutletContext, useParams } from 'react-router-dom'
-import { getTareasByParada, updateTareaSchedule, guardarLineaBase, restaurarLineaBase } from '../lib/api'
+import { getTareasByParada, updateTareaSchedule, guardarLineaBase, restaurarLineaBase, getCuadrillasConfig } from '../lib/api'
 import { colorGrupo, disciplina as discDe } from '../lib/palette'
 import { rutaCritica } from '../lib/criticalPath'
-import { nivelarPersonal, nivelarSinExtender, infoNivel } from '../lib/resourceLeveling'
+import { nivelarPersonal, nivelarSinExtender, nivelarPorCuadrilla, infoNivel } from '../lib/resourceLeveling'
 import type { Parada, Tarea, TaskStatus } from '../types'
 
 const H = 3600000
@@ -24,7 +24,7 @@ const sysOf = (t: Tarea) => (t.especificaciones_tecnicas?.sistema as string) || 
 const grpOf = (t: Tarea) => (t.especificaciones_tecnicas?.grupo as string) || '—'
 const tecOf = (t: Tarea) => (t.especificaciones_tecnicas?.tec as number) ?? ''
 const wbsOf = (t: Tarea) => (t.especificaciones_tecnicas?.wbs as string) || ''
-const discOf = (t: Tarea) => discDe(`${t.nombre} ${sysOf(t)}`)
+const discOf = (t: Tarea) => (t.especificaciones_tecnicas?.disciplina as string) || discDe(`${t.nombre} ${sysOf(t)}`)
 const pad = (n: number) => String(n).padStart(2, '0')
 
 export function GanttPage() {
@@ -40,6 +40,7 @@ export function GanttPage() {
   const [verDeps, setVerDeps] = useState(true)
   const [vw, setVw] = useState(typeof window !== 'undefined' ? window.innerWidth : 1600)
   const [targetC, setTargetC] = useState<number | null>(null)
+  const [caps, setCaps] = useState<Record<string, number>>({})
   const [snapshot, setSnapshot] = useState<Record<string, { s: number; e: number }> | null>(null)
   const [draft, setDraft] = useState<{ id: string; dS: number; dD: number } | null>(null)
   const dragRef = useRef<{ id: string; mode: 'move' | 'resize'; x0: number; s0: number; d0: number; dh: number } | null>(null)
@@ -47,6 +48,7 @@ export function GanttPage() {
   useEffect(() => {
     if (!id) return
     getTareasByParada(id).then(setTareas).catch((e) => setError(e.message)).finally(() => setLoading(false))
+    getCuadrillasConfig(id).then((cfg) => setCaps(Object.fromEntries(Object.entries(cfg).filter(([, v]) => v.cap).map(([k, v]) => [k, v.cap as number])))).catch(() => {})
   }, [id])
   useEffect(() => {
     const f = () => setVw(window.innerWidth)
@@ -115,6 +117,7 @@ export function GanttPage() {
   function onDown(e: React.PointerEvent, t: Tarea, mode: 'move' | 'resize') {
     e.preventDefault(); e.stopPropagation()
     const f = fechas[t.id]
+    if (!f) return
     dragRef.current = { id: t.id, mode, x0: e.clientX, s0: f.s, d0: (f.e - f.s) / H, dh: 0 }
     window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', onUp)
   }
@@ -172,6 +175,13 @@ export function GanttPage() {
     persistirFechas(res)
     setTargetC(C)
   }
+  function nivelarCuad() {
+    if (!nivel) return
+    setSnapshot(snapActual())
+    const res = nivelarPorCuadrilla(nivel.dated, caps, nivel.baseMs)
+    aplicarFechas(res)
+    persistirFechas(res)
+  }
   async function guardarBase() {
     if (!id) return
     try {
@@ -223,6 +233,7 @@ export function GanttPage() {
               <span className="text-emerald-700">téc/h</span>
               <button onClick={nivelar} title="Re-programa las tareas para que ninguna hora supere el tope (respeta dependencias)" className="rounded bg-emerald-600 px-2 py-0.5 font-semibold text-white hover:bg-emerald-700">Auto-distribuir</button>
               <button onClick={nivelarSE} title="Aplana al máximo SIN alargar la parada (usa solo la holgura disponible)" className="rounded bg-emerald-800 px-2 py-0.5 font-semibold text-white hover:bg-emerald-900">Sin extender</button>
+              <button onClick={nivelarCuad} title="Nivela respetando la capacidad (cap) de cada cuadrilla por separado" className="rounded bg-teal-700 px-2 py-0.5 font-semibold text-white hover:bg-teal-800">Por cuadrilla</button>
               {snapshot && <button onClick={restaurar} className="rounded border border-slate-300 bg-white px-2 py-0.5 text-slate-600 hover:bg-slate-50">Restaurar</button>}
             </div>
           )}

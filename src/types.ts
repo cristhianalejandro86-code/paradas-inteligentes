@@ -34,6 +34,8 @@ export interface Tarea {
   razon_bloqueo?: string | null
   fecha_inicio_prog?: string | null
   fecha_fin_prog?: string | null
+  fecha_inicio_base?: string | null
+  fecha_fin_base?: string | null
   especificaciones_tecnicas?: Record<string, unknown> | null
 }
 

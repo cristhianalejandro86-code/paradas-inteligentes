@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useOutletContext, useParams } from 'react-router-dom'
-import { getTareasByParada, updateTareaSchedule } from '../lib/api'
+import { getTareasByParada, updateTareaSchedule, guardarLineaBase, restaurarLineaBase } from '../lib/api'
 import { colorGrupo, disciplina as discDe } from '../lib/palette'
 import { rutaCritica } from '../lib/criticalPath'
 import { nivelarPersonal, infoNivel } from '../lib/resourceLeveling'
@@ -159,6 +159,21 @@ export function GanttPage() {
     persistirFechas(snapshot)
     setSnapshot(null)
   }
+  async function guardarBase() {
+    if (!id) return
+    try {
+      await guardarLineaBase(id)
+      setTareas((ts) => ts.map((t) => ({ ...t, fecha_inicio_base: t.fecha_inicio_prog, fecha_fin_base: t.fecha_fin_prog })))
+    } catch (e) { setError(String(e)) }
+  }
+  async function volverABase() {
+    if (!id) return
+    try {
+      await restaurarLineaBase(id)
+      setTareas((ts) => ts.map((t) => (t.fecha_inicio_base ? { ...t, fecha_inicio_prog: t.fecha_inicio_base, fecha_fin_prog: t.fecha_fin_base } : t)))
+      setSnapshot(null)
+    } catch (e) { setError(String(e)) }
+  }
 
   if (loading) return <p className="text-sm text-slate-400">Cargando Gantt…</p>
   if (error) return <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">Error: {error}</div>
@@ -197,6 +212,11 @@ export function GanttPage() {
               {snapshot && <button onClick={restaurar} className="rounded border border-slate-300 bg-white px-2 py-0.5 text-slate-600 hover:bg-slate-50">Restaurar</button>}
             </div>
           )}
+          <div className="flex items-center gap-1 rounded-md border border-slate-300 bg-white px-1.5 py-0.5">
+            <span className="font-medium text-slate-600">Línea base:</span>
+            <button onClick={guardarBase} title="Guarda el plan actual como línea base (permanente)" className="rounded bg-slate-700 px-2 py-0.5 font-semibold text-white hover:bg-slate-800">Guardar</button>
+            <button onClick={volverABase} title="Vuelve la programación a la línea base guardada" className="rounded border border-slate-300 px-2 py-0.5 text-slate-600 hover:bg-slate-50">Restaurar</button>
+          </div>
         </div>
       </div>
 
@@ -289,6 +309,9 @@ export function GanttPage() {
                     <Cell w={34}>{t.porcentaje_completado}%</Cell>
                   </div>
                   <div className="relative shrink-0" style={{ width: timelineW }}>
+                    {t.fecha_inicio_base && t.fecha_fin_base && (
+                      <div className="absolute bottom-0.5 h-1 rounded bg-slate-400/80" title="Línea base (plan original)" style={{ left: x(new Date(t.fecha_inicio_base).getTime()), width: Math.max(x(new Date(t.fecha_fin_base).getTime()) - x(new Date(t.fecha_inicio_base).getTime()), 3) }} />
+                    )}
                     {hito ? (
                       <div onPointerDown={(e) => onDown(e, t, 'move')} title={`${t.nombre} (hito)`} className="absolute top-1/2 z-10 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rotate-45 cursor-grab bg-slate-800" style={{ left }} />
                     ) : (

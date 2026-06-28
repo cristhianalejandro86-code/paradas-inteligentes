@@ -1,136 +1,161 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
-import { getTareasByParada, updateTarea } from '../lib/api'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useOutletContext, useParams } from 'react-router-dom'
+import {
+  getTareasByParada, updateTarea, updateTareaEspec, getUsuarios, createTareasBulk,
+} from '../lib/api'
 import { colorGrupo, disciplina as discDe } from '../lib/palette'
+import { exportarExcel, descargarPlantilla, leerExcel } from '../lib/excel'
 import { NuevaTareaModal } from '../components/NuevaTareaModal'
-import type { Tarea, TaskStatus } from '../types'
+import type { Parada, Tarea, TaskStatus } from '../types'
 
 const ESTADOS: TaskStatus[] = ['Por_Hacer', 'En_Progreso', 'En_Revision', 'Completada', 'Bloqueada', 'Cancelada']
-const COLOR: Record<TaskStatus, string> = {
-  Por_Hacer: 'bg-slate-100 text-slate-600', En_Progreso: 'bg-blue-50 text-blue-700',
-  En_Revision: 'bg-violet-50 text-violet-700', Completada: 'bg-emerald-50 text-emerald-700',
-  Bloqueada: 'bg-red-50 text-red-700', Cancelada: 'bg-slate-100 text-slate-400',
+const DISCS = ['Mecánica', 'Eléctrica', 'Instrumentación']
+const esp = (t: Tarea) => (t.especificaciones_tecnicas ?? {}) as Record<string, unknown>
+const grpOf = (t: Tarea) => (esp(t).grupo as string) || ''
+const sysOf = (t: Tarea) => (esp(t).sistema as string) || ''
+const discOf = (t: Tarea) => (esp(t).disciplina as string) || discDe(`${t.nombre} ${sysOf(t)}`)
+const toInput = (s?: string | null) => {
+  if (!s) return ''
+  const d = new Date(s), p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
 }
-const sysOf = (t: Tarea) => (t.especificaciones_tecnicas?.sistema as string) || 'General'
-const grpOf = (t: Tarea) => (t.especificaciones_tecnicas?.grupo as string) || '—'
-const tecOf = (t: Tarea) => (t.especificaciones_tecnicas?.tec as number) ?? ''
-const discOf = (t: Tarea) => discDe(`${t.nombre} ${sysOf(t)}`)
-const fmt = (s?: string | null) => (s ? new Date(s).toLocaleString('es-PE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '')
-
-type SortKey = 'secuencia' | 'nombre' | 'sistema' | 'grupo' | 'duracion_estimada_horas' | 'fecha_inicio_prog' | 'status' | 'porcentaje_completado'
+const estadoValido = (s: unknown): TaskStatus => (ESTADOS.includes(String(s) as TaskStatus) ? (String(s) as TaskStatus) : 'Por_Hacer')
 
 export function TablaPage() {
   const { id } = useParams<{ id: string }>()
+  const parada = useOutletContext<Parada | undefined>()
   const [tareas, setTareas] = useState<Tarea[]>([])
+  const [usuarios, setUsuarios] = useState<{ id: string; nombre: string; rol: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [q, setQ] = useState('')
-  const [fEstado, setFEstado] = useState('')
-  const [fDisc, setFDisc] = useState('')
-  const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'secuencia', dir: 1 })
   const [creando, setCreando] = useState(false)
-  const [secById, setSecById] = useState<Record<string, number>>({})
+  const [msg, setMsg] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
+  const recargar = () => id && getTareasByParada(id).then(setTareas)
   useEffect(() => {
     if (!id) return
-    getTareasByParada(id).then((d) => {
-      setTareas(d)
-      setSecById(Object.fromEntries(d.map((t) => [t.id, t.secuencia ?? 0])))
-    }).catch((e) => setError(e.message)).finally(() => setLoading(false))
+    getTareasByParada(id).then(setTareas).catch((e) => setError(e.message)).finally(() => setLoading(false))
+    getUsuarios().then(setUsuarios).catch(() => {})
   }, [id])
+
+  const userById = useMemo(() => Object.fromEntries(usuarios.map((u) => [u.id, u])), [usuarios])
+  const grupos = useMemo(() => [...new Set(tareas.map(grpOf).filter(Boolean))].sort(), [tareas])
 
   function save(idt: string, fields: Partial<Tarea>) {
     setTareas((ts) => ts.map((t) => (t.id === idt ? { ...t, ...fields } : t)))
     updateTarea(idt, fields as never).catch((e) => setError(String(e)))
   }
+  function saveEspec(t: Tarea, partial: Record<string, unknown>) {
+    const next = { ...esp(t), ...partial }
+    setTareas((ts) => ts.map((x) => (x.id === t.id ? { ...x, especificaciones_tecnicas: next } : x)))
+    updateTareaEspec(t.id, next).catch((e) => setError(String(e)))
+  }
+
+  async function importar(file: File) {
+    try {
+      const rows = await leerExcel(file)
+      const validas = rows.filter((r) => String(r.Actividad || '').trim())
+      if (!validas.length) { setError('El Excel no tiene filas con "Actividad".'); return }
+      const maxSec = Math.max(0, ...tareas.map((t) => t.secuencia ?? 0))
+      const pf = (v: unknown) => { if (!v) return null; const d = v instanceof Date ? v : new Date(String(v)); return isNaN(+d) ? null : d.toISOString() }
+      const nuevas = validas.map((r, i) => ({
+        parada_id: id, nombre: String(r.Actividad), secuencia: maxSec + i + 1,
+        duracion_estimada_horas: Number(r.Duracion_h) || 1, status: estadoValido(r.Estado),
+        porcentaje_completado: Number(r['Avance_%']) || 0,
+        fecha_inicio_prog: pf(r.Inicio), fecha_fin_prog: pf(r.Fin),
+        especificaciones_tecnicas: { wbs: r.WBS || '', sistema: r.Area || '', tag: r.Equipo_TAG || '', grupo: String(r.Grupo || ''), tec: Number(r.Tecnicos) || 0, disciplina: r.Disciplina || undefined },
+        _pred: r.Predecesora ? Number(r.Predecesora) : null,
+      }))
+      const created = await createTareasBulk(nuevas.map(({ _pred, ...x }) => { void _pred; return x }))
+      // resolver predecesoras por secuencia (existentes + nuevas)
+      const secToId: Record<number, string> = {}
+      for (const t of tareas) if (t.secuencia != null) secToId[t.secuencia] = t.id
+      for (const c of created) secToId[c.secuencia] = c.id
+      for (const n of nuevas) {
+        if (n._pred && secToId[n._pred] && secToId[n.secuencia]) {
+          await updateTarea(secToId[n.secuencia], { bloqueado_por: secToId[n._pred] })
+        }
+      }
+      recargar()
+      setMsg(`Importadas ${created.length} actividades ✓`)
+      setTimeout(() => setMsg(null), 4000)
+    } catch (e) { setError(String(e)) }
+  }
 
   const filas = useMemo(() => {
-    let r = tareas
-    if (q) r = r.filter((t) => t.nombre.toLowerCase().includes(q.toLowerCase()) || sysOf(t).toLowerCase().includes(q.toLowerCase()))
-    if (fEstado) r = r.filter((t) => t.status === fEstado)
-    if (fDisc) r = r.filter((t) => discOf(t) === fDisc)
-    const val = (t: Tarea): string | number => {
-      switch (sort.key) {
-        case 'sistema': return sysOf(t)
-        case 'grupo': return grpOf(t)
-        case 'fecha_inicio_prog': return t.fecha_inicio_prog ? new Date(t.fecha_inicio_prog).getTime() : 0
-        case 'nombre': return t.nombre
-        case 'status': return t.status
-        default: return (t[sort.key as keyof Tarea] as number) ?? 0
-      }
-    }
-    return [...r].sort((a, b) => { const x = val(a), y = val(b); return x < y ? -sort.dir : x > y ? sort.dir : 0 })
-  }, [tareas, q, fEstado, fDisc, sort])
+    const r = q ? tareas.filter((t) => t.nombre.toLowerCase().includes(q.toLowerCase()) || sysOf(t).toLowerCase().includes(q.toLowerCase())) : tareas
+    return [...r].sort((a, b) => (a.secuencia ?? 0) - (b.secuencia ?? 0))
+  }, [tareas, q])
 
   if (loading) return <p className="text-sm text-slate-400">Cargando…</p>
-  if (error) return <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">Error: {error}</div>
+  if (error) return <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">Error: {error}<button onClick={() => setError(null)} className="ml-2 underline">cerrar</button></div>
 
-  const Th = ({ k, children, className = '' }: { k?: SortKey; children: React.ReactNode; className?: string }) => (
-    <th className={`whitespace-nowrap px-2 py-2 text-left font-semibold ${k ? 'cursor-pointer select-none hover:text-slate-900' : ''} ${className}`}
-      onClick={k ? () => setSort((s) => ({ key: k, dir: s.key === k && s.dir === 1 ? -1 : 1 })) : undefined}>
-      {children}{k && sort.key === k ? (sort.dir === 1 ? ' ▲' : ' ▼') : ''}
-    </th>
-  )
+  const inp = 'w-full rounded border border-transparent bg-transparent px-1 py-0.5 hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none'
 
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar actividad o sistema…" className="w-64 rounded-lg border border-slate-300 px-3 py-1.5 text-sm" />
-        <select value={fEstado} onChange={(e) => setFEstado(e.target.value)} className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
-          <option value="">Estado: todos</option>{ESTADOS.map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
-        </select>
-        <select value={fDisc} onChange={(e) => setFDisc(e.target.value)} className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
-          <option value="">Disciplina: todas</option>{['Mecánica', 'Eléctrica', 'Instrumentación'].map((d) => <option key={d} value={d}>{d}</option>)}
-        </select>
-        <span className="text-xs text-slate-400">{filas.length} de {tareas.length}</span>
-        <button onClick={() => setCreando(true)} className="ml-auto rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-amber-600">+ Nueva tarea</button>
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar…" className="w-56 rounded-lg border border-slate-300 px-3 py-1.5 text-sm" />
+        <span className="text-xs text-slate-400">{filas.length} actividades</span>
+        {msg && <span className="rounded bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">{msg}</span>}
+        <div className="ml-auto flex items-center gap-2">
+          <button onClick={descargarPlantilla} className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50">⬇ Plantilla</button>
+          <button onClick={() => fileRef.current?.click()} className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50">⬆ Importar</button>
+          <button onClick={() => exportarExcel(tareas, parada?.nombre ?? 'parada')} className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50">⬇ Exportar</button>
+          <button onClick={() => setCreando(true)} className="rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-amber-600">+ Nueva</button>
+          <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) importar(f); e.target.value = '' }} />
+        </div>
       </div>
 
       <div className="overflow-auto rounded-xl border border-slate-200" style={{ maxHeight: '72vh' }}>
-        <table className="w-full text-sm">
-          <thead className="sticky top-0 z-10 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+        <table className="text-sm" style={{ minWidth: 1500 }}>
+          <thead className="sticky top-0 z-10 bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500">
             <tr>
-              <Th k="secuencia">#</Th><Th k="nombre">Actividad</Th><Th k="sistema">Área / Sistema</Th>
-              <Th k="grupo">Grupo</Th><Th>Téc</Th><Th>Disciplina</Th><Th k="duracion_estimada_horas">Hrs</Th>
-              <Th k="fecha_inicio_prog">Comienzo</Th><Th>Fin</Th><Th>Pred</Th><Th k="status">Estado</Th><Th k="porcentaje_completado">%</Th>
+              {['#', 'Actividad', 'WBS', 'Área', 'Disciplina', 'Grupo', 'Téc', 'Hrs', 'Comienzo', 'Fin', 'Predec.', 'Responsable', 'Estado', '%'].map((h) => (
+                <th key={h} className="whitespace-nowrap px-2 py-2 text-left font-semibold">{h}</th>
+              ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {filas.map((t, i) => (
               <tr key={t.id} className={i % 2 ? 'bg-white' : 'bg-slate-50/40'}>
                 <td className="px-2 py-1 text-slate-400">{t.secuencia}</td>
-                <td className="px-2 py-1 min-w-[260px]">
-                  <input defaultValue={t.nombre} onBlur={(e) => e.target.value !== t.nombre && save(t.id, { nombre: e.target.value })}
-                    className="w-full rounded border border-transparent bg-transparent px-1 py-0.5 hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none" />
+                <td className="px-1 py-1" style={{ minWidth: 240 }}><input defaultValue={t.nombre} onBlur={(e) => e.target.value !== t.nombre && save(t.id, { nombre: e.target.value })} className={inp} /></td>
+                <td className="px-1 py-1" style={{ width: 70 }}><input defaultValue={String(esp(t).wbs ?? '')} onBlur={(e) => saveEspec(t, { wbs: e.target.value })} className={inp} /></td>
+                <td className="px-1 py-1" style={{ minWidth: 150 }}><input defaultValue={sysOf(t)} onBlur={(e) => saveEspec(t, { sistema: e.target.value })} className={inp} /></td>
+                <td className="px-1 py-1"><select value={discOf(t)} onChange={(e) => saveEspec(t, { disciplina: e.target.value })} className="rounded border border-transparent bg-transparent py-0.5 text-xs hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none">{DISCS.map((d) => <option key={d} value={d}>{d}</option>)}</select></td>
+                <td className="px-1 py-1" style={{ width: 70 }}>
+                  <input list="grupos-dl" defaultValue={grpOf(t)} onBlur={(e) => saveEspec(t, { grupo: e.target.value })} className={`${inp} text-center font-medium`} style={{ color: '#fff', background: grpOf(t) ? colorGrupo(grpOf(t)) : undefined, borderRadius: 4 }} />
                 </td>
-                <td className="px-2 py-1 text-slate-600">{sysOf(t)}</td>
-                <td className="px-2 py-1"><span className="rounded px-1.5 py-0.5 text-[11px] font-medium text-white" style={{ background: colorGrupo(sysOf(t)) }}>{grpOf(t)}</span></td>
-                <td className="px-2 py-1 text-center text-slate-600">{tecOf(t)}</td>
-                <td className="px-2 py-1 text-slate-600">{discOf(t)}</td>
-                <td className="px-2 py-1">
-                  <input type="number" min={0} step={0.5} defaultValue={Number(t.duracion_estimada_horas ?? 0)} onBlur={(e) => Number(e.target.value) !== Number(t.duracion_estimada_horas) && save(t.id, { duracion_estimada_horas: Number(e.target.value) })}
-                    className="w-14 rounded border border-transparent bg-transparent px-1 py-0.5 hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none" />
-                </td>
-                <td className="whitespace-nowrap px-2 py-1 text-xs text-slate-500">{fmt(t.fecha_inicio_prog)}</td>
-                <td className="whitespace-nowrap px-2 py-1 text-xs text-slate-500">{fmt(t.fecha_fin_prog)}</td>
-                <td className="px-2 py-1 text-slate-500">{t.bloqueado_por ? `#${secById[t.bloqueado_por] ?? ''}` : ''}</td>
-                <td className="px-2 py-1">
-                  <select value={t.status} onChange={(e) => save(t.id, { status: e.target.value as TaskStatus })}
-                    className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${COLOR[t.status]}`}>
-                    {ESTADOS.map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
+                <td className="px-1 py-1" style={{ width: 48 }}><input type="number" min={0} defaultValue={Number(esp(t).tec ?? 0)} onBlur={(e) => saveEspec(t, { tec: Number(e.target.value) })} className={`${inp} text-center`} /></td>
+                <td className="px-1 py-1" style={{ width: 56 }}><input type="number" min={0} step={0.5} defaultValue={Number(t.duracion_estimada_horas ?? 0)} onBlur={(e) => Number(e.target.value) !== Number(t.duracion_estimada_horas) && save(t.id, { duracion_estimada_horas: Number(e.target.value) })} className={`${inp} text-center`} /></td>
+                <td className="px-1 py-1" style={{ width: 168 }}><input type="datetime-local" defaultValue={toInput(t.fecha_inicio_prog)} onBlur={(e) => e.target.value && save(t.id, { fecha_inicio_prog: new Date(e.target.value).toISOString() })} className={`${inp} text-xs`} /></td>
+                <td className="px-1 py-1" style={{ width: 168 }}><input type="datetime-local" defaultValue={toInput(t.fecha_fin_prog)} onBlur={(e) => e.target.value && save(t.id, { fecha_fin_prog: new Date(e.target.value).toISOString() })} className={`${inp} text-xs`} /></td>
+                <td className="px-1 py-1" style={{ width: 130 }}>
+                  <select value={t.bloqueado_por ?? ''} onChange={(e) => save(t.id, { bloqueado_por: e.target.value || null })} className="w-full rounded border border-transparent bg-transparent py-0.5 text-xs hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none">
+                    <option value="">—</option>
+                    {tareas.filter((o) => o.id !== t.id).map((o) => <option key={o.id} value={o.id}>#{o.secuencia} {o.nombre.slice(0, 22)}</option>)}
                   </select>
                 </td>
-                <td className="px-2 py-1">
-                  <input type="number" min={0} max={100} step={5} value={t.porcentaje_completado} onChange={(e) => save(t.id, { porcentaje_completado: Math.min(100, Math.max(0, Number(e.target.value))) })}
-                    className="w-14 rounded border border-transparent bg-transparent px-1 py-0.5 hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none" />
+                <td className="px-1 py-1" style={{ width: 170 }}>
+                  <select value={t.responsable_id ?? ''} onChange={(e) => save(t.id, { responsable_id: e.target.value || null })} className="w-full rounded border border-transparent bg-transparent py-0.5 text-xs hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none">
+                    <option value="">Sin asignar</option>
+                    {usuarios.map((u) => <option key={u.id} value={u.id}>{u.nombre} · {u.rol.replace('_', ' ')}</option>)}
+                  </select>
+                  {t.responsable_id && userById[t.responsable_id] && <div className="px-1 text-[9px] text-slate-400">{userById[t.responsable_id].rol.replace('_', ' ')}</div>}
                 </td>
+                <td className="px-1 py-1"><select value={t.status} onChange={(e) => save(t.id, { status: e.target.value as TaskStatus })} className="rounded border border-transparent bg-transparent py-0.5 text-xs hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none">{ESTADOS.map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}</select></td>
+                <td className="px-1 py-1" style={{ width: 56 }}><input type="number" min={0} max={100} step={5} value={t.porcentaje_completado} onChange={(e) => save(t.id, { porcentaje_completado: Math.min(100, Math.max(0, Number(e.target.value))) })} className={`${inp} text-center`} /></td>
               </tr>
             ))}
           </tbody>
         </table>
+        <datalist id="grupos-dl">{grupos.map((g) => <option key={g} value={g} />)}</datalist>
       </div>
 
-      {creando && id && <NuevaTareaModal paradaId={id} onClose={() => setCreando(false)} onCreated={(t) => { setTareas((ts) => [...ts, t]); setSecById((m) => ({ ...m, [t.id]: t.secuencia ?? 0 })) }} />}
+      {creando && id && <NuevaTareaModal paradaId={id} onClose={() => setCreando(false)} onCreated={recargar} />}
     </div>
   )
 }

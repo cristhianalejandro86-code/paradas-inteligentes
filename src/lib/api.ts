@@ -218,6 +218,11 @@ export async function updateTarea(
     duracion_estimada_horas: number
     status: TaskStatus
     porcentaje_completado: number
+    fecha_inicio_prog: string | null
+    fecha_fin_prog: string | null
+    bloqueado_por: string | null
+    responsable_id: string | null
+    secuencia: number
   }>,
 ): Promise<void> {
   const { error } = await supabase
@@ -225,6 +230,15 @@ export async function updateTarea(
     .update({ ...fields, fecha_actualizacion: new Date().toISOString() })
     .eq('id', id)
   if (error) throw new Error(error.message)
+}
+
+/** Inserción masiva de tareas (para importar desde Excel). */
+export async function createTareasBulk(
+  rows: Record<string, unknown>[],
+): Promise<{ id: string; secuencia: number }[]> {
+  const { data, error } = await supabase.from('tarea').insert(rows).select('id, secuencia')
+  if (error) throw new Error(error.message)
+  return (data as { id: string; secuencia: number }[]) ?? []
 }
 
 /** Historial de avances de una tarea (más reciente primero). */

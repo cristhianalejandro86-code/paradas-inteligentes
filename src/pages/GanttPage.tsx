@@ -101,7 +101,7 @@ export function GanttPage() {
   for (const t of tareas) secById[t.id] = t.secuencia ?? 0
   const deps = vis
     .filter((t) => t.bloqueado_por && rowOf[t.id] != null && rowOf[t.bloqueado_por] != null && fechas[t.id] && fechas[t.bloqueado_por])
-    .map((t) => ({ from: t.bloqueado_por as string, to: t.id, crit: criticas.has(t.id) && criticas.has(t.bloqueado_por as string) }))
+    .map((t) => ({ from: t.bloqueado_por as string, to: t.id, crit: criticas.has(t.id) && criticas.has(t.bloqueado_por as string), col: colorGrupo(grpOf(t)) }))
 
   const horas = totalDias * 24
   const histo = new Array(horas).fill(0)
@@ -267,13 +267,12 @@ export function GanttPage() {
 
             {verDeps && (
               <svg className="pointer-events-none absolute top-0 z-10" style={{ left: LEFT, width: timelineW, height: bodyH }}>
-                <defs><marker id="ah" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#f59e0b" /></marker>
-                  <marker id="ahc" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#dc2626" /></marker></defs>
-                {deps.map(({ from, to, crit }, k) => {
+                <defs><marker id="ah" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="context-stroke" /></marker></defs>
+                {deps.map(({ from, to, col, crit }, k) => {
                   const ff = fechas[from], tf = fechas[to]
                   const x1 = x(ff.e), y1 = (rowOf[from] - 0.5) * ROW, x2 = x(tf.s), y2 = (rowOf[to] - 0.5) * ROW
                   const mx = Math.max(x1 + 8, x2 - 10)
-                  return <path key={k} d={`M${x1},${y1} H${mx} V${y2} H${x2}`} fill="none" stroke={crit ? '#dc2626' : '#f59e0b'} strokeWidth={crit ? 1.8 : 1.3} markerEnd={`url(#${crit ? 'ahc' : 'ah'})`} opacity="0.85" />
+                  return <path key={k} d={`M${x1},${y1} H${mx} V${y2} H${x2}`} fill="none" stroke={col} strokeWidth={crit ? 2.2 : 1.3} markerEnd="url(#ah)" opacity="0.9" />
                 })}
               </svg>
             )}

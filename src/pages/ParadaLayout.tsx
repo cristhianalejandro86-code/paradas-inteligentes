@@ -5,6 +5,7 @@ import type { Parada, ParadaStatus } from '../types'
 
 const TABS = [
   { to: '', label: 'Kanban', end: true },
+  { to: 'lista', label: 'Lista', end: false },
   { to: 'gantt', label: 'Gantt', end: false },
   { to: 'ruta-critica', label: 'Ruta crítica', end: false },
   { to: 'recursos', label: 'Recursos', end: false },

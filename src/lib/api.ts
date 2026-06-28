@@ -173,6 +173,23 @@ export async function updateTareaSchedule(
   if (error) throw new Error(error.message)
 }
 
+/** Actualiza campos sueltos de una tarea (edición en línea de la tabla). */
+export async function updateTarea(
+  id: string,
+  fields: Partial<{
+    nombre: string
+    duracion_estimada_horas: number
+    status: TaskStatus
+    porcentaje_completado: number
+  }>,
+): Promise<void> {
+  const { error } = await supabase
+    .from('tarea')
+    .update({ ...fields, fecha_actualizacion: new Date().toISOString() })
+    .eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
 /** Historial de avances de una tarea (más reciente primero). */
 export async function getProgresoByTarea(tareaId: string): Promise<Progreso[]> {
   const { data, error } = await supabase

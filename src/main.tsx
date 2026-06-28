@@ -8,6 +8,7 @@ import { RootLayout } from './components/RootLayout'
 import { Dashboard } from './pages/Dashboard'
 import { ParadaLayout } from './pages/ParadaLayout'
 import { KanbanPage } from './pages/KanbanPage'
+import { TablaPage } from './pages/TablaPage'
 import { GanttPage } from './pages/GanttPage'
 import { RutaCriticaPage } from './pages/RutaCriticaPage'
 import { RecursosPage } from './pages/RecursosPage'
@@ -23,6 +24,7 @@ const router = createBrowserRouter([
         element: <ParadaLayout />,
         children: [
           { index: true, element: <KanbanPage /> },
+          { path: 'lista', element: <TablaPage /> },
           { path: 'gantt', element: <GanttPage /> },
           { path: 'ruta-critica', element: <RutaCriticaPage /> },
           { path: 'recursos', element: <RecursosPage /> },

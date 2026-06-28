@@ -3,6 +3,7 @@ import { useOutletContext, useParams } from 'react-router-dom'
 import { getTareasByParada, updateTareaSchedule } from '../lib/api'
 import { colorGrupo, disciplina as discDe } from '../lib/palette'
 import { rutaCritica } from '../lib/criticalPath'
+import { nivelarPersonal, infoNivel } from '../lib/resourceLeveling'
 import type { Parada, Tarea, TaskStatus } from '../types'
 
 const H = 3600000
@@ -38,6 +39,8 @@ export function GanttPage() {
   const [filtro, setFiltro] = useState<(typeof DISCIPLINAS)[number]>('Todas')
   const [verDeps, setVerDeps] = useState(true)
   const [vw, setVw] = useState(typeof window !== 'undefined' ? window.innerWidth : 1600)
+  const [targetC, setTargetC] = useState<number | null>(null)
+  const [snapshot, setSnapshot] = useState<Record<string, { s: number; e: number }> | null>(null)
   const [draft, setDraft] = useState<{ id: string; dS: number; dD: number } | null>(null)
   const dragRef = useRef<{ id: string; mode: 'move' | 'resize'; x0: number; s0: number; d0: number; dh: number } | null>(null)
 
@@ -52,6 +55,8 @@ export function GanttPage() {
   }, [])
 
   const { criticas, holgura } = useMemo(() => rutaCritica(tareas), [tareas])
+  const nivel = useMemo(() => infoNivel(tareas), [tareas])
+  const topeC = targetC ?? nivel?.recC ?? 20
   const vis = useMemo(() => (filtro === 'Todas' ? tareas : tareas.filter((t) => discOf(t) === filtro)), [tareas, filtro])
   const keyDe = (t: Tarea) => (groupBy === 'disciplina' ? discOf(t) : sysOf(t))
 
@@ -129,6 +134,32 @@ export function GanttPage() {
     updateTareaSchedule(d.id, sI, eI, dur).catch((e) => setError(String(e)))
   }
 
+  function persistirFechas(map: Record<string, { s: number; e: number }>) {
+    Promise.all(
+      Object.entries(map).map(([idt, v]) =>
+        updateTareaSchedule(idt, new Date(v.s).toISOString(), new Date(v.e).toISOString(), Math.max(1, (v.e - v.s) / H)),
+      ),
+    ).catch((e) => setError(String(e)))
+  }
+  function aplicarFechas(map: Record<string, { s: number; e: number }>) {
+    setTareas((ts) => ts.map((t) => (map[t.id] ? { ...t, fecha_inicio_prog: new Date(map[t.id].s).toISOString(), fecha_fin_prog: new Date(map[t.id].e).toISOString() } : t)))
+  }
+  function nivelar() {
+    if (!nivel) return
+    const snap: Record<string, { s: number; e: number }> = {}
+    for (const t of nivel.dated) snap[t.id] = { s: new Date(t.fecha_inicio_prog!).getTime(), e: new Date(t.fecha_fin_prog!).getTime() }
+    const res = nivelarPersonal(nivel.dated, topeC, nivel.baseMs)
+    setSnapshot(snap)
+    aplicarFechas(res)
+    persistirFechas(res)
+  }
+  function restaurar() {
+    if (!snapshot) return
+    aplicarFechas(snapshot)
+    persistirFechas(snapshot)
+    setSnapshot(null)
+  }
+
   if (loading) return <p className="text-sm text-slate-400">Cargando Gantt…</p>
   if (error) return <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">Error: {error}</div>
   if (tareas.length === 0) return <p className="text-sm text-slate-400">No hay tareas para graficar.</p>
@@ -157,6 +188,15 @@ export function GanttPage() {
           <div className="flex overflow-hidden rounded-md border border-slate-200">
             {(['sistema', 'estado'] as const).map((m) => <button key={m} onClick={() => setColorMode(m)} className={`px-2 py-0.5 capitalize ${colorMode === m ? 'bg-amber-500 text-white' : 'bg-white text-slate-500'}`}>{m}</button>)}
           </div>
+          {nivel && (
+            <div className="flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-1.5 py-0.5">
+              <span className="font-medium text-emerald-700">Nivelar a</span>
+              <input type="number" min={1} value={topeC} onChange={(e) => setTargetC(Math.max(1, Number(e.target.value)))} className="w-12 rounded border border-slate-300 px-1 py-0.5 text-center" />
+              <span className="text-emerald-700">téc/h</span>
+              <button onClick={nivelar} title="Re-programa las tareas para que ninguna hora supere el tope (respeta dependencias)" className="rounded bg-emerald-600 px-2 py-0.5 font-semibold text-white hover:bg-emerald-700">Auto-distribuir</button>
+              {snapshot && <button onClick={restaurar} className="rounded border border-slate-300 bg-white px-2 py-0.5 text-slate-600 hover:bg-slate-50">Restaurar</button>}
+            </div>
+          )}
         </div>
       </div>
 

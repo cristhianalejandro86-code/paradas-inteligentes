@@ -10,6 +10,7 @@ import { ParadaLayout } from './pages/ParadaLayout'
 import { KanbanPage } from './pages/KanbanPage'
 import { TablaPage } from './pages/TablaPage'
 import { GanttPage } from './pages/GanttPage'
+import { CuadrillasPage } from './pages/CuadrillasPage'
 import { RutaCriticaPage } from './pages/RutaCriticaPage'
 import { RecursosPage } from './pages/RecursosPage'
 
@@ -26,6 +27,7 @@ const router = createBrowserRouter([
           { index: true, element: <KanbanPage /> },
           { path: 'lista', element: <TablaPage /> },
           { path: 'gantt', element: <GanttPage /> },
+          { path: 'cuadrillas', element: <CuadrillasPage /> },
           { path: 'ruta-critica', element: <RutaCriticaPage /> },
           { path: 'recursos', element: <RecursosPage /> },
         ],

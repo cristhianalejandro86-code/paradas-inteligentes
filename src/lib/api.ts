@@ -4,6 +4,18 @@ import type { Parada, Progreso, Recurso, Tarea, TaskStatus } from '../types'
 const TAREA_FIELDS =
   'id, nombre, descripcion, secuencia, status, es_critica, porcentaje_completado, duracion_estimada_horas, turno_asignado, responsable_id, bloqueado_por, razon_bloqueo, fecha_inicio_prog, fecha_fin_prog, fecha_inicio_base, fecha_fin_base, especificaciones_tecnicas'
 
+/** Actualiza las especificaciones técnicas (p. ej. mover de cuadrilla). */
+export async function updateTareaEspec(
+  id: string,
+  espec: Record<string, unknown>,
+): Promise<void> {
+  const { error } = await supabase
+    .from('tarea')
+    .update({ especificaciones_tecnicas: espec, fecha_actualizacion: new Date().toISOString() })
+    .eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
 /** Guarda la línea base (copia la programación actual a la base). */
 export async function guardarLineaBase(paradaId: string): Promise<void> {
   const { error } = await supabase.rpc('guardar_linea_base', { p_parada: paradaId })

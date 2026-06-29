@@ -177,6 +177,66 @@ export function nivelarPorCuadrilla(
 }
 
 /**
+ * Resuelve choques de cuadrilla: re-secuencia para que NINGUNA cuadrilla haga
+ * trabajos imposibles en paralelo. Modelo RCPSP por recurso renovable:
+ *  - si la cuadrilla tiene capacidad (personas) definida → permite concurrencia
+ *    mientras la suma de técnicos no supere ese tope;
+ *  - si no → recurso UNARIO: la cuadrilla hace UNA tarea a la vez (1 frente).
+ * Respeta predecesoras. Garantiza 0 solapamientos infeasibles por cuadrilla.
+ */
+export function resolverCuadrillas(
+  tareas: Tarea[],
+  caps: Record<string, number>,
+  baseMs: number,
+): Record<string, { s: number; e: number }> {
+  const byId = new Map(tareas.map((t) => [t.id, t]))
+  const startMs = (t: Tarea) => (t.fecha_inicio_prog ? new Date(t.fecha_inicio_prog).getTime() : 0)
+  const rest = [...tareas].sort((a, b) => startMs(a) - startMs(b))
+  const placed = new Set<string>()
+  const orden: Tarea[] = []
+  while (rest.length) {
+    let adv = false
+    for (let i = 0; i < rest.length; i++) {
+      const t = rest[i], p = t.bloqueado_por
+      if (!p || !byId.has(p) || placed.has(p)) { orden.push(t); placed.add(t.id); rest.splice(i, 1); adv = true; break }
+    }
+    if (!adv) { for (const t of rest) { orden.push(t); placed.add(t.id) } break }
+  }
+
+  const used: Record<string, number[]> = {}
+  const startH: Record<string, number> = {}, finH: Record<string, number> = {}
+  const finAbs = (pid: string) => {
+    if (finH[pid] != null) return finH[pid]
+    const pt = byId.get(pid)
+    return pt?.fecha_fin_prog ? Math.max(0, Math.round((new Date(pt.fecha_fin_prog).getTime() - baseMs) / H)) : 0
+  }
+  for (const t of orden) {
+    const crew = grpDe(t), len = durH(t)
+    const hasCap = (caps[crew] ?? 0) > 0
+    const need = hasCap ? Math.max(1, tecDe(t)) : 1 // unario: 1 frente por cuadrilla
+    const cap = hasCap ? caps[crew] : 1
+    used[crew] ??= []
+    const fits = (h0: number) => {
+      for (let h = h0; h < h0 + len; h++) {
+        const u = used[crew][h] ?? 0
+        if (need >= cap) { if (u > 0) return false }
+        else if (u + need > cap) return false
+      }
+      return true
+    }
+    const p = t.bloqueado_por && t.bloqueado_por !== t.id ? t.bloqueado_por : null
+    let h = p && byId.has(p) ? finAbs(p) : 0
+    let g = 0
+    while (!fits(h) && g++ < 1000000) h++
+    startH[t.id] = h; finH[t.id] = h + len
+    for (let k = h; k < h + len; k++) used[crew][k] = (used[crew][k] ?? 0) + need
+  }
+  const res: Record<string, { s: number; e: number }> = {}
+  for (const t of tareas) res[t.id] = { s: baseMs + startH[t.id] * H, e: baseMs + finH[t.id] * H }
+  return res
+}
+
+/**
  * Auto-balance de cuadrillas: reasigna cada tarea a la cuadrilla MÁS LIBRE
  * (sin solape en ese horario, y de menor carga) dentro de su misma disciplina.
  * Minimiza conflictos y equilibra HH. Devuelve mapa id -> cuadrilla nueva.

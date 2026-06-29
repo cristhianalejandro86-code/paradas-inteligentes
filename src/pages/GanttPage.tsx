@@ -3,7 +3,7 @@ import { useOutletContext, useParams } from 'react-router-dom'
 import { getTareasByParada, updateTareaSchedule, guardarLineaBase, restaurarLineaBase, getCuadrillasConfig } from '../lib/api'
 import { colorGrupo, disciplina as discDe } from '../lib/palette'
 import { rutaCritica } from '../lib/criticalPath'
-import { nivelarPersonal, nivelarSinExtender, nivelarPorCuadrilla, infoNivel } from '../lib/resourceLeveling'
+import { nivelarPersonal, nivelarSinExtender, nivelarPorCuadrilla, resolverCuadrillas, infoNivel } from '../lib/resourceLeveling'
 import type { Parada, Tarea, TaskStatus } from '../types'
 
 const H = 3600000
@@ -182,6 +182,13 @@ export function GanttPage() {
     aplicarFechas(res)
     persistirFechas(res)
   }
+  function resolverChoques() {
+    if (!nivel) return
+    setSnapshot(snapActual())
+    const res = resolverCuadrillas(nivel.dated, caps, nivel.baseMs)
+    aplicarFechas(res)
+    persistirFechas(res)
+  }
   async function guardarBase() {
     if (!id) return
     try {
@@ -234,6 +241,7 @@ export function GanttPage() {
               <button onClick={nivelar} title="Re-programa las tareas para que ninguna hora supere el tope (respeta dependencias)" className="rounded bg-emerald-600 px-2 py-0.5 font-semibold text-white hover:bg-emerald-700">Auto-distribuir</button>
               <button onClick={nivelarSE} title="Aplana al máximo SIN alargar la parada (usa solo la holgura disponible)" className="rounded bg-emerald-800 px-2 py-0.5 font-semibold text-white hover:bg-emerald-900">Sin extender</button>
               <button onClick={nivelarCuad} title="Nivela respetando la capacidad (cap) de cada cuadrilla por separado" className="rounded bg-teal-700 px-2 py-0.5 font-semibold text-white hover:bg-teal-800">Por cuadrilla</button>
+              <button onClick={resolverChoques} title="Re-secuencia para que NINGUNA cuadrilla haga trabajos en paralelo (1 frente, o según su capacidad de personas)" className="rounded bg-rose-600 px-2 py-0.5 font-semibold text-white hover:bg-rose-700">Resolver choques</button>
               {snapshot && <button onClick={restaurar} className="rounded border border-slate-300 bg-white px-2 py-0.5 text-slate-600 hover:bg-slate-50">Restaurar</button>}
             </div>
           )}

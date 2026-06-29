@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { getTareasByParada, updateTareaEspec, getCuadrillasConfig, setCuadrillasConfig } from '../lib/api'
-import { balancearCuadrillas } from '../lib/resourceLeveling'
+import { getTareasByParada, updateTareaEspec, updateTareaSchedule, getCuadrillasConfig, setCuadrillasConfig } from '../lib/api'
+import { balancearCuadrillas, resolverCuadrillas } from '../lib/resourceLeveling'
 import { colorGrupo } from '../lib/palette'
 import type { Tarea } from '../types'
 
@@ -28,6 +28,7 @@ export function CuadrillasPage() {
   const [mover, setMover] = useState<Tarea | null>(null)
   const [config, setConfig] = useState<Record<string, { cap?: number; turno?: string }>>({})
   const [snapGrupos, setSnapGrupos] = useState<Record<string, string> | null>(null)
+  const [snapFechas, setSnapFechas] = useState<Record<string, { s: number; e: number }> | null>(null)
   const [vw, setVw] = useState(typeof window !== 'undefined' ? window.innerWidth : 1600)
 
   useEffect(() => {
@@ -110,6 +111,25 @@ export function CuadrillasPage() {
     setTareas((ts) => ts.map((t) => (map[t.id] && map[t.id] !== grpOf(t) ? { ...t, especificaciones_tecnicas: { ...(t.especificaciones_tecnicas ?? {}), grupo: map[t.id] } } : t)))
     Promise.all(cambios.map((t) => updateTareaEspec(t.id, { ...(t.especificaciones_tecnicas ?? {}), grupo: map[t.id] }))).catch((e) => setError(String(e)))
   }
+  function resolverChoques() {
+    const dated = tareas.filter((t) => t.fecha_inicio_prog && t.fecha_fin_prog)
+    if (!dated.length) return
+    const baseMs = Math.min(...dated.map((t) => new Date(t.fecha_inicio_prog!).getTime()))
+    const capsCfg = Object.fromEntries(Object.entries(config).filter(([, v]) => v.cap).map(([k, v]) => [k, v.cap as number]))
+    const snap: Record<string, { s: number; e: number }> = {}
+    for (const t of dated) snap[t.id] = { s: new Date(t.fecha_inicio_prog!).getTime(), e: new Date(t.fecha_fin_prog!).getTime() }
+    const res = resolverCuadrillas(dated, capsCfg, baseMs)
+    setSnapFechas(snap)
+    setTareas((ts) => ts.map((t) => (res[t.id] ? { ...t, fecha_inicio_prog: new Date(res[t.id].s).toISOString(), fecha_fin_prog: new Date(res[t.id].e).toISOString() } : t)))
+    Promise.all(dated.map((t) => updateTareaSchedule(t.id, new Date(res[t.id].s).toISOString(), new Date(res[t.id].e).toISOString(), Math.max(1, (res[t.id].e - res[t.id].s) / 3600000)))).catch((e) => setError(String(e)))
+  }
+  function deshacerFechas() {
+    if (!snapFechas) return
+    const snap = snapFechas
+    setTareas((ts) => ts.map((t) => (snap[t.id] ? { ...t, fecha_inicio_prog: new Date(snap[t.id].s).toISOString(), fecha_fin_prog: new Date(snap[t.id].e).toISOString() } : t)))
+    Promise.all(Object.entries(snap).map(([idt, v]) => updateTareaSchedule(idt, new Date(v.s).toISOString(), new Date(v.e).toISOString(), Math.max(1, (v.e - v.s) / 3600000)))).catch((e) => setError(String(e)))
+    setSnapFechas(null)
+  }
   function deshacerBalance() {
     if (!snapGrupos) return
     const snap = snapGrupos
@@ -140,8 +160,10 @@ export function CuadrillasPage() {
         <div className="flex items-center gap-3 text-xs">
           <span className={totalConf ? 'font-semibold text-red-600' : 'text-emerald-600'}>{totalConf ? `${totalConf} tareas en conflicto de cuadrilla` : 'sin conflictos'}</span>
           <span className="text-slate-400">Click en una barra para reasignar</span>
-          <button onClick={balancear} title="Reasigna cada tarea a la cuadrilla más libre de su disciplina: equilibra la carga y reduce choques" className="rounded bg-teal-600 px-2 py-1 font-semibold text-white hover:bg-teal-700">Auto-balancear</button>
-          {snapGrupos && <button onClick={deshacerBalance} className="rounded border border-slate-300 bg-white px-2 py-1 text-slate-600 hover:bg-slate-50">Deshacer</button>}
+          <button onClick={resolverChoques} title="Re-secuencia para que NINGUNA cuadrilla haga trabajos en paralelo (1 frente, o según su capacidad de personas)" className="rounded bg-rose-600 px-2 py-1 font-semibold text-white hover:bg-rose-700">Resolver choques</button>
+          {snapFechas && <button onClick={deshacerFechas} className="rounded border border-slate-300 bg-white px-2 py-1 text-slate-600 hover:bg-slate-50">Deshacer fechas</button>}
+          <button onClick={balancear} title="Reasigna cada tarea a la cuadrilla más libre de su disciplina: equilibra la carga" className="rounded bg-teal-600 px-2 py-1 font-semibold text-white hover:bg-teal-700">Auto-balancear</button>
+          {snapGrupos && <button onClick={deshacerBalance} className="rounded border border-slate-300 bg-white px-2 py-1 text-slate-600 hover:bg-slate-50">Deshacer grupos</button>}
         </div>
       </div>
 

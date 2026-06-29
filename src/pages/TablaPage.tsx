@@ -152,14 +152,14 @@ export function TablaPage() {
                 <td className="px-1 py-1" style={{ minWidth: 240 }}><input defaultValue={t.nombre} onBlur={(e) => e.target.value !== t.nombre && save(t.id, { nombre: e.target.value })} className={inp} /></td>
                 <td className="px-1 py-1" style={{ width: 70 }}><input defaultValue={String(esp(t).wbs ?? '')} onBlur={(e) => saveEspec(t, { wbs: e.target.value })} className={inp} /></td>
                 <td className="px-1 py-1" style={{ minWidth: 150 }}><input defaultValue={sysOf(t)} onBlur={(e) => saveEspec(t, { sistema: e.target.value })} className={inp} /></td>
-                <td className="px-1 py-1"><select value={discOf(t)} onChange={(e) => saveEspec(t, { disciplina: e.target.value })} className="rounded border border-transparent bg-transparent py-0.5 text-xs hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none">{DISCS.map((d) => <option key={d} value={d}>{d}</option>)}</select></td>
+                <td className="px-1 py-1"><select value={discOf(t)} onChange={(e) => saveEspec(t, { disciplina: e.target.value })} className="w-full rounded border border-transparent bg-transparent py-0.5 text-xs hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none">{DISCS.map((d) => <option key={d} value={d}>{d}</option>)}</select></td>
                 <td className="px-1 py-1" style={{ width: 70 }}>
-                  <input list="grupos-dl" defaultValue={grpOf(t)} onBlur={(e) => saveEspec(t, { grupo: e.target.value })} className={`${inp} text-center font-medium`} style={{ color: '#fff', background: grpOf(t) ? colorGrupo(grpOf(t)) : undefined, borderRadius: 4 }} />
+                  <input list="grupos-dl" defaultValue={grpOf(t)} onBlur={(e) => saveEspec(t, { grupo: e.target.value })} className={`${inp} text-center font-medium focus:!bg-white focus:!text-slate-900`} style={{ color: grpOf(t) ? '#fff' : '#0f172a', background: grpOf(t) ? colorGrupo(grpOf(t)) : undefined, borderRadius: 4 }} />
                 </td>
                 <td className="px-1 py-1" style={{ width: 48 }}><input type="number" min={0} defaultValue={Number(esp(t).tec ?? 0)} onBlur={(e) => { const v = Number(e.target.value); if (Number.isFinite(v) && v >= 0) saveEspec(t, { tec: v }) }} className={`${inp} text-center`} /></td>
                 <td className="px-1 py-1" style={{ width: 56 }}><input type="number" min={0} step={0.5} defaultValue={Number(t.duracion_estimada_horas ?? 0)} onBlur={(e) => { const v = Number(e.target.value); if (Number.isFinite(v) && v > 0 && v !== Number(t.duracion_estimada_horas)) save(t.id, { duracion_estimada_horas: v }) }} className={`${inp} text-center`} /></td>
-                <td className="px-1 py-1" style={{ width: 168 }}><input type="datetime-local" defaultValue={toInput(t.fecha_inicio_prog)} onBlur={(e) => editarFecha(t, 'inicio', e.target.value)} className={`${inp} text-xs`} /></td>
-                <td className="px-1 py-1" style={{ width: 168 }}><input type="datetime-local" defaultValue={toInput(t.fecha_fin_prog)} onBlur={(e) => editarFecha(t, 'fin', e.target.value)} className={`${inp} text-xs`} /></td>
+                <td className="px-1 py-1" style={{ width: 190 }}><input type="datetime-local" defaultValue={toInput(t.fecha_inicio_prog)} onBlur={(e) => editarFecha(t, 'inicio', e.target.value)} className={`${inp} text-xs`} /></td>
+                <td className="px-1 py-1" style={{ width: 190 }}><input type="datetime-local" defaultValue={toInput(t.fecha_fin_prog)} onBlur={(e) => editarFecha(t, 'fin', e.target.value)} className={`${inp} text-xs`} /></td>
                 <td className="px-1 py-1" style={{ width: 130 }}>
                   <select value={t.bloqueado_por ?? ''} onChange={(e) => save(t.id, { bloqueado_por: e.target.value || null })} className="w-full rounded border border-transparent bg-transparent py-0.5 text-xs hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none">
                     <option value="">—</option>
@@ -173,12 +173,13 @@ export function TablaPage() {
                   </select>
                   {t.responsable_id && userById[t.responsable_id] && <div className="px-1 text-[9px] text-slate-400">{userById[t.responsable_id].rol.replace('_', ' ')}</div>}
                 </td>
-                <td className="px-1 py-1"><select value={t.status} onChange={(e) => save(t.id, { status: e.target.value as TaskStatus })} className="rounded border border-transparent bg-transparent py-0.5 text-xs hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none">{ESTADOS.map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}</select></td>
+                <td className="px-1 py-1"><select value={t.status} onChange={(e) => save(t.id, { status: e.target.value as TaskStatus })} className="w-full rounded border border-transparent bg-transparent py-0.5 text-xs hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none">{ESTADOS.map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}</select></td>
                 <td className="px-1 py-1" style={{ width: 56 }}><input type="number" min={0} max={100} step={5} value={t.porcentaje_completado} onChange={(e) => save(t.id, { porcentaje_completado: Math.min(100, Math.max(0, Number(e.target.value))) })} className={`${inp} text-center`} /></td>
               </tr>
             ))}
           </tbody>
         </table>
+        {filas.length === 0 && <div className="px-4 py-12 text-center text-sm text-slate-400">Sin actividades — descarga la <b>Plantilla</b>, llénala e <b>Importa</b>, o crea con <b>+ Nueva</b>.</div>}
         <datalist id="grupos-dl">{grupos.map((g) => <option key={g} value={g} />)}</datalist>
       </div>
 

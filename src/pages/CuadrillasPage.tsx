@@ -177,7 +177,7 @@ export function CuadrillasPage() {
                     <span>{c.hh} HH</span>
                     <span>pico {c.peak}</span>
                     <span className="flex items-center gap-0.5">cap
-                      <input type="number" min={0} value={config[c.nombre]?.cap ?? ''} onChange={(e) => { const v = Number(e.target.value); setCap(c.nombre, e.target.value && Number.isFinite(v) && v >= 0 ? v : undefined) }} className="w-9 rounded border border-slate-300 px-0.5 text-center" />
+                      <input type="number" min={0} value={config[c.nombre]?.cap ?? ''} onChange={(e) => { const v = Number(e.target.value); setCap(c.nombre, e.target.value && Number.isFinite(v) && v >= 0 ? v : undefined) }} className="w-12 rounded border border-slate-300 px-0.5 text-center" />
                     </span>
                     {config[c.nombre]?.cap != null && c.peak > (config[c.nombre]!.cap as number) && <span className="rounded bg-red-100 px-1 font-semibold text-red-700">pico &gt; cap</span>}
                   </div>
@@ -194,7 +194,7 @@ export function CuadrillasPage() {
                     <button key={it.t.id} onClick={() => setMover(it.t)} title={`${it.t.nombre}\n${tecOf(it.t)} téc · ${it.t.duracion_estimada_horas}h${it.conflict ? '\n⚠ choque con otra tarea de la misma cuadrilla' : ''}\n(click para reasignar)`}
                       className="absolute flex items-center overflow-hidden rounded px-1 text-[9px] font-medium text-white shadow-sm" style={{
                         left: x(it.s), width: Math.max(x(it.e) - x(it.s), 5), top: 4 + it.lane * SUB, height: SUB - 4,
-                        background: it.conflict ? '#dc2626' : colorGrupo(sysOf(it.t)), boxShadow: it.conflict ? '0 0 0 1px #991b1b' : undefined,
+                        background: it.conflict ? '#b91c1c' : colorGrupo(sysOf(it.t)), boxShadow: it.conflict ? '0 0 0 1px #7f1d1d' : undefined,
                       }}>
                       <span className="truncate">{tecOf(it.t)}t · {it.t.nombre}</span>
                     </button>
@@ -203,6 +203,7 @@ export function CuadrillasPage() {
               </div>
             )
           })}
+          {crews.length === 0 && <div className="px-4 py-12 text-center text-sm text-slate-400">Ninguna tarea tiene fechas programadas (inicio y fin) todavía.</div>}
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 px-4 py-2 text-[11px] text-slate-400">

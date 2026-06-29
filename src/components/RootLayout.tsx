@@ -15,14 +15,14 @@ export function RootLayout() {
               <h1 className="text-lg font-semibold leading-tight text-slate-900">
                 Paradas Inteligentes
               </h1>
-              <p className="text-xs text-slate-500">
+              <p className="hidden text-xs text-slate-500 sm:block">
                 Gestión de paradas mecánicas · v1 (MVP)
               </p>
             </div>
           </Link>
           <div className="flex items-center gap-3">
             <div className="text-right">
-              <p className="text-sm font-medium text-slate-700">
+              <p className="max-w-[40vw] truncate text-sm font-medium text-slate-700">
                 {perfil?.nombre ?? session?.user?.email}
               </p>
               {perfil?.rol && (

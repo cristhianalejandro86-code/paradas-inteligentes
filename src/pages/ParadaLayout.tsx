@@ -56,14 +56,14 @@ export function ParadaLayout() {
         <ParadaBadge status={parada.status} />
       </div>
 
-      <nav className="mb-6 flex gap-1 border-b border-slate-200">
+      <nav className="mb-6 flex gap-1 overflow-x-auto border-b border-slate-200 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {TABS.map((t) => (
           <NavLink
             key={t.to}
             to={t.to}
             end={t.end}
             className={({ isActive }) =>
-              `-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+              `-mb-px whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
                 isActive
                   ? 'border-amber-500 text-amber-600'
                   : 'border-transparent text-slate-500 hover:text-slate-700'

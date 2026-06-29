@@ -274,14 +274,17 @@ export function GanttPage() {
                   <div className="absolute top-0 border-l border-slate-200" style={{ left: i * 24 * hourW, height: bodyH }} />
                 </div>
               ))}
+              {Date.now() >= base && Date.now() <= base + totalDias * DAY && (
+                <div className="absolute top-0 z-10 w-0.5 bg-red-500/70" style={{ left: x(Date.now()), height: bodyH }} title="Hoy" />
+              )}
             </div>
 
             {verDeps && (
-              <svg className="pointer-events-none absolute top-0 z-10" style={{ left: LEFT, width: timelineW, height: bodyH }}>
-                <defs><marker id="ah" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="context-stroke" /></marker></defs>
+              <svg className="pointer-events-none absolute top-0 z-20" style={{ left: LEFT, width: timelineW, height: bodyH }}>
+                <defs><marker id="ah" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="context-stroke" /></marker></defs>
                 {deps.map(({ from, to, col, crit }, k) => {
                   const ff = fechas[from], tf = fechas[to]
-                  const x1 = x(ff.e), y1 = (rowOf[from] - 0.5) * ROW, x2 = x(tf.s), y2 = (rowOf[to] - 0.5) * ROW
+                  const x1 = x(ff.e), y1 = (rowOf[from] + 0.5) * ROW, x2 = x(tf.s), y2 = (rowOf[to] + 0.5) * ROW
                   const mx = Math.max(x1 + 8, x2 - 10)
                   return <path key={k} d={`M${x1},${y1} H${mx} V${y2} H${x2}`} fill="none" stroke={col} strokeWidth={crit ? 2.2 : 1.3} markerEnd="url(#ah)" opacity="0.9" />
                 })}
@@ -343,7 +346,7 @@ export function GanttPage() {
                         className="group absolute top-1/2 z-10 flex h-[18px] -translate-y-1/2 cursor-grab items-center rounded shadow-sm active:cursor-grabbing"
                         style={{ left, width, background: colBar(t), boxShadow: crit ? '0 0 0 2px #dc2626' : undefined }}>
                         {t.porcentaje_completado > 0 && <div className="absolute left-0 top-0 h-full rounded-l bg-black/25" style={{ width: `${t.porcentaje_completado}%` }} />}
-                        <span className="pointer-events-none absolute left-1 truncate text-[9px] font-medium text-white/90" style={{ maxWidth: width - 8 }}>{grpOf(t)}</span>
+                        {width >= 18 && <span className="pointer-events-none absolute left-1 truncate text-[9px] font-medium text-white/90" style={{ maxWidth: Math.max(width - 8, 0) }}>{grpOf(t)}</span>}
                         <div onPointerDown={(e) => onDown(e, t, 'resize')} className="absolute right-0 top-0 h-full w-2 cursor-ew-resize rounded-r bg-black/0 group-hover:bg-white/40" />
                       </div>
                     )}
@@ -357,10 +360,10 @@ export function GanttPage() {
           <div className="sticky bottom-0 z-30 flex border-t-2 border-slate-300 bg-white" style={{ height: 70 }}>
             <div className="sticky left-0 z-40 flex shrink-0 flex-col justify-center border-r border-slate-200 bg-slate-50 px-2 text-[10px] font-semibold uppercase leading-tight text-slate-500" style={{ width: LEFT }}>
               <span>Técnicos / hora</span><span className="text-[11px] font-bold text-amber-600">Pico: {peak} téc</span>
-              <span className="text-[9px] font-normal normal-case text-slate-400">rojo = supera 21 (cuadrilla C4)</span>
+              <span className="text-[9px] font-normal normal-case text-slate-400">rojo = supera el tope ({topeC} téc)</span>
             </div>
             <div className="relative shrink-0" style={{ width: timelineW }}>
-              {histo.map((c, h) => c > 0 ? <div key={h} className="absolute bottom-3.5" style={{ left: h * hourW, width: Math.max(hourW - 1, 2) }}><div className="mx-auto w-[80%] rounded-t" style={{ height: Math.max((c / peak) * 46, 2), background: c > 21 ? '#dc2626' : c > peak * 0.66 ? '#f59e0b' : '#10b981' }} /></div> : null)}
+              {histo.map((c, h) => c > 0 ? <div key={h} className="absolute bottom-3.5" style={{ left: h * hourW, width: Math.max(hourW - 1, 2) }}><div className="mx-auto w-[80%] rounded-t" style={{ height: Math.max((c / peak) * 46, 2), background: c > topeC ? '#dc2626' : c > peak * 0.66 ? '#f59e0b' : '#10b981' }} /></div> : null)}
               {histo.map((c, h) => h % hTick === 0 && c > 0 ? <span key={'n' + h} className="absolute bottom-0 text-[8px] font-medium text-slate-500" style={{ left: h * hourW + 1 }}>{c}</span> : null)}
             </div>
           </div>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getRecursos } from '../lib/api'
+import { useRefreshOnFocus } from '../lib/useRefreshOnFocus'
 import type { Recurso, ResourceStatus } from '../types'
 
 type Urgencia = 'CRÍTICA' | 'MEDIA' | 'OK'
@@ -16,12 +17,14 @@ export function RecursosPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const reloadRecursos = () => getRecursos().then(setRecursos).catch((e) => setError(e.message))
   useEffect(() => {
     getRecursos()
       .then(setRecursos)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
   }, [])
+  useRefreshOnFocus(reloadRecursos)
 
   const filas = useMemo(
     () =>
@@ -55,7 +58,7 @@ export function RecursosPage() {
       r.ubicacion_real ?? '',
     ])
     const csv = [header, ...rows]
-      .map((row) => row.map((c) => `"${c.replace(/"/g, '""')}"`).join(','))
+      .map((row) => row.map((c) => `"${String(c ?? '').replace(/"/g, '""')}"`).join(','))
       .join('\n')
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)

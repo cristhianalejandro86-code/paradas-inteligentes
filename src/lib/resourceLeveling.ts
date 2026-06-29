@@ -6,6 +6,31 @@ const H = 3600000
 const durH = (t: Tarea) => Math.max(1, Math.round(Number(t.duracion_estimada_horas ?? 1)))
 const tecDe = (t: Tarea) => Math.max(0, Number((t.especificaciones_tecnicas?.tec as number) ?? 0))
 const grpDe = (t: Tarea) => (t.especificaciones_tecnicas?.grupo as string) || '—'
+/** Turno de la tarea: 'N' (noche) o 'D' (día), desde la especificación o el turno asignado. */
+const turnoDe = (t: Tarea): 'D' | 'N' => {
+  const dn = (t.especificaciones_tecnicas?.turno_dn as string) || ''
+  if (dn) return dn.toUpperCase().startsWith('N') ? 'N' : 'D'
+  return (t.turno_asignado || '').toLowerCase().startsWith('n') ? 'N' : 'D'
+}
+// Ventanas de turno de la parada de planta: Día 07:00–22:00, Noche 19:00–10:00 (se solapan; se permite extensión).
+const VENTANA = { D: [7, 22], N_ini: 19, N_fin: 10 }
+const enVentanaTurno = (dn: 'D' | 'N', horaDelDia: number) =>
+  dn === 'N' ? horaDelDia >= VENTANA.N_ini || horaDelDia < VENTANA.N_fin : horaDelDia >= VENTANA.D[0] && horaDelDia < VENTANA.D[1]
+
+/** Infiere la especialidad que exige una tarea a partir de su nombre. */
+export const especialidadRequerida = (t: Tarea): string | null => {
+  const s = `${t.nombre} ${(t.especificaciones_tecnicas?.sistema as string) || ''}`.toUpperCase()
+  if (/SOLDA|RELLENO DE COSTURA|APORTE/.test(s)) return 'Soldador'
+  if (/ANDAMI/.test(s)) return 'Andamiero'
+  if (/IZAJE|RIGG|MANIOBRA|TRASLAD|MONTAJE|DESMONTAJE/.test(s)) return 'Rigger'
+  if (/PINTU|PINTAD|GRANALLA|ARENAD|RECUBRIMIENTO/.test(s)) return 'Pintor'
+  if (/EL[EÉ]CTRIC|MOTOR|VARIADOR|TABLERO|CABLE/.test(s)) return 'Electricista'
+  if (/ALINEA/.test(s)) return 'Alineador'
+  return null  // sin especialidad específica → cualquier mecánico sirve
+}
+/** ¿La tarea necesita grúa / puente grúa? (recurso compartido por toda la planta). */
+export const requiereGrua = (t: Tarea): boolean =>
+  /IZAJE|IZAR|GR[UÚ]A|RIGG|MANIOBRA|TRASLAD|MONTAJE|DESMONTAJE|RETIR|INSTALAC|COLOC/.test(`${t.nombre}`.toUpperCase())
 const discDe = (t: Tarea) =>
   (t.especificaciones_tecnicas?.disciplina as string) ||
   disciplina(`${t.nombre} ${(t.especificaciones_tecnicas?.sistema as string) || ''}`)
@@ -241,6 +266,182 @@ export function resolverCuadrillas(
   const res: Record<string, { s: number; e: number }> = {}
   for (const t of tareas) res[t.id] = { s: baseMs + startH[t.id] * H, e: baseMs + finH[t.id] * H }
   return res
+}
+
+export type Tecnico = { id: string; nombre: string; rol: string; cargo?: string | null; especialidad?: string | null; area?: string | null; linea?: string | null }
+export type Roster = Record<string, Tecnico[]>
+
+/**
+ * Nivelación TRABAJADOR POR TRABAJADOR. Cada técnico es un recurso UNARIO: no
+ * puede estar en dos tareas a la vez. Reglas, por tarea:
+ *  - Si ya tiene técnicos nominados (especificaciones.asignados) → esos deben
+ *    estar libres en su ventana.
+ *  - Si no, pero su cuadrilla tiene un ROSTER de técnicos → se le AUTO-ASIGNA
+ *    el/los técnico(s) del roster con menos carga que estén libres (distribuye
+ *    el trabajo del grupo entre su gente, sin solapes).
+ *  - Si no hay roster ni nominados → la cuadrilla funciona como recurso unario
+ *    (1 frente); sin cuadrilla, solo respeta la predecesora.
+ * Devuelve el cronograma y las asignaciones automáticas (para persistir/mostrar).
+ */
+export function resolverPorPersona(
+  tareas: Tarea[],
+  baseMs: number,
+  roster: Roster = {},
+  opts: { maxJornadaH?: number; descansoH?: number; turnos?: boolean; gruas?: number } = {},
+): { schedule: Record<string, { s: number; e: number }>; asignaciones: Record<string, Tecnico[]> } {
+  // Regla de fatiga (parada de planta): un técnico puede correr largo (incluso
+  // >12h, cruzando turnos), pero tras `maxJornadaH` horas CONTINUAS necesita
+  // `descansoH` de descanso antes de encadenar otra tarea. No parte tareas
+  // individuales largas; solo evita encadenar jornadas sin descanso.
+  const maxJor = Math.max(1, opts.maxJornadaH ?? 48)
+  const descanso = Math.max(0, opts.descansoH ?? 6)
+  const usarTurnos = opts.turnos ?? true
+  const nGruas = Math.max(0, opts.gruas ?? 0)   // 0 = sin límite de grúas
+  const gruaUso: number[] = []                   // grúas ocupadas por hora (compartidas por toda la planta)
+  // Cada tarea debe ARRANCAR dentro de su ventana de turno (Día 07–22 / Noche 19–10);
+  // puede extenderse más allá (las paradas se alargan), solo se controla el inicio.
+  const horaDia = (h: number) => new Date(baseMs + h * H).getUTCHours()
+  const byId = new Map(tareas.map((t) => [t.id, t]))
+  const startMs = (t: Tarea) => (t.fecha_inicio_prog ? new Date(t.fecha_inicio_prog).getTime() : 0)
+  const rest = [...tareas].sort((a, b) => startMs(a) - startMs(b))
+  const placed = new Set<string>()
+  const orden: Tarea[] = []
+  while (rest.length) {
+    let adv = false
+    for (let i = 0; i < rest.length; i++) {
+      const t = rest[i], p = t.bloqueado_por
+      if (!p || !byId.has(p) || placed.has(p)) { orden.push(t); placed.add(t.id); rest.splice(i, 1); adv = true; break }
+    }
+    if (!adv) { const t = rest.shift()!; orden.push(t); placed.add(t.id) }
+  }
+
+  const busy: Record<string, number[]> = {}
+  const load: Record<string, number> = {}
+  const blkStart: Record<string, number> = {}   // inicio del bloque continuo actual por persona
+  const lastEnd: Record<string, number> = {}     // fin del último bloque por persona
+  const startH: Record<string, number> = {}, finH: Record<string, number> = {}
+  const asign: Record<string, Tecnico[]> = {}
+  // ¿Colocar [h,h+len) deja al recurso k dentro del límite de jornada continua?
+  const fatigaOK = (k: string, h: number, len: number) => {
+    const le = lastEnd[k]
+    if (le == null) return true                 // primera tarea del recurso: nunca se parte
+    if (h - le >= descanso) return true          // descansó lo suficiente → bloque nuevo
+    return (h + len) - (blkStart[k] ?? h) <= maxJor
+  }
+  const finAbs = (pid: string) => {
+    if (finH[pid] != null) return finH[pid]
+    const pt = byId.get(pid)
+    return pt?.fecha_fin_prog ? Math.max(0, Math.round((new Date(pt.fecha_fin_prog).getTime() - baseMs) / H)) : 0
+  }
+  const libre = (key: string, h0: number, len: number) => {
+    const b = busy[key]
+    if (!b) return true
+    for (let h = h0; h < h0 + len; h++) if (b[h]) return false
+    return true
+  }
+  for (const t of orden) {
+    const len = durH(t)
+    const explicit = ((t.especificaciones_tecnicas?.asignados as Tecnico[]) ?? []).filter((a) => a?.id)
+    const crew = grpDe(t)
+    const pool = crew !== '—' ? roster[crew] ?? [] : []
+    const p = t.bloqueado_por && t.bloqueado_por !== t.id ? t.bloqueado_por : null
+    let h = p && byId.has(p) ? finAbs(p) : 0
+    const dn = turnoDe(t)
+    const turnoOK = (hh: number) => !usarTurnos || enVentanaTurno(dn, horaDia(hh))
+    // Grúa: recurso compartido por toda la planta; máx nGruas tareas con grúa a la vez.
+    const reqGrua = nGruas > 0 && requiereGrua(t)
+    const gruaOK = (hh: number) => { if (!reqGrua) return true; for (let z = hh; z < hh + len; z++) if ((gruaUso[z] ?? 0) >= nGruas) return false; return true }
+    let keys: string[] = []
+    let g = 0
+
+    if (explicit.length) {
+      while ((!explicit.every((a) => libre('u:' + a.id, h, len) && fatigaOK('u:' + a.id, h, len)) || !turnoOK(h) || !gruaOK(h)) && g++ < 1000000) h++
+      keys = explicit.map((a) => 'u:' + a.id)
+    } else if (pool.length) {
+      const need = Math.min(pool.length, Math.max(1, tecDe(t) || 1))
+      const req = especialidadRequerida(t)   // especialidad que pide la tarea (inferida del nombre)
+      const matchEsp = (a: Tecnico) => (req && (a.especialidad ?? '').toLowerCase().includes(req.toLowerCase()) ? 0 : 1)
+      const libresEn = (hh: number) => pool.filter((a) => libre('u:' + a.id, hh, len) && fatigaOK('u:' + a.id, hh, len))
+      while ((libresEn(h).length < need || !turnoOK(h) || !gruaOK(h)) && g++ < 1000000) h++
+      const elegidos = libresEn(h)
+        // prioriza la especialidad correcta (soldadura→soldador, etc.) y luego al de menor carga
+        .sort((a, b) => matchEsp(a) - matchEsp(b) || (load['u:' + a.id] ?? 0) - (load['u:' + b.id] ?? 0))
+        .slice(0, need)
+      asign[t.id] = elegidos
+      keys = elegidos.map((a) => 'u:' + a.id)
+    } else if (crew !== '—') {
+      while ((!libre('g:' + crew, h, len) || !turnoOK(h) || !gruaOK(h)) && g++ < 1000000) h++
+      keys = ['g:' + crew]
+    } else {
+      while ((!turnoOK(h) || !gruaOK(h)) && g++ < 1000000) h++
+    }
+    // Si las restricciones blandas (turno/fatiga/grúa) son infactibles, el bucle se agota:
+    // caemos al piso duro (fin de predecesora) en vez de devolver fechas basura (~año +114k).
+    if (g >= 999999) h = p && byId.has(p) ? finAbs(p) : 0
+
+    startH[t.id] = h; finH[t.id] = h + len
+    if (reqGrua) for (let z = h; z < h + len; z++) gruaUso[z] = (gruaUso[z] ?? 0) + 1
+    for (const k of keys) {
+      busy[k] ??= []; for (let x = h; x < h + len; x++) busy[k][x] = 1
+      load[k] = (load[k] ?? 0) + len
+      // bloque continuo: si descansó (gap ≥ descanso) o es el primero, arranca bloque nuevo
+      if (lastEnd[k] == null || h - lastEnd[k] >= descanso) blkStart[k] = h
+      lastEnd[k] = h + len
+    }
+  }
+  const schedule: Record<string, { s: number; e: number }> = {}
+  for (const t of tareas) schedule[t.id] = { s: baseMs + startH[t.id] * H, e: baseMs + finH[t.id] * H }
+  return { schedule, asignaciones: asign }
+}
+
+/**
+ * Detecta CHOQUES DE PERSONA: el mismo técnico nominado (especificaciones.asignados)
+ * en dos tareas que se solapan en el tiempo. Devuelve los ids de tareas en choque
+ * y, por tarea, los nombres de los técnicos duplicados (para avisar en pantalla).
+ */
+export function choquesPersona(tareas: Tarea[]): { ids: Set<string>; porTarea: Record<string, string[]> } {
+  const ids = new Set<string>()
+  const porTarea: Record<string, string[]> = {}
+  type Iv = { id: string; s: number; e: number; nombre: string }
+  const byTec: Record<string, Iv[]> = {}
+  for (const t of tareas) {
+    if (!t.fecha_inicio_prog || !t.fecha_fin_prog) continue
+    const s = new Date(t.fecha_inicio_prog).getTime(), e = new Date(t.fecha_fin_prog).getTime()
+    for (const a of (t.especificaciones_tecnicas?.asignados as Tecnico[]) ?? [])
+      if (a?.id) (byTec[a.id] ??= []).push({ id: t.id, s, e, nombre: a.nombre })
+  }
+  for (const ivs of Object.values(byTec)) {
+    ivs.sort((a, b) => a.s - b.s)
+    for (let i = 0; i < ivs.length; i++)
+      for (let j = i + 1; j < ivs.length && ivs[j].s < ivs[i].e; j++) {
+        ids.add(ivs[i].id); ids.add(ivs[j].id)
+        for (const x of [ivs[i], ivs[j]]) (porTarea[x.id] ??= []).includes(x.nombre) || (porTarea[x.id] ??= []).push(x.nombre)
+      }
+  }
+  return { ids, porTarea }
+}
+
+/**
+ * Sugiere PRECEDENCIAS automáticas: dentro de un mismo equipo (sistema) y cuadrilla,
+ * encadena las tareas en orden de inicio (una espera a la anterior). Es el patrón
+ * real de una parada (una cuadrilla trabaja un equipo en serie) y habilita la ruta
+ * crítica. Solo propone para tareas SIN predecesora; nunca crea ciclos (encadena por
+ * tiempo). Devuelve mapa id -> id_predecesora.
+ */
+export function sugerirPrecedencias(tareas: Tarea[]): Record<string, string> {
+  const sug: Record<string, string> = {}
+  const buckets: Record<string, Tarea[]> = {}
+  for (const t of tareas) {
+    if (!t.fecha_inicio_prog) continue
+    const key = `${(t.especificaciones_tecnicas?.sistema as string) || '—'}|${grpDe(t)}`
+    ;(buckets[key] ??= []).push(t)
+  }
+  for (const ts of Object.values(buckets)) {
+    ts.sort((a, b) => new Date(a.fecha_inicio_prog!).getTime() - new Date(b.fecha_inicio_prog!).getTime())
+    for (let i = 1; i < ts.length; i++)
+      if (!ts[i].bloqueado_por) sug[ts[i].id] = ts[i - 1].id
+  }
+  return sug
 }
 
 /**

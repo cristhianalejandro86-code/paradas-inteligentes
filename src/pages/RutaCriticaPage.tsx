@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { useRefreshOnFocus } from '../lib/useRefreshOnFocus'
 import { getTareasByParada } from '../lib/api'
 import { rutaCritica } from '../lib/criticalPath'
+import { CurvaS } from '../components/CurvaS'
 import type { Tarea } from '../types'
 
 export function RutaCriticaPage() {
@@ -10,10 +12,12 @@ export function RutaCriticaPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const reloadTareas = () => id && getTareasByParada(id).then(setTareas).catch((e) => setError(e.message))
   useEffect(() => {
     if (!id) return
     getTareasByParada(id).then(setTareas).catch((e) => setError(e.message)).finally(() => setLoading(false))
   }, [id])
+  useRefreshOnFocus(reloadTareas)
 
   const r = useMemo(() => {
     const { criticas, holgura } = rutaCritica(tareas)
@@ -41,6 +45,8 @@ export function RutaCriticaPage() {
         <Kpi label="Tareas críticas" value={String(r.crit.length)} sub="holgura ≈ 0" accent="text-red-600" />
         <Kpi label="Duración ruta crítica" value={`${r.durCrit}h`} sub="suma de críticas" />
       </section>
+
+      <CurvaS tareas={tareas} />
 
       <section>
         <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-slate-500">

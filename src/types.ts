@@ -83,6 +83,7 @@ export interface Parada {
   nombre: string
   descripcion: string | null
   equipo_afectado: string | null
+  area: string | null
   fecha_inicio_planeada: string
   fecha_fin_planeada: string
   status: ParadaStatus

@@ -1,24 +1,28 @@
-// Paleta ejecutiva sobria para colorear grupos/sistemas en el Gantt.
+// Paleta de 16 colores con buena separación de matiz, lo bastante oscuros para
+// leer texto blanco encima. Cada cuadrilla se distingue a simple vista en el Gantt.
 const PALETA = [
-  '#1f3a5f', // navy
-  '#2e6171', // teal oscuro
-  '#3d5a45', // verde bosque
-  '#6b4e3d', // marrón
-  '#544a6e', // ciruela
-  '#41607a', // azul acero
-  '#5c6b45', // oliva
-  '#2d4a4a', // pizarra verdosa
-  '#7a5448', // terracota apagado
-  '#4a4f63', // grafito azulado
-  '#6e5a3d', // ocre
-  '#455c5a', // verde grisáceo
-  '#5a4860', // morado apagado
-  '#3a4a5e', // azul humo
-  '#664a4a', // burdeos apagado
-  '#4d5e4a', // salvia
+  '#2563eb', // azul
+  '#0d9488', // teal
+  '#16a34a', // verde
+  '#d97706', // ámbar
+  '#dc2626', // rojo
+  '#7c3aed', // violeta
+  '#0891b2', // cian
+  '#db2777', // rosa
+  '#65a30d', // lima
+  '#4f46e5', // índigo
+  '#ea580c', // naranja
+  '#0284c7', // celeste
+  '#9333ea', // púrpura
+  '#059669', // esmeralda
+  '#e11d48', // carmín
+  '#ca8a04', // mostaza
 ]
 
 export function colorGrupo(name: string): string {
+  // Para grupos tipo "G3"/"G12" usa el número → color estable y sin colisiones.
+  const m = /(\d+)/.exec(name)
+  if (m) return PALETA[(Number(m[1]) - 1 + PALETA.length) % PALETA.length]
   let h = 0
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % PALETA.length
   return PALETA[h]

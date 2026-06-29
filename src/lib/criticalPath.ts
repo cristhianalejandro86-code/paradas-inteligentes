@@ -11,10 +11,11 @@ export function rutaCritica(tareas: Tarea[]): {
 } {
   const byId = new Map(tareas.map((t) => [t.id, t]))
   const dur = (t: Tarea) => Number(t.duracion_estimada_horas ?? 0)
+  const pred = (t: Tarea) => (t.bloqueado_por && t.bloqueado_por !== t.id && byId.has(t.bloqueado_por) ? t.bloqueado_por : null)
   const succ: Record<string, string[]> = {}
   for (const t of tareas) {
-    const p = t.bloqueado_por
-    if (p && byId.has(p)) (succ[p] ??= []).push(t.id)
+    const p = pred(t)
+    if (p) (succ[p] ??= []).push(t.id)
   }
 
   // Forward: earliest start/finish
@@ -23,9 +24,9 @@ export function rutaCritica(tareas: Tarea[]): {
   function fwd(id: string, stack = new Set<string>()): number {
     if (EF[id] != null) return EF[id]
     const t = byId.get(id)!
-    const p = t.bloqueado_por
+    const p = pred(t)
     let es = 0
-    if (p && byId.has(p) && !stack.has(id)) {
+    if (p && !stack.has(id)) {
       stack.add(id)
       es = fwd(p, stack)
       stack.delete(id)

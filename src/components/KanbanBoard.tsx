@@ -10,6 +10,7 @@ import {
 } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { getTareasByParada, updateTareaStatus } from '../lib/api'
+import { useRefreshOnFocus } from '../lib/useRefreshOnFocus'
 import { TaskDetailModal } from './TaskDetailModal'
 import { NuevaTareaModal } from './NuevaTareaModal'
 import type { Tarea, TaskStatus } from '../types'
@@ -41,6 +42,7 @@ export function KanbanBoard({ paradaId }: { paradaId: string }) {
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
   )
 
+  const reloadTareas = () => getTareasByParada(paradaId).then((data) => setTareas(data)).catch((e) => setError(e.message))
   useEffect(() => {
     let alive = true
     getTareasByParada(paradaId)
@@ -51,6 +53,7 @@ export function KanbanBoard({ paradaId }: { paradaId: string }) {
       alive = false
     }
   }, [paradaId])
+  useRefreshOnFocus(reloadTareas)
 
   const porColumna = useMemo(() => {
     const map: Record<TaskStatus, Tarea[]> = {

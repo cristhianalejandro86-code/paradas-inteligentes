@@ -1,9 +1,13 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
-import { getTareasByParada, updateTareaEspec, updateTareaSchedule, getCuadrillasConfig, setCuadrillasConfig } from '../lib/api'
-import { balancearCuadrillas, resolverCuadrillas } from '../lib/resourceLeveling'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useOutletContext, useParams } from 'react-router-dom'
+import { getTareasByParada, updateTareaEspec, updateTareaSchedule, getCuadrillasConfig, setCuadrillasConfig, getUsuarios } from '../lib/api'
+import { balancearCuadrillas, resolverCuadrillas, choquesPersona, especialidadRequerida } from '../lib/resourceLeveling'
+import type { Tecnico } from '../lib/resourceLeveling'
 import { colorGrupo } from '../lib/palette'
-import type { Tarea } from '../types'
+import { useRefreshOnFocus } from '../lib/useRefreshOnFocus'
+import type { Parada, Tarea } from '../types'
+
+type CrewCfg = { cap?: number; turno?: string; tecnicos?: Tecnico[] }
 
 const H = 3600000
 const DAY = 86400000
@@ -14,7 +18,8 @@ const MES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct
 
 const sysOf = (t: Tarea) => (t.especificaciones_tecnicas?.sistema as string) || 'General'
 const grpOf = (t: Tarea) => (t.especificaciones_tecnicas?.grupo as string) || '—'
-const tecOf = (t: Tarea) => Math.max(0, Number((t.especificaciones_tecnicas?.tec as number) ?? 0))
+const turnoOf = (t: Tarea): 'D' | 'N' => { const dn = (t.especificaciones_tecnicas?.turno_dn as string) || ''; return (dn ? dn.toUpperCase().startsWith('N') : (t.turno_asignado || '').toLowerCase().startsWith('n')) ? 'N' : 'D' }
+const tecOf = (t: Tarea) => { const n = Number((t.especificaciones_tecnicas?.tec as number) ?? 0); return Number.isFinite(n) ? Math.max(0, n) : 0 }
 const pad = (n: number) => String(n).padStart(2, '0')
 
 interface Item { t: Tarea; s: number; e: number; lane: number; conflict: boolean }
@@ -22,25 +27,47 @@ interface Crew { nombre: string; items: Item[]; nSub: number; util: number; hh: 
 
 export function CuadrillasPage() {
   const { id } = useParams<{ id: string }>()
+  const parada = useOutletContext<Parada | undefined>()
   const [tareas, setTareas] = useState<Tarea[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [mover, setMover] = useState<Tarea | null>(null)
-  const [config, setConfig] = useState<Record<string, { cap?: number; turno?: string }>>({})
+  const [config, setConfig] = useState<Record<string, CrewCfg>>({})
   const [snapGrupos, setSnapGrupos] = useState<Record<string, string> | null>(null)
   const [snapFechas, setSnapFechas] = useState<Record<string, { s: number; e: number }> | null>(null)
   const [vw, setVw] = useState(typeof window !== 'undefined' ? window.innerWidth : 1600)
+  const [usuarios, setUsuarios] = useState<Tecnico[]>([])
+  const [rosterCrew, setRosterCrew] = useState<string | null>(null)
+  const dragRef = useRef<{ id: string; x0: number; s0: number; dur: number; dH: number; moved: boolean } | null>(null)
+  const [draft, setDraft] = useState<{ id: string; dH: number } | null>(null)
+  const [turnoF, setTurnoF] = useState<'Todos' | 'D' | 'N'>('Todos')
 
+  const reloadTareas = () => {
+    if (!id) return Promise.resolve()
+    return getTareasByParada(id).then(setTareas).catch((e) => setError(e.message))
+  }
   useEffect(() => {
     if (!id) return
-    getTareasByParada(id).then(setTareas).catch((e) => setError(e.message)).finally(() => setLoading(false))
+    setLoading(true)
+    reloadTareas().finally(() => setLoading(false))
     getCuadrillasConfig(id).then(setConfig).catch(() => {})
+    getUsuarios().then(setUsuarios).catch(() => {})
   }, [id])
+  useRefreshOnFocus(reloadTareas)
 
   function setCap(crew: string, cap?: number) {
     const next = { ...config, [crew]: { ...config[crew], cap } }
     setConfig(next)
     if (id) setCuadrillasConfig(id, next).catch((e) => setError(String(e)))
+  }
+  function setRoster(crew: string, tecnicos: Tecnico[]) {
+    // El roster define también la capacidad (cuántos frentes en paralelo).
+    const next = { ...config, [crew]: { ...config[crew], tecnicos, cap: tecnicos.length || config[crew]?.cap } }
+    setConfig(next)
+    if (id) setCuadrillasConfig(id, next).catch((e) => setError(String(e)))
+  }
+  function quitarTecnico(crew: string, tid: string) {
+    setRoster(crew, (config[crew]?.tecnicos ?? []).filter((u) => u.id !== tid))
   }
   useEffect(() => {
     const f = () => setVw(window.innerWidth)
@@ -48,8 +75,8 @@ export function CuadrillasPage() {
     return () => window.removeEventListener('resize', f)
   }, [])
 
-  const { crews, base, totalDias, hourW, totalConf } = useMemo(() => {
-    const dated = tareas.filter((t) => t.fecha_inicio_prog && t.fecha_fin_prog)
+  const { crews, base, totalDias, hourW, totalConf, histo, peakHisto, totalHH, choquePers, espPeak } = useMemo(() => {
+    const dated = tareas.filter((t) => t.fecha_inicio_prog && t.fecha_fin_prog && (turnoF === 'Todos' || turnoOf(t) === turnoF))
     const fch = (t: Tarea) => ({ s: new Date(t.fecha_inicio_prog!).getTime(), e: new Date(t.fecha_fin_prog!).getTime() })
     const allS = dated.map((t) => fch(t).s), allE = dated.map((t) => fch(t).e)
     const minS = allS.length ? Math.min(...allS) : Date.now()
@@ -95,11 +122,52 @@ export function CuadrillasPage() {
     })
     crews.sort((a, b) => gnum(a.nombre) - gnum(b.nombre))
     const totalConf = crews.reduce((s, c) => s + c.conflictos, 0)
-    return { crews, base, totalDias, hourW, totalConf }
-  }, [tareas, vw])
+    // Perfil de técnicos/hora en TODA la parada (suma de téc de tareas solapadas)
+    const horas = totalDias * 24
+    const histo = new Array(horas).fill(0)
+    for (const t of dated) {
+      const f = fch(t), tec = tecOf(t)
+      for (let h = Math.max(0, Math.floor((f.s - base) / H)); h < Math.min(horas, Math.ceil((f.e - base) / H)); h++) histo[h] += tec
+    }
+    const totalHH = dated.reduce((s, t) => s + tecOf(t) * Number(t.duracion_estimada_horas ?? 0), 0)
+    // P4 — demanda PICO por especialidad (la que infiere cada tarea × nº de téc)
+    const espHora: Record<string, number[]> = {}
+    for (const t of dated) {
+      const esp = especialidadRequerida(t) ?? 'Mecánico', tec = tecOf(t), f = fch(t)
+      const arr = (espHora[esp] ??= new Array(horas).fill(0))
+      for (let h = Math.max(0, Math.floor((f.s - base) / H)); h < Math.min(horas, Math.ceil((f.e - base) / H)); h++) arr[h] += tec
+    }
+    const espPeak = Object.entries(espHora).map(([esp, arr]) => ({ esp, pico: Math.max(0, ...arr) })).filter((e) => e.pico > 0).sort((a, b) => b.pico - a.pico)
+    // S2 — choques de PERSONA (mismo técnico nominado en dos tareas solapadas)
+    const choquePers = choquesPersona(dated).ids
+    return { crews, base, totalDias, hourW, totalConf, histo, peakHisto: Math.max(1, ...histo), totalHH, choquePers, espPeak }
+  }, [tareas, vw, turnoF])
 
   const timelineW = totalDias * 24 * hourW
   const x = (ms: number) => ((ms - base) / H) * hourW
+
+  function onBarDown(e: React.PointerEvent, t: Tarea) {
+    e.preventDefault()
+    const f = { s: new Date(t.fecha_inicio_prog!).getTime(), e: new Date(t.fecha_fin_prog!).getTime() }
+    dragRef.current = { id: t.id, x0: e.clientX, s0: f.s, dur: (f.e - f.s) / H, dH: 0, moved: false }
+    window.addEventListener('pointermove', onBarMove); window.addEventListener('pointerup', onBarUp)
+  }
+  function onBarMove(e: PointerEvent) {
+    const d = dragRef.current; if (!d) return
+    d.dH = Math.round((e.clientX - d.x0) / hourW)
+    if (Math.abs(e.clientX - d.x0) > 3) d.moved = true
+    setDraft({ id: d.id, dH: d.dH })
+  }
+  function onBarUp() {
+    window.removeEventListener('pointermove', onBarMove); window.removeEventListener('pointerup', onBarUp)
+    const d = dragRef.current; dragRef.current = null; setDraft(null)
+    if (!d) return
+    if (!d.moved) { const t = tareas.find((x) => x.id === d.id); if (t) setMover(t); return } // clic simple → reasignar
+    if (d.dH === 0) return
+    const s = d.s0 + d.dH * H, sI = new Date(s).toISOString(), eI = new Date(s + d.dur * H).toISOString()
+    setTareas((ts) => ts.map((t) => (t.id === d.id ? { ...t, fecha_inicio_prog: sI, fecha_fin_prog: eI } : t)))
+    updateTareaSchedule(d.id, sI, eI, Math.max(1, d.dur)).catch((e) => setError(String(e)))
+  }
 
   function balancear() {
     const map = balancearCuadrillas(tareas)
@@ -157,9 +225,13 @@ export function CuadrillasPage() {
     <div className="rounded-xl border border-slate-200 bg-white">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
         <h3 className="text-sm font-semibold text-slate-700">Distribución por cuadrilla · {crews.length} grupos</h3>
-        <div className="flex items-center gap-3 text-xs">
-          <span className={totalConf ? 'font-semibold text-red-600' : 'text-emerald-600'}>{totalConf ? `${totalConf} tareas en conflicto de cuadrilla` : 'sin conflictos'}</span>
-          <span className="text-slate-400">Click en una barra para reasignar</span>
+        <div className="flex flex-wrap items-center gap-3 text-xs">
+          <div className="flex overflow-hidden rounded-md border border-slate-200" title="Filtra por turno (Día 07–22 / Noche 19–10)">
+            {(['Todos', 'D', 'N'] as const).map((tt) => <button key={tt} onClick={() => setTurnoF(tt)} className={`px-2 py-1 ${turnoF === tt ? 'bg-indigo-500 text-white' : 'bg-white text-slate-500'}`}>{tt === 'D' ? '☀ Día' : tt === 'N' ? '🌙 Noche' : 'Turno'}</button>)}
+          </div>
+          <span className={totalConf ? 'font-semibold text-red-600' : 'text-emerald-600'}>{totalConf ? `${totalConf} choque cuadrilla` : 'sin choque grupo'}</span>
+          {choquePers.size > 0 && <span className="rounded bg-orange-100 px-1.5 py-0.5 font-semibold text-orange-700" title="El mismo técnico nominado quedó en dos tareas a la vez">⛔ {choquePers.size} choque persona</span>}
+          <span className="text-slate-400">Arrastra una barra para mover · clic para reasignar</span>
           <button onClick={resolverChoques} title="Re-secuencia para que NINGUNA cuadrilla haga trabajos en paralelo (1 frente, o según su capacidad de personas)" className="rounded bg-rose-600 px-2 py-1 font-semibold text-white hover:bg-rose-700">Resolver choques</button>
           {snapFechas && <button onClick={deshacerFechas} className="rounded border border-slate-300 bg-white px-2 py-1 text-slate-600 hover:bg-slate-50">Deshacer fechas</button>}
           <button onClick={balancear} title="Reasigna cada tarea a la cuadrilla más libre de su disciplina: equilibra la carga" className="rounded bg-teal-600 px-2 py-1 font-semibold text-white hover:bg-teal-700">Auto-balancear</button>
@@ -202,7 +274,20 @@ export function CuadrillasPage() {
                       <input type="number" min={0} value={config[c.nombre]?.cap ?? ''} onChange={(e) => { const v = Number(e.target.value); setCap(c.nombre, e.target.value && Number.isFinite(v) && v >= 0 ? v : undefined) }} className="w-12 rounded border border-slate-300 px-0.5 text-center" />
                     </span>
                     {config[c.nombre]?.cap != null && c.peak > (config[c.nombre]!.cap as number) && <span className="rounded bg-red-100 px-1 font-semibold text-red-700">pico &gt; cap</span>}
+                    <button onClick={() => setRosterCrew(c.nombre)} title="Asignar los técnicos de esta cuadrilla (su roster). Define la gente que el nivelador reparte entre las tareas." className="rounded border border-violet-300 bg-violet-50 px-1.5 font-semibold text-violet-700 hover:bg-violet-100">
+                      👤 {config[c.nombre]?.tecnicos?.length ? `${config[c.nombre]!.tecnicos!.length} téc` : 'asignar'}
+                    </button>
                   </div>
+                  {config[c.nombre]?.tecnicos?.length ? (
+                    <div className="flex flex-wrap gap-0.5">
+                      {config[c.nombre]!.tecnicos!.map((u) => (
+                        <span key={u.id} className="group/chip inline-flex items-center gap-0.5 rounded bg-slate-100 px-1 text-[9px] text-slate-600" title={`${u.nombre} · ${u.especialidad || (u.cargo || u.rol).replace('_', ' ')}`}>
+                          {u.nombre.split(' ').slice(0, 2).join(' ')}
+                          <button onClick={() => quitarTecnico(c.nombre, u.id)} title="Quitar de la cuadrilla" className="text-slate-400 hover:text-red-600">×</button>
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
                 <div className="relative shrink-0" style={{ width: timelineW, height: laneH }}>
                   {dias.map(({ i }) => (
@@ -212,20 +297,47 @@ export function CuadrillasPage() {
                       <div className="absolute top-0 border-l border-slate-100" style={{ left: i * 24 * hourW, height: laneH }} />
                     </div>
                   ))}
-                  {c.items.map((it) => (
-                    <button key={it.t.id} onClick={() => setMover(it.t)} title={`${it.t.nombre}\n${tecOf(it.t)} téc · ${it.t.duracion_estimada_horas}h${it.conflict ? '\n⚠ choque con otra tarea de la misma cuadrilla' : ''}\n(click para reasignar)`}
-                      className="absolute flex items-center overflow-hidden rounded px-1 text-[9px] font-medium text-white shadow-sm" style={{
-                        left: x(it.s), width: Math.max(x(it.e) - x(it.s), 5), top: 4 + it.lane * SUB, height: SUB - 4,
-                        background: it.conflict ? '#b91c1c' : colorGrupo(sysOf(it.t)), boxShadow: it.conflict ? '0 0 0 1px #7f1d1d' : undefined,
-                      }}>
-                      <span className="truncate">{tecOf(it.t)}t · {it.t.nombre}</span>
-                    </button>
-                  ))}
+                  {c.items.map((it) => {
+                    const dH = draft && draft.id === it.t.id ? draft.dH : 0
+                    const pc = choquePers.has(it.t.id) // S2: mismo técnico en dos tareas a la vez
+                    return (
+                      <button key={it.t.id} onPointerDown={(e) => onBarDown(e, it.t)} title={`${it.t.nombre}\n${tecOf(it.t)} téc · ${it.t.duracion_estimada_horas}h${it.conflict ? '\n⚠ choque de cuadrilla (grupo en 2 tareas a la vez)' : ''}${pc ? '\n⛔ CHOQUE DE PERSONA: un técnico nominado está en dos tareas a la vez' : ''}\n(arrastra para mover en el tiempo · clic para reasignar)`}
+                        className="absolute flex touch-none cursor-grab items-center gap-0.5 overflow-hidden rounded px-1 text-[9px] font-medium text-white shadow-sm active:cursor-grabbing" style={{
+                          left: x(it.s) + dH * hourW, width: Math.max(x(it.e) - x(it.s), 5), top: 4 + it.lane * SUB, height: SUB - 4,
+                          background: it.conflict ? '#b91c1c' : colorGrupo(sysOf(it.t)),
+                          boxShadow: dH ? '0 0 0 2px #1e293b' : pc ? '0 0 0 2px #f97316' : it.conflict ? '0 0 0 1px #7f1d1d' : undefined,
+                          opacity: dH ? 0.85 : 1, zIndex: dH ? 30 : pc ? 20 : undefined,
+                        }}>
+                        {pc && <span className="shrink-0" title="Choque de persona">⛔</span>}
+                        <span className="truncate">{tecOf(it.t)}t · {it.t.nombre}</span>
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
             )
           })}
           {crews.length === 0 && <div className="px-4 py-12 text-center text-sm text-slate-400">Ninguna tarea tiene fechas programadas (inicio y fin) todavía.</div>}
+          {crews.length > 0 && (
+            <div className="flex border-t-2 border-slate-300 bg-slate-50/60" style={{ minHeight: 62 }}>
+              <div className="sticky left-0 z-10 flex shrink-0 flex-col justify-center gap-1 border-r border-slate-200 bg-slate-50 px-2 py-1" style={{ width: LEFT }}>
+                <div className="text-[11px] font-bold text-slate-700">Σ Técnicos / hora</div>
+                <div className="text-[10px] text-slate-500">Pico <b className="text-amber-600">{peakHisto} téc</b> · {totalHH.toLocaleString()} HH</div>
+                <div className="flex flex-wrap gap-0.5" title="Demanda pico simultánea por especialidad (la que infiere cada tarea)">
+                  {espPeak.slice(0, 6).map((e) => <span key={e.esp} className="rounded bg-violet-100 px-1 text-[8px] font-medium text-violet-700">{e.esp.replace(' 3G/4G', '').replace('Operador puente grúa', 'Op.grúa')} {e.pico}</span>)}
+                </div>
+              </div>
+              <div className="relative shrink-0" style={{ width: timelineW, height: 56 }}>
+                {dias.map(({ i }) => <div key={i} className="absolute top-0 border-l border-slate-100" style={{ left: i * 24 * hourW, height: 56 }} />)}
+                {histo.map((c: number, h: number) => c > 0 ? (
+                  <div key={h} className="group/bar absolute bottom-3" style={{ left: h * hourW, width: Math.max(hourW - 1, 2) }} title={`${c} téc · hora ${h % 24}:00`}>
+                    <div className="mx-auto w-[78%] rounded-t" style={{ height: Math.max((c / peakHisto) * 44, 2), background: c >= peakHisto * 0.85 ? '#dc2626' : c >= peakHisto * 0.5 ? '#f59e0b' : '#10b981' }} />
+                  </div>
+                ) : null)}
+                <div className="absolute bottom-0 left-0 text-[8px] text-slate-400">pico {peakHisto}</div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 px-4 py-2 text-[11px] text-slate-400">
@@ -248,6 +360,75 @@ export function CuadrillasPage() {
           </div>
         </div>
       )}
+
+      {rosterCrew && (
+        <RosterModal
+          crew={rosterCrew}
+          area={parada?.area ?? null}
+          usuarios={usuarios}
+          seleccionados={config[rosterCrew]?.tecnicos ?? []}
+          onClose={() => setRosterCrew(null)}
+          onSave={(tecs) => { setRoster(rosterCrew, tecs); setRosterCrew(null) }}
+        />
+      )}
+    </div>
+  )
+}
+
+function RosterModal({ crew, area, usuarios, seleccionados, onClose, onSave }: {
+  crew: string; area: string | null; usuarios: Tecnico[]; seleccionados: Tecnico[]; onClose: () => void; onSave: (t: Tecnico[]) => void
+}) {
+  const [sel, setSel] = useState<Set<string>>(new Set(seleccionados.map((s) => s.id)))
+  const [q, setQ] = useState('')
+  const [soloArea, setSoloArea] = useState(true)
+  const [linea, setLinea] = useState('')
+  const toggle = (id: string) => setSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+  const lineas = [...new Set(usuarios.map((u) => u.linea).filter(Boolean))] as string[]
+  const lista = usuarios.filter((u) =>
+    (!q || u.nombre.toLowerCase().includes(q.toLowerCase()) || (u.especialidad ?? '').toLowerCase().includes(q.toLowerCase())) &&
+    (!soloArea || !area || !u.area || u.area === area) &&
+    (!linea || u.linea === linea))
+  const seleccionadosObj = usuarios.filter((u) => sel.has(u.id))
+  return (
+    <div role="dialog" aria-modal="true" onKeyDown={(e) => e.key === 'Escape' && onClose()} className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="flex max-h-[90vh] w-full max-w-md flex-col rounded-xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <h3 className="text-sm font-semibold text-slate-900">Técnicos de la cuadrilla <span className="rounded px-1.5 py-0.5 text-white" style={{ background: colorGrupo(crew) }}>{crew}</span></h3>
+        <p className="mb-2 mt-1 text-xs text-slate-500">El nivelador «Por persona» repartirá estas personas entre las tareas del grupo, sin que nadie haga dos a la vez.</p>
+        <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nombre o especialidad…" className="mb-2 w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm" />
+        <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px]">
+          {area && <label className="flex items-center gap-1 text-slate-600"><input type="checkbox" checked={soloArea} onChange={(e) => setSoloArea(e.target.checked)} className="accent-violet-500" />Solo personal de {area}</label>}
+          {lineas.length > 0 && (
+            <span className="flex items-center gap-1 text-slate-500">Línea
+              <select value={linea} onChange={(e) => setLinea(e.target.value)} className="rounded border border-slate-300 px-1 py-0.5"><option value="">todas</option>{lineas.map((l) => <option key={l} value={l}>{l}</option>)}</select>
+            </span>
+          )}
+        </div>
+        {sel.size > 0 && (
+          <div className="mb-2 flex flex-wrap gap-1 rounded-lg bg-violet-50 p-1.5">
+            {seleccionadosObj.map((u) => (
+              <span key={u.id} className="inline-flex items-center gap-1 rounded bg-white px-1.5 py-0.5 text-[10px] text-slate-700 shadow-sm">{u.nombre.split(' ').slice(0, 2).join(' ')}<button onClick={() => toggle(u.id)} className="text-slate-400 hover:text-red-600">×</button></span>
+            ))}
+          </div>
+        )}
+        <div className="grid gap-0.5 overflow-y-auto">
+          {lista.map((u) => (
+            <label key={u.id} className="flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-slate-50">
+              <input type="checkbox" checked={sel.has(u.id)} onChange={() => toggle(u.id)} className="accent-violet-500" />
+              <span className="flex-1 truncate">{u.nombre}{u.linea ? <span className="ml-1 rounded bg-slate-100 px-1 text-[9px] text-slate-400">{u.linea}</span> : null}</span>
+              {u.especialidad && <span className="shrink-0 rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-medium text-violet-700">{u.especialidad}</span>}
+              <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">{(u.cargo || u.rol).replace('_', ' ')}</span>
+            </label>
+          ))}
+          {lista.length === 0 && <p className="px-2 py-3 text-xs text-slate-400">Sin coincidencias.</p>}
+        </div>
+        <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3">
+          <span className="text-xs text-slate-500">{sel.size} técnico{sel.size === 1 ? '' : 's'} · cap = {sel.size}</span>
+          <div className="flex gap-2">
+            <button onClick={() => onSave(seleccionadosObj)} className="rounded-lg bg-violet-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-violet-700">Guardar roster</button>
+            <button onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-1.5 text-sm text-slate-600 hover:bg-slate-50">Cancelar</button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

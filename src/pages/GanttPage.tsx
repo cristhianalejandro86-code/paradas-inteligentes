@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useOutletContext, useParams } from 'react-router-dom'
-import { getTareasByParada, updateTareaSchedule, guardarLineaBase, restaurarLineaBase, getCuadrillasConfig } from '../lib/api'
+import { getTareasByParada, updateTareaSchedule, updateTareaEspec, updateTarea, guardarLineaBase, restaurarLineaBase, getCuadrillasConfig } from '../lib/api'
+import { useRefreshOnFocus } from '../lib/useRefreshOnFocus'
+import type { Roster, Tecnico } from '../lib/resourceLeveling'
 import { colorGrupo, disciplina as discDe } from '../lib/palette'
 import { rutaCritica } from '../lib/criticalPath'
-import { nivelarPersonal, nivelarSinExtender, nivelarPorCuadrilla, resolverCuadrillas, infoNivel } from '../lib/resourceLeveling'
+import { nivelarPersonal, nivelarSinExtender, nivelarPorCuadrilla, resolverCuadrillas, resolverPorPersona, sugerirPrecedencias, infoNivel } from '../lib/resourceLeveling'
 import type { Parada, Tarea, TaskStatus } from '../types'
 
 const H = 3600000
@@ -22,6 +24,7 @@ const DISCIPLINAS = ['Todas', 'Mecánica', 'Eléctrica', 'Instrumentación'] as 
 
 const sysOf = (t: Tarea) => (t.especificaciones_tecnicas?.sistema as string) || 'General'
 const grpOf = (t: Tarea) => (t.especificaciones_tecnicas?.grupo as string) || '—'
+const turnoOf = (t: Tarea): 'D' | 'N' => { const dn = (t.especificaciones_tecnicas?.turno_dn as string) || ''; return (dn ? dn.toUpperCase().startsWith('N') : (t.turno_asignado || '').toLowerCase().startsWith('n')) ? 'N' : 'D' }
 const tecOf = (t: Tarea) => (t.especificaciones_tecnicas?.tec as number) ?? ''
 const wbsOf = (t: Tarea) => (t.especificaciones_tecnicas?.wbs as string) || ''
 const discOf = (t: Tarea) => (t.especificaciones_tecnicas?.disciplina as string) || discDe(`${t.nombre} ${sysOf(t)}`)
@@ -34,22 +37,36 @@ export function GanttPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [colap, setColap] = useState<Set<string>>(new Set())
-  const [colorMode, setColorMode] = useState<'sistema' | 'estado'>('sistema')
+  const [colorMode, setColorMode] = useState<'grupo' | 'sistema' | 'estado'>('grupo')
   const [groupBy, setGroupBy] = useState<'sistema' | 'disciplina'>('sistema')
   const [filtro, setFiltro] = useState<(typeof DISCIPLINAS)[number]>('Todas')
+  const [turnoF, setTurnoF] = useState<'Todos' | 'D' | 'N'>('Todos')
+  const [turnosOn, setTurnosOn] = useState(true)
+  const [gruas, setGruas] = useState(0)
+  const [precSnap, setPrecSnap] = useState<Record<string, string | null> | null>(null)
   const [verDeps, setVerDeps] = useState(true)
   const [vw, setVw] = useState(typeof window !== 'undefined' ? window.innerWidth : 1600)
   const [targetC, setTargetC] = useState<number | null>(null)
   const [caps, setCaps] = useState<Record<string, number>>({})
+  const [roster, setRoster] = useState<Roster>({})
   const [snapshot, setSnapshot] = useState<Record<string, { s: number; e: number }> | null>(null)
   const [draft, setDraft] = useState<{ id: string; dS: number; dD: number } | null>(null)
   const dragRef = useRef<{ id: string; mode: 'move' | 'resize'; x0: number; s0: number; d0: number; dh: number } | null>(null)
 
+  const reloadTareas = () => {
+    if (!id) return Promise.resolve()
+    return getTareasByParada(id).then(setTareas).catch((e) => setError(e.message))
+  }
   useEffect(() => {
     if (!id) return
-    getTareasByParada(id).then(setTareas).catch((e) => setError(e.message)).finally(() => setLoading(false))
-    getCuadrillasConfig(id).then((cfg) => setCaps(Object.fromEntries(Object.entries(cfg).filter(([, v]) => v.cap).map(([k, v]) => [k, v.cap as number])))).catch(() => {})
+    setLoading(true)
+    reloadTareas().finally(() => setLoading(false))
+    getCuadrillasConfig(id).then((cfg) => {
+      setCaps(Object.fromEntries(Object.entries(cfg).filter(([, v]) => v.cap).map(([k, v]) => [k, v.cap as number])))
+      setRoster(Object.fromEntries(Object.entries(cfg).filter(([, v]) => v.tecnicos?.length).map(([k, v]) => [k, v.tecnicos as Tecnico[]])))
+    }).catch(() => {})
   }, [id])
+  useRefreshOnFocus(reloadTareas)
   useEffect(() => {
     const f = () => setVw(window.innerWidth)
     window.addEventListener('resize', f)
@@ -59,7 +76,7 @@ export function GanttPage() {
   const { criticas, holgura } = useMemo(() => rutaCritica(tareas), [tareas])
   const nivel = useMemo(() => infoNivel(tareas), [tareas])
   const topeC = targetC ?? nivel?.recC ?? 20
-  const vis = useMemo(() => (filtro === 'Todas' ? tareas : tareas.filter((t) => discOf(t) === filtro)), [tareas, filtro])
+  const vis = useMemo(() => tareas.filter((t) => (filtro === 'Todas' || discOf(t) === filtro) && (turnoF === 'Todos' || turnoOf(t) === turnoF)), [tareas, filtro, turnoF])
   const keyDe = (t: Tarea) => (groupBy === 'disciplina' ? discOf(t) : sysOf(t))
 
   const fechas = useMemo(() => {
@@ -109,7 +126,8 @@ export function GanttPage() {
   const histo = new Array(horas).fill(0)
   for (const t of vis) {
     const f = fechas[t.id]; if (!f) continue
-    const tec = Number((t.especificaciones_tecnicas?.tec as number) ?? 0)
+    const tecRaw = Number((t.especificaciones_tecnicas?.tec as number) ?? 0)
+    const tec = Number.isFinite(tecRaw) ? tecRaw : 0   // un 'tec' no numérico no debe envenenar todo el histograma
     for (let h = Math.max(0, Math.floor((f.s - base) / H)); h < Math.min(horas, Math.ceil((f.e - base) / H)); h++) histo[h] += tec
   }
   const peak = Math.max(1, ...histo)
@@ -189,6 +207,41 @@ export function GanttPage() {
     aplicarFechas(res)
     persistirFechas(res)
   }
+  function resolverPersonas() {
+    if (!nivel) return
+    setSnapshot(snapActual())
+    const { schedule, asignaciones } = resolverPorPersona(nivel.dated, nivel.baseMs, roster, { turnos: turnosOn, gruas })
+    aplicarFechas(schedule)
+    persistirFechas(schedule)
+    const ids = Object.keys(asignaciones)
+    if (ids.length) {
+      // Refleja en pantalla y persiste el técnico auto-asignado a cada tarea.
+      setTareas((ts) => ts.map((t) => (asignaciones[t.id]
+        ? { ...t, especificaciones_tecnicas: { ...(t.especificaciones_tecnicas ?? {}), asignados: asignaciones[t.id], tec: asignaciones[t.id].length } }
+        : t)))
+      Promise.all(ids.map((tid) => {
+        const t = nivel.dated.find((x) => x.id === tid)!
+        return updateTareaEspec(tid, { ...(t.especificaciones_tecnicas ?? {}), asignados: asignaciones[tid], tec: asignaciones[tid].length })
+      })).catch((e) => setError(String(e)))
+    }
+  }
+  function sugerirPrec() {
+    const sug = sugerirPrecedencias(tareas)
+    const ids = Object.keys(sug)
+    if (!ids.length) { setError('No hay precedencias nuevas que sugerir (las tareas ya tienen predecesora o falta fecha).'); return }
+    const snap: Record<string, string | null> = {}
+    for (const tid of ids) snap[tid] = tareas.find((t) => t.id === tid)?.bloqueado_por ?? null
+    setPrecSnap(snap)
+    setTareas((ts) => ts.map((t) => (sug[t.id] ? { ...t, bloqueado_por: sug[t.id] } : t)))
+    Promise.all(ids.map((tid) => updateTarea(tid, { bloqueado_por: sug[tid] }))).catch((e) => setError(String(e)))
+  }
+  function deshacerPrec() {
+    if (!precSnap) return
+    const snap = precSnap
+    setTareas((ts) => ts.map((t) => (t.id in snap ? { ...t, bloqueado_por: snap[t.id] } : t)))
+    Promise.all(Object.entries(snap).map(([tid, v]) => updateTarea(tid, { bloqueado_por: v }))).catch((e) => setError(String(e)))
+    setPrecSnap(null)
+  }
   async function guardarBase() {
     if (!id) return
     try {
@@ -212,7 +265,7 @@ export function GanttPage() {
   const fmt = (ms: number) => { const d = new Date(ms); return `${d.getDate()}/${d.getMonth() + 1} ${pad(d.getHours())}:${pad(d.getMinutes())}` }
   const dias = Array.from({ length: totalDias }, (_, i) => { const d = new Date(base + i * DAY); return { i, d } })
   const hTick = hourW >= 22 ? 1 : hourW >= 12 ? 2 : hourW >= 9 ? 3 : 6
-  const colBar = (t: Tarea) => (colorMode === 'sistema' ? colorGrupo(keyDe(t)) : COLOR[t.status])
+  const colBar = (t: Tarea) => (colorMode === 'estado' ? COLOR[t.status] : colorMode === 'sistema' ? colorGrupo(keyDe(t)) : colorGrupo(grpOf(t)))
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white">
@@ -229,9 +282,14 @@ export function GanttPage() {
               {DISCIPLINAS.map((d) => <option key={d} value={d}>{d}</option>)}
             </select>
           </label>
+          <div className="flex overflow-hidden rounded-md border border-slate-200" title="Filtra por turno (Día 07–22 / Noche 19–10)">
+            {(['Todos', 'D', 'N'] as const).map((tt) => <button key={tt} onClick={() => setTurnoF(tt)} className={`px-2 py-0.5 ${turnoF === tt ? 'bg-indigo-500 text-white' : 'bg-white text-slate-500'}`}>{tt === 'D' ? '☀ Día' : tt === 'N' ? '🌙 Noche' : 'Turno'}</button>)}
+          </div>
           <button onClick={() => setVerDeps((v) => !v)} className={`rounded-md border px-2 py-0.5 ${verDeps ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-slate-200 bg-white'}`}>Dependencias</button>
+          <button onClick={sugerirPrec} title="Encadena en serie las tareas de cada equipo+cuadrilla (orden por fecha) para habilitar la ruta crítica. Solo a las que no tienen predecesora." className="rounded-md border border-sky-300 bg-sky-50 px-2 py-0.5 font-medium text-sky-700 hover:bg-sky-100">Sugerir precedencias</button>
+          {precSnap && <button onClick={deshacerPrec} className="rounded-md border border-slate-300 bg-white px-2 py-0.5 text-slate-600 hover:bg-slate-50">Deshacer prec.</button>}
           <div className="flex overflow-hidden rounded-md border border-slate-200">
-            {(['sistema', 'estado'] as const).map((m) => <button key={m} onClick={() => setColorMode(m)} className={`px-2 py-0.5 capitalize ${colorMode === m ? 'bg-amber-500 text-white' : 'bg-white text-slate-500'}`}>{m}</button>)}
+            {(['grupo', 'sistema', 'estado'] as const).map((m) => <button key={m} onClick={() => setColorMode(m)} className={`px-2 py-0.5 capitalize ${colorMode === m ? 'bg-amber-500 text-white' : 'bg-white text-slate-500'}`}>{m}</button>)}
           </div>
           {nivel && (
             <div className="flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-1.5 py-0.5">
@@ -242,6 +300,9 @@ export function GanttPage() {
               <button onClick={nivelarSE} title="Aplana al máximo SIN alargar la parada (usa solo la holgura disponible)" className="rounded bg-emerald-800 px-2 py-0.5 font-semibold text-white hover:bg-emerald-900">Sin extender</button>
               <button onClick={nivelarCuad} title="Nivela respetando la capacidad (cap) de cada cuadrilla por separado" className="rounded bg-teal-700 px-2 py-0.5 font-semibold text-white hover:bg-teal-800">Por cuadrilla</button>
               <button onClick={resolverChoques} title="Re-secuencia para que NINGUNA cuadrilla haga trabajos en paralelo (1 frente, o según su capacidad de personas)" className="rounded bg-rose-600 px-2 py-0.5 font-semibold text-white hover:bg-rose-700">Resolver choques</button>
+              <button onClick={resolverPersonas} title="Nivela trabajador por trabajador: ningún técnico nominado en dos tareas a la vez, respeta especialidad, fatiga (48h/6h) y ventana de turno" className="rounded bg-violet-600 px-2 py-0.5 font-semibold text-white hover:bg-violet-700">Por persona</button>
+              <label className="flex items-center gap-1 text-emerald-700" title="Cada tarea arranca dentro de su turno (Día 07–22 / Noche 19–10); puede extenderse"><input type="checkbox" checked={turnosOn} onChange={(e) => setTurnosOn(e.target.checked)} className="accent-indigo-500" />turnos</label>
+              <label className="flex items-center gap-1 text-emerald-700" title="Grúas / puentes grúa disponibles (recurso compartido por toda la planta). 0 = sin límite. El nivelador 'Por persona' no deja más tareas con grúa en paralelo que este número."><span>🏗️</span><input type="number" min={0} value={gruas} onChange={(e) => setGruas(Math.max(0, Number(e.target.value) || 0))} className="w-10 rounded border border-slate-300 px-1 py-0.5 text-center" />grúas</label>
               {snapshot && <button onClick={restaurar} className="rounded border border-slate-300 bg-white px-2 py-0.5 text-slate-600 hover:bg-slate-50">Restaurar</button>}
             </div>
           )}
@@ -294,7 +355,7 @@ export function GanttPage() {
                   const ff = fechas[from], tf = fechas[to]
                   const x1 = x(ff.e), y1 = (rowOf[from] + 0.5) * ROW, x2 = x(tf.s), y2 = (rowOf[to] + 0.5) * ROW
                   const mx = Math.max(x1 + 8, x2 - 10)
-                  return <path key={k} d={`M${x1},${y1} H${mx} V${y2} H${x2}`} fill="none" stroke={col} strokeWidth={crit ? 2.2 : 1.3} markerEnd="url(#ah)" opacity="0.9" />
+                  return <path key={k} d={`M${x1},${y1} H${mx} V${y2} H${x2}`} fill="none" stroke={col} strokeWidth={crit ? 2 : 1.1} markerEnd="url(#ah)" opacity="0.5" />
                 })}
               </svg>
             )}
@@ -344,8 +405,8 @@ export function GanttPage() {
                     <Cell w={34}>{t.porcentaje_completado}%</Cell>
                   </div>
                   <div className="relative shrink-0" style={{ width: timelineW }}>
-                    {t.fecha_inicio_base && t.fecha_fin_base && (
-                      <div className="absolute bottom-0.5 h-1 rounded bg-slate-400/80" title="Línea base (plan original)" style={{ left: x(new Date(t.fecha_inicio_base).getTime()), width: Math.max(x(new Date(t.fecha_fin_base).getTime()) - x(new Date(t.fecha_inicio_base).getTime()), 3) }} />
+                    {t.fecha_inicio_base && t.fecha_fin_base && Math.abs(new Date(t.fecha_inicio_base).getTime() - fch.s) > 36e5 && (
+                      <div className="absolute bottom-0.5 h-1 rounded bg-slate-400/60" title="Línea base (plan original)" style={{ left: x(new Date(t.fecha_inicio_base).getTime()), width: Math.max(x(new Date(t.fecha_fin_base).getTime()) - x(new Date(t.fecha_inicio_base).getTime()), 3) }} />
                     )}
                     {hito ? (
                       <div onPointerDown={(e) => onDown(e, t, 'move')} title={`${t.nombre} (hito)`} className="absolute top-1/2 z-10 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rotate-45 cursor-grab bg-slate-800" style={{ left }} />
@@ -354,10 +415,22 @@ export function GanttPage() {
                         className="group absolute top-1/2 z-10 flex h-[18px] -translate-y-1/2 cursor-grab items-center rounded shadow-sm active:cursor-grabbing"
                         style={{ left, width, background: colBar(t), boxShadow: crit ? '0 0 0 2px #dc2626' : undefined }}>
                         {t.porcentaje_completado > 0 && <div className="absolute left-0 top-0 h-full rounded-l bg-black/25" style={{ width: `${t.porcentaje_completado}%` }} />}
-                        {width >= 18 && <span className="pointer-events-none absolute left-1 truncate text-[9px] font-medium text-white/90" style={{ maxWidth: Math.max(width - 8, 0) }}>{grpOf(t)}</span>}
                         <div onPointerDown={(e) => onDown(e, t, 'resize')} className="absolute right-0 top-0 h-full w-2 cursor-ew-resize rounded-r bg-black/0 group-hover:bg-white/40" />
                       </div>
                     )}
+                    {(() => {
+                      const asg = (t.especificaciones_tecnicas?.asignados as { nombre: string; rol?: string }[]) ?? []
+                      const ini = asg.map((a) => a.nombre.split(' ').filter(Boolean).map((w) => w[0]).slice(0, 2).join('')).join(' ')
+                      return (
+                        <span className="pointer-events-none absolute top-1/2 z-[5] -translate-y-1/2 whitespace-nowrap text-[10px] leading-none text-slate-700"
+                          style={{ left: left + (hito ? 10 : width + 6) }}
+                          title={asg.length ? asg.map((a) => `${a.nombre} (${(a.rol || '').replace('_', ' ')})`).join('\n') : undefined}>
+                          {t.nombre}
+                          <span className="ml-1 rounded px-1 text-[9px] font-semibold text-white" style={{ background: colorGrupo(grpOf(t)) }}>{grpOf(t)}</span>
+                          {asg.length > 0 ? <span className="ml-1 text-amber-700">👤 {ini}</span> : tecOf(t) ? <span className="ml-1 text-slate-400">· {tecOf(t)} téc</span> : null}
+                        </span>
+                      )
+                    })()}
                   </div>
                 </div>
               )

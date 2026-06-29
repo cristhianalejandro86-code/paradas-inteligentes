@@ -3,6 +3,7 @@ import { useOutletContext, useParams } from 'react-router-dom'
 import {
   getTareasByParada, updateTarea, updateTareaEspec, getUsuarios, createTareasBulk,
 } from '../lib/api'
+import { useRefreshOnFocus } from '../lib/useRefreshOnFocus'
 import { colorGrupo, disciplina as discDe } from '../lib/palette'
 import { exportarExcel, descargarPlantilla, leerExcel } from '../lib/excel'
 import { NuevaTareaModal } from '../components/NuevaTareaModal'
@@ -26,7 +27,7 @@ export function TablaPage() {
   const { id } = useParams<{ id: string }>()
   const parada = useOutletContext<Parada | undefined>()
   const [tareas, setTareas] = useState<Tarea[]>([])
-  const [usuarios, setUsuarios] = useState<{ id: string; nombre: string; rol: string }[]>([])
+  const [usuarios, setUsuarios] = useState<{ id: string; nombre: string; rol: string; cargo?: string | null; especialidad?: string | null; area?: string | null; linea?: string | null }[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [q, setQ] = useState('')
@@ -41,6 +42,7 @@ export function TablaPage() {
     getTareasByParada(id).then(setTareas).catch((e) => setError(e.message)).finally(() => setLoading(false))
     getUsuarios().then(setUsuarios).catch(() => {})
   }, [id])
+  useRefreshOnFocus(recargar)
 
   const grupos = useMemo(() => [...new Set(tareas.map(grpOf).filter(Boolean))].sort(), [tareas])
 
@@ -191,7 +193,7 @@ export function TablaPage() {
       </div>
 
       {creando && id && <NuevaTareaModal paradaId={id} onClose={() => setCreando(false)} onCreated={recargar} />}
-      {asignando && <AsignarTecnicosModal tarea={asignando} usuarios={usuarios} onClose={() => setAsignando(null)} onSaved={(espec) => setTareas((ts) => ts.map((t) => (t.id === asignando.id ? { ...t, especificaciones_tecnicas: espec } : t)))} />}
+      {asignando && <AsignarTecnicosModal tarea={asignando} usuarios={usuarios} area={parada?.area ?? null} onClose={() => setAsignando(null)} onSaved={(espec) => setTareas((ts) => ts.map((t) => (t.id === asignando.id ? { ...t, especificaciones_tecnicas: espec } : t)))} />}
     </div>
   )
 }

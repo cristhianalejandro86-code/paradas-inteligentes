@@ -212,6 +212,13 @@ export function resolverCuadrillas(
   }
   for (const t of orden) {
     const crew = grpDe(t), len = durH(t)
+    if (crew === '—') {
+      // Sin cuadrilla ⇒ sin restricción de recurso, solo respeta la predecesora.
+      const p0 = t.bloqueado_por && t.bloqueado_por !== t.id ? t.bloqueado_por : null
+      const h0 = p0 && byId.has(p0) ? finAbs(p0) : 0
+      startH[t.id] = h0; finH[t.id] = h0 + len
+      continue
+    }
     const hasCap = (caps[crew] ?? 0) > 0
     const need = hasCap ? Math.max(1, tecDe(t)) : 1 // unario: 1 frente por cuadrilla
     const cap = hasCap ? caps[crew] : 1
@@ -260,7 +267,8 @@ export function balancearCuadrillas(tareas: Tarea[]): Record<string, string> {
     const opts = crewsDisc[discDe(t)] || [grpDe(t)]
     const ts = s(t), te = e(t)
     const free = opts.filter((c) => !(busy[c] || []).some(([bs, be]) => bs < te && ts < be))
-    const pool = free.length ? free : opts
+    // Si ninguna cuadrilla está libre, NO inventes un choque: conserva la suya.
+    const pool = free.length ? free : [grpDe(t)]
     let best = pool[0], bl = Infinity
     for (const c of pool) { const l = load[c] ?? 0; if (l < bl) { bl = l; best = c } }
     res[t.id] = best

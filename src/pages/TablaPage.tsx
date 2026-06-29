@@ -6,6 +6,7 @@ import {
 import { colorGrupo, disciplina as discDe } from '../lib/palette'
 import { exportarExcel, descargarPlantilla, leerExcel } from '../lib/excel'
 import { NuevaTareaModal } from '../components/NuevaTareaModal'
+import { AsignarTecnicosModal } from '../components/AsignarTecnicosModal'
 import type { Parada, Tarea, TaskStatus } from '../types'
 
 const ESTADOS: TaskStatus[] = ['Por_Hacer', 'En_Progreso', 'En_Revision', 'Completada', 'Bloqueada', 'Cancelada']
@@ -30,6 +31,7 @@ export function TablaPage() {
   const [error, setError] = useState<string | null>(null)
   const [q, setQ] = useState('')
   const [creando, setCreando] = useState(false)
+  const [asignando, setAsignando] = useState<Tarea | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -40,7 +42,6 @@ export function TablaPage() {
     getUsuarios().then(setUsuarios).catch(() => {})
   }, [id])
 
-  const userById = useMemo(() => Object.fromEntries(usuarios.map((u) => [u.id, u])), [usuarios])
   const grupos = useMemo(() => [...new Set(tareas.map(grpOf).filter(Boolean))].sort(), [tareas])
 
   function save(idt: string, fields: Partial<Tarea>) {
@@ -166,12 +167,18 @@ export function TablaPage() {
                     {tareas.filter((o) => o.id !== t.id && !descMap[t.id]?.has(o.id)).map((o) => <option key={o.id} value={o.id}>#{o.secuencia} {o.nombre.slice(0, 22)}</option>)}
                   </select>
                 </td>
-                <td className="px-1 py-1" style={{ width: 170 }}>
-                  <select value={t.responsable_id ?? ''} onChange={(e) => save(t.id, { responsable_id: e.target.value || null })} className="w-full rounded border border-transparent bg-transparent py-0.5 text-xs hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none">
-                    <option value="">Sin asignar</option>
-                    {usuarios.map((u) => <option key={u.id} value={u.id}>{u.nombre} · {u.rol.replace('_', ' ')}</option>)}
-                  </select>
-                  {t.responsable_id && userById[t.responsable_id] && <div className="px-1 text-[9px] text-slate-400">{userById[t.responsable_id].rol.replace('_', ' ')}</div>}
+                <td className="px-1 py-1" style={{ width: 200 }}>
+                  <button onClick={() => setAsignando(t)} title="Asignar técnicos con su cargo" className="w-full rounded border border-transparent px-1 py-1 text-left hover:border-slate-200">
+                    {(() => {
+                      const a = (esp(t).asignados as { nombre: string; rol: string }[]) ?? []
+                      return a.length ? (
+                        <span className="flex flex-wrap gap-0.5">
+                          {a.slice(0, 3).map((x, i) => <span key={i} className="rounded bg-amber-50 px-1 text-[10px] text-amber-800" title={x.rol?.replace('_', ' ')}>{x.nombre.split(' ').slice(0, 2).join(' ')}</span>)}
+                          {a.length > 3 && <span className="text-[10px] text-slate-400">+{a.length - 3}</span>}
+                        </span>
+                      ) : <span className="text-xs text-slate-400">+ Asignar…</span>
+                    })()}
+                  </button>
                 </td>
                 <td className="px-1 py-1"><select value={t.status} onChange={(e) => save(t.id, { status: e.target.value as TaskStatus })} className="w-full rounded border border-transparent bg-transparent py-0.5 text-xs hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none">{ESTADOS.map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}</select></td>
                 <td className="px-1 py-1" style={{ width: 56 }}><input type="number" min={0} max={100} step={5} value={t.porcentaje_completado} onChange={(e) => save(t.id, { porcentaje_completado: Math.min(100, Math.max(0, Number(e.target.value))) })} className={`${inp} text-center`} /></td>
@@ -184,6 +191,7 @@ export function TablaPage() {
       </div>
 
       {creando && id && <NuevaTareaModal paradaId={id} onClose={() => setCreando(false)} onCreated={recargar} />}
+      {asignando && <AsignarTecnicosModal tarea={asignando} usuarios={usuarios} onClose={() => setAsignando(null)} onSaved={(espec) => setTareas((ts) => ts.map((t) => (t.id === asignando.id ? { ...t, especificaciones_tecnicas: espec } : t)))} />}
     </div>
   )
 }

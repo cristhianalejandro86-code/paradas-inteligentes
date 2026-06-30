@@ -14,4 +14,6 @@
 
 | R4 | **Lead-time por ítem de recurso** ("qué pedir YA"): campo `lead` (días) en el item + modal; urgente = no listo y lead > días al inicio → chip "🛒 PEDIR YA" en el consolidado (ordenado urgentes primero) + contador "N por pedir YA" junto a la cuenta regresiva | C2 real: con "Junta especial" lead 30 y faltan 20 días → "🛒 1 por pedir YA" + chip; "Llave 24" listo no cuenta; build limpio, sin errores de consola, screenshot, datos restaurados | Inc 42 |
 
-Próximo (R5): **Edición MASIVA** (A/M-L) — selección múltiple + aplicar permiso/recursos a varias tareas (cuello de botella con 158 tareas).
+| R5 | **Edición MASIVA** en Preparación: checkbox por fila + "seleccionar todas (visibles)" + barra de acción "N sel. → Permiso ✓/✗ · Sin recursos · Requiere · Limpiar" que aplica el patch a todas las seleccionadas en una sola acción (setTareas optimista + Promise.all updateTareaEspec) | C2 real: seleccioné 3 tareas → "Permiso ✓" → seq 1,2,3 permiso=true en BD desde 1 click, contador 158→155 sin permiso; build limpio, sin errores de consola, screenshot con barra+selección, datos restaurados | Inc 43 |
+
+Próximo (R6): **Bulk de CUADRILLA** (A/S) — aplicar un grupo a las tareas seleccionadas (reusa la selección de R5).

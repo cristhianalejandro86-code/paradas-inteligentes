@@ -59,6 +59,7 @@ export function PreparacionPage() {
   const [lineaF, setLineaF] = useState('Todas')
   const [soloPend, setSoloPend] = useState(true)
   const [editRec, setEditRec] = useState<Tarea | null>(null)
+  const [sel, setSel] = useState<Set<string>>(new Set())
 
   const reload = () => id && getTareasByParada(id).then(setTareas).catch((e) => setError(e.message))
   useEffect(() => { if (!id) return; setLoading(true); getTareasByParada(id).then(setTareas).catch((e) => setError(e.message)).finally(() => setLoading(false)) }, [id])
@@ -71,6 +72,15 @@ export function PreparacionPage() {
     setTareas((ts) => ts.map((x) => (x.id === t.id ? { ...x, especificaciones_tecnicas: next } : x)))
     updateTareaEspec(t.id, next).catch((e) => setError(String(e)))
   }
+  // Edición MASIVA: aplica un patch de especificaciones a todas las tareas seleccionadas.
+  function bulkAplicar(patch: Record<string, unknown>) {
+    const ids = new Set(sel)
+    if (!ids.size) return
+    setTareas((ts) => ts.map((x) => (ids.has(x.id) ? { ...x, especificaciones_tecnicas: { ...(x.especificaciones_tecnicas ?? {}), ...patch } } : x)))
+    Promise.all([...ids].map((id) => { const t = tareas.find((x) => x.id === id); return t ? updateTareaEspec(id, { ...esp(t), ...patch }) : Promise.resolve() })).catch((e) => setError(String(e)))
+    setSel(new Set())
+  }
+  const toggleSel = (id: string) => setSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
 
   const scope = useMemo(() => tareas.filter(esTrabajo).filter((t) => lineaF === 'Todas' || lineaOf(t) === lineaF), [tareas, lineaF])
 
@@ -173,17 +183,32 @@ export function PreparacionPage() {
           )}
           <label className="flex items-center gap-1 text-slate-600"><input type="checkbox" checked={soloPend} onChange={(e) => setSoloPend(e.target.checked)} className="accent-amber-500" />Solo pendientes</label>
           <span className="text-slate-400">{d.lista.length} actividades</span>
+          {sel.size > 0 && (
+            <div className="ml-auto flex flex-wrap items-center gap-1 rounded-lg border border-amber-300 bg-amber-50 px-2 py-1">
+              <span className="font-semibold text-amber-800">{sel.size} sel.</span>
+              <span className="text-slate-400">aplicar a todas:</span>
+              <button onClick={() => bulkAplicar({ permiso: true })} className="rounded bg-emerald-100 px-1.5 py-0.5 font-medium text-emerald-700 hover:bg-emerald-200">Permiso ✓</button>
+              <button onClick={() => bulkAplicar({ permiso: false })} className="rounded bg-red-100 px-1.5 py-0.5 font-medium text-red-700 hover:bg-red-200">Permiso ✗</button>
+              <button onClick={() => bulkAplicar({ matNA: true })} title="Marcar que no requieren recursos" className="rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-600 hover:bg-slate-200">Sin recursos</button>
+              <button onClick={() => bulkAplicar({ matNA: false })} title="Quitar 'no requiere recursos'" className="rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-600 hover:bg-slate-200">Requiere</button>
+              <button onClick={() => setSel(new Set())} className="rounded border border-slate-300 bg-white px-1.5 py-0.5 text-slate-500 hover:bg-slate-50">Limpiar</button>
+            </div>
+          )}
         </div>
         <div className="overflow-auto" style={{ maxHeight: '60vh' }}>
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-slate-50 text-[10px] uppercase tracking-wide text-slate-400">
-              <tr><th className="px-2 py-2 text-left">#</th><th className="px-2 py-2 text-left">Actividad</th><th className="px-2 py-2 text-center">Cuadrilla</th><th className="px-2 py-2 text-center">Recursos (herram./equipo/material)</th><th className="px-2 py-2 text-center">Permiso</th><th className="px-2 py-2 text-center">Estado</th></tr>
+              <tr>
+                <th className="px-2 py-2"><input type="checkbox" title="Seleccionar todas (visibles)" checked={d.lista.length > 0 && d.lista.every((t) => sel.has(t.id))} onChange={(e) => setSel((s) => { const n = new Set(s); if (e.target.checked) d.lista.forEach((t) => n.add(t.id)); else d.lista.forEach((t) => n.delete(t.id)); return n })} className="accent-amber-500" /></th>
+                <th className="px-2 py-2 text-left">#</th><th className="px-2 py-2 text-left">Actividad</th><th className="px-2 py-2 text-center">Cuadrilla</th><th className="px-2 py-2 text-center">Recursos (herram./equipo/material)</th><th className="px-2 py-2 text-center">Permiso</th><th className="px-2 py-2 text-center">Estado</th>
+              </tr>
             </thead>
             <tbody>
               {d.lista.map((t) => {
                 const ok = listaParaArrancar(t), me = matEstado(t), n = itemsDe(t).length
                 return (
-                  <tr key={t.id} className="border-b border-slate-50 hover:bg-slate-50/50">
+                  <tr key={t.id} className={`border-b border-slate-50 hover:bg-slate-50/50 ${sel.has(t.id) ? 'bg-amber-50/50' : ''}`}>
+                    <td className="px-2 py-1.5 text-center"><input type="checkbox" checked={sel.has(t.id)} onChange={() => toggleSel(t.id)} className="accent-amber-500" /></td>
                     <td className="px-2 py-1.5 text-slate-400">{t.secuencia}</td>
                     <td className="px-2 py-1.5"><div className="max-w-md truncate font-medium text-slate-700" title={t.nombre}>{t.nombre}</div><div className="text-[10px] text-slate-400">{sysOf(t)}{lineaOf(t) ? ` · ${lineaOf(t)}` : ''}</div></td>
                     <td className="px-2 py-1.5 text-center">{conCuadrilla(t) ? <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[11px] font-medium text-emerald-700">✓ {grpOf(t) || 'asignada'}</span> : <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-700">✗ falta</span>}</td>
@@ -197,7 +222,7 @@ export function PreparacionPage() {
                   </tr>
                 )
               })}
-              {d.lista.length === 0 && <tr><td colSpan={6} className="px-4 py-10 text-center text-sm text-emerald-600">🎉 Todo listo para arrancar en este filtro.</td></tr>}
+              {d.lista.length === 0 && <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-emerald-600">🎉 Todo listo para arrancar en este filtro.</td></tr>}
             </tbody>
           </table>
         </div>

@@ -85,6 +85,18 @@ export function GanttPage() {
   }, [])
 
   const { criticas, holgura } = useMemo(() => rutaCritica(tareas), [tareas])
+  // Plan vs ventana COMPROMETIDA: ¿el cronograma completo cabe en la duración planeada
+  // de la parada? Visible siempre (no solo al filtrar 1 línea). Usa horas de span del
+  // plan vs duracion_planeada_horas (o fin−inicio planeado) para evitar líos de fecha.
+  const ventana = useMemo(() => {
+    const ini = tareas.map((t) => (t.fecha_inicio_prog ? new Date(t.fecha_inicio_prog).getTime() : Infinity)).filter(Number.isFinite)
+    const fin = tareas.map((t) => (t.fecha_fin_prog ? new Date(t.fecha_fin_prog).getTime() : -Infinity)).filter(Number.isFinite)
+    if (!ini.length || !fin.length) return null
+    const planH = Math.round((Math.max(...fin) - Math.min(...ini)) / H)
+    const ventH = parada?.duracion_planeada_horas != null ? Number(parada.duracion_planeada_horas)
+      : (parada?.fecha_inicio_planeada && parada?.fecha_fin_planeada ? Math.round((new Date(parada.fecha_fin_planeada).getTime() - new Date(parada.fecha_inicio_planeada).getTime()) / H) : null)
+    return ventH && ventH > 0 ? { planH, ventH, overrun: planH - ventH } : { planH, ventH: null as number | null, overrun: null as number | null }
+  }, [tareas, parada])
   const nivel = useMemo(() => infoNivel(tareas), [tareas])
   const topeC = targetC ?? nivel?.recC ?? 20
   const lineas = useMemo(() => [...new Set(tareas.map(lineaOf).filter(Boolean))].sort(), [tareas])
@@ -363,7 +375,16 @@ export function GanttPage() {
   return (
     <div className="rounded-xl border border-slate-200 bg-white">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
-        <h3 className="text-sm font-semibold text-slate-700">{parada?.nombre} · {vis.length} act · {criticas.size} críticas</h3>
+        <h3 className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-700">
+          <span>{parada?.nombre} · {vis.length} act · {criticas.size} críticas</span>
+          {ventana?.overrun != null && (
+            <span className={`rounded px-2 py-0.5 text-xs font-semibold ${ventana.overrun > 0 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}
+              title={`Duración del plan ${ventana.planH}h vs ventana comprometida ${ventana.ventH}h`}>
+              {ventana.overrun > 0 ? `⚠ Plan +${ventana.overrun}h sobre la ventana (${ventana.ventH}h)` : `✓ dentro de ventana · ${-ventana.overrun}h de margen`}
+            </span>
+          )}
+          {ventana && ventana.overrun == null && <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-500" title="Define duración planeada en la parada para comparar">Plan {ventana.planH}h · ventana sin definir</span>}
+        </h3>
         <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
           <label className="flex items-center gap-1">Agrupar:
             <select value={groupBy} onChange={(e) => setGroupBy(e.target.value as 'sistema' | 'disciplina')} className="rounded border border-slate-200 px-1 py-0.5">

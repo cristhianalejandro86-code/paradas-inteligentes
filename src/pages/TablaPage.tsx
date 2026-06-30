@@ -194,7 +194,7 @@ export function TablaPage() {
                   </button>
                 </td>
                 <td className="px-1 py-1"><select value={t.status} onChange={(e) => save(t.id, { status: e.target.value as TaskStatus })} className="w-full rounded border border-transparent bg-transparent py-0.5 text-xs hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none">{ESTADOS.map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}</select></td>
-                <td className="px-1 py-1" style={{ width: 56 }}><input type="number" min={0} max={100} step={5} value={t.porcentaje_completado} onChange={(e) => save(t.id, { porcentaje_completado: Math.min(100, Math.max(0, Number(e.target.value))) })} className={`${inp} text-center`} /></td>
+                <td className="px-1 py-1" style={{ width: 56 }}><input key={`p-${t.porcentaje_completado}`} type="number" min={0} max={100} step={5} defaultValue={t.porcentaje_completado} onBlur={(e) => { if (e.target.value === '') return; const v = Math.min(100, Math.max(0, Number(e.target.value))); if (Number.isFinite(v) && v !== t.porcentaje_completado) save(t.id, { porcentaje_completado: v }) }} className={`${inp} text-center`} /></td>
               </tr>
             ))}
           </tbody>

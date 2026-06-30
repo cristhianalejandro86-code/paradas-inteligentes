@@ -4,6 +4,7 @@
 > Estado: ⬜ pendiente · 🔄 en curso · ✅ hecho (con evidencia + commit). ⭐ = coincidencia entre ≥2 auditores (señal fuerte).
 
 ## ✅ Hecho
+- ✅ **R11 — Fix robustez % completado** (Lista): `value/onChange` → `defaultValue + key + onBlur` (con guard de vacío). Elimina el flood de updates por tecla + la race que dejaba un valor intermedio, y el borrar-manda-0. Inc 49. (Robustez #1)
 - ✅ **R10 — Deshacer en edición masiva**: snapshot de las especificaciones previas antes de cada bulk + botón "↶ Deshacer (N tarea(s) · acción)" que revierte y persiste. Inc 48. (Usabilidad #3)
 - ✅ **R9 — Preparación ponderada por criticidad**: indicador "🔴 Ruta crítica: X/Y listas — prioriza estas" en el header + marca 🔴 en las filas críticas de la lista (cruza readiness con la ruta crítica). Inc 47. (Operativo #5)
 - ✅ **R8 — Filtro de línea en Ruta crítica** (KPIs + ruta crítica + holguras + Curva S scopeados a la línea; cada línea tiene su propia ruta crítica). Inc 46. Pivot desde "déficit de dotación" (roster vacío en C2, no demostrable).
@@ -18,7 +19,7 @@
 - ✅ Verificado falso positivo: `diasParaInicio` NaN ya está guardado por `isFinite` (Robustez #3) — no requería cambio.
 
 ## Alta prioridad (próximas rondas, por valor×esfuerzo)
-- ⬜ **% completado: onChange → onBlur** en TablaPage (hoy floodea updates por tecla + race que puede dejar un valor intermedio). M/S. (Robustez #1) ← próximo (R11)
+- 🔁 **R12 → RE-AUDITAR (refill)**: los ítems de alto valor sembrados están mayormente hechos; lanzar fan-out de auditores para hallazgos frescos antes de seguir.
 - ⬜ **Capacidad de equipos compartidos en Preparación** (pico de grúas/soldadoras vs disponible). A/M. (Recursos #3)
 - ⬜ **Personal disponible vs demanda**: déficit de dotación. Bloqueado: roster casi vacío en C2 (cargar roster primero).
 - ⬜ **Demanda (consolidado) vs inventario real** (`tabla recurso`): déficit = requerido − disponible. A/M. (Recursos #2)

@@ -26,4 +26,6 @@
 
 | R10 | **Deshacer en edición masiva**: snapshot de las especificaciones previas antes de cada bulk (permiso/recursos/cuadrilla) + botón "↶ Deshacer (N tarea(s) · acción)" que revierte estado + BD | C2 real: bulk Permiso ✓ a 2 tareas → BD=2 → "Deshacer" → BD=0 (revierte limpio, botón desaparece); build limpio, sin errores de consola, el propio undo limpia los datos de prueba | Inc 48 |
 
-Próximo (R11): **% completado onChange→onBlur** (M/S, robustez) — evitar flood de updates por tecla + race.
+| R11 | **Fix robustez % completado** (Lista): el input usaba value+onChange (persistía en cada tecla → flood + race + borrar=0). Cambiado a defaultValue+key+onBlur con guard de vacío, consistente con el resto de la grilla | C2 real: tecleé 35 sin persistir, blur → seq 1 = 35 en BD (1 update); el flood se elimina por construcción (sin onChange); build limpio, sin errores de consola, dato restaurado a 0 | Inc 49 |
+
+Próximo (R12): **RE-AUDITAR (refill)** — los ítems de alto valor sembrados están mayormente hechos (11 mejoras); lanzar fan-out de auditores para hallazgos frescos y seguir solo si aparece valor operativo real; si no, DETENER y dejar resumen ejecutivo.

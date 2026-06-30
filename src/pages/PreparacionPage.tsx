@@ -62,6 +62,7 @@ export function PreparacionPage() {
   const [editRec, setEditRec] = useState<Tarea | null>(null)
   const [sel, setSel] = useState<Set<string>>(new Set())
   const [bulkGrupo, setBulkGrupo] = useState('')
+  const [bulkSnap, setBulkSnap] = useState<{ items: { id: string; prev: Record<string, unknown> }[]; etiqueta: string } | null>(null)
   const [sysF, setSysF] = useState('Todos')
   const [grpF, setGrpF] = useState('Todos')
   const [faltaF, setFaltaF] = useState<'Todas' | 'cuadrilla' | 'recursos' | 'permiso'>('Todas')
@@ -80,12 +81,22 @@ export function PreparacionPage() {
     updateTareaEspec(t.id, next).catch((e) => setError(String(e)))
   }
   // Edición MASIVA: aplica un patch de especificaciones a todas las tareas seleccionadas.
-  function bulkAplicar(patch: Record<string, unknown>) {
+  function bulkAplicar(patch: Record<string, unknown>, etiqueta: string) {
     const ids = new Set(sel)
     if (!ids.size) return
+    // Snapshot de las especificaciones previas para poder DESHACER.
+    const snap = [...ids].map((id) => { const t = tareas.find((x) => x.id === id); return t ? { id, prev: { ...esp(t) } } : null }).filter(Boolean) as { id: string; prev: Record<string, unknown> }[]
+    setBulkSnap({ items: snap, etiqueta: `${snap.length} tarea(s) · ${etiqueta}` })
     setTareas((ts) => ts.map((x) => (ids.has(x.id) ? { ...x, especificaciones_tecnicas: { ...(x.especificaciones_tecnicas ?? {}), ...patch } } : x)))
     Promise.all([...ids].map((id) => { const t = tareas.find((x) => x.id === id); return t ? updateTareaEspec(id, { ...esp(t), ...patch }) : Promise.resolve() })).catch((e) => setError(String(e)))
     setSel(new Set())
+  }
+  function deshacerBulk() {
+    if (!bulkSnap) return
+    const items = bulkSnap.items
+    setTareas((ts) => ts.map((x) => { const s = items.find((i) => i.id === x.id); return s ? { ...x, especificaciones_tecnicas: s.prev } : x }))
+    Promise.all(items.map((s) => updateTareaEspec(s.id, s.prev))).catch((e) => setError(String(e)))
+    setBulkSnap(null)
   }
   const toggleSel = (id: string) => setSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
 
@@ -204,15 +215,18 @@ export function PreparacionPage() {
           <select value={faltaF} onChange={(e) => setFaltaF(e.target.value as typeof faltaF)} title="Filtrar por lo que falta" className="rounded border border-slate-300 px-2 py-1"><option value="Todas">Falta: cualquiera</option><option value="cuadrilla">sin cuadrilla</option><option value="recursos">sin recursos</option><option value="permiso">sin permiso</option></select>
           <label className="flex items-center gap-1 text-slate-600"><input type="checkbox" checked={soloPend} onChange={(e) => setSoloPend(e.target.checked)} className="accent-amber-500" />Solo pendientes</label>
           <span className="text-slate-400">{d.lista.length} actividades</span>
+          {bulkSnap && sel.size === 0 && (
+            <button onClick={deshacerBulk} className="flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2 py-1 font-medium text-slate-600 hover:bg-slate-50" title="Revierte la última edición masiva">↶ Deshacer ({bulkSnap.etiqueta})</button>
+          )}
           {sel.size > 0 && (
             <div className="ml-auto flex flex-wrap items-center gap-1 rounded-lg border border-amber-300 bg-amber-50 px-2 py-1">
               <span className="font-semibold text-amber-800">{sel.size} sel.</span>
               <span className="text-slate-400">aplicar a todas:</span>
-              <button onClick={() => bulkAplicar({ permiso: true })} className="rounded bg-emerald-100 px-1.5 py-0.5 font-medium text-emerald-700 hover:bg-emerald-200">Permiso ✓</button>
-              <button onClick={() => bulkAplicar({ permiso: false })} className="rounded bg-red-100 px-1.5 py-0.5 font-medium text-red-700 hover:bg-red-200">Permiso ✗</button>
-              <button onClick={() => bulkAplicar({ matNA: true })} title="Marcar que no requieren recursos" className="rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-600 hover:bg-slate-200">Sin recursos</button>
-              <button onClick={() => bulkAplicar({ matNA: false })} title="Quitar 'no requiere recursos'" className="rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-600 hover:bg-slate-200">Requiere</button>
-              <span className="flex items-center gap-1"><input list="grupos-dl-bulk" value={bulkGrupo} onChange={(e) => setBulkGrupo(e.target.value)} placeholder="cuadrilla" className="w-20 rounded border border-slate-300 px-1 py-0.5" /><button onClick={() => { const g = bulkGrupo.trim(); if (g) { bulkAplicar({ grupo: g }); setBulkGrupo('') } }} title="Asignar esta cuadrilla a las seleccionadas" className="rounded bg-blue-100 px-1.5 py-0.5 font-medium text-blue-700 hover:bg-blue-200">Cuadrilla →</button></span>
+              <button onClick={() => bulkAplicar({ permiso: true }, 'permiso ✓')} className="rounded bg-emerald-100 px-1.5 py-0.5 font-medium text-emerald-700 hover:bg-emerald-200">Permiso ✓</button>
+              <button onClick={() => bulkAplicar({ permiso: false }, 'permiso ✗')} className="rounded bg-red-100 px-1.5 py-0.5 font-medium text-red-700 hover:bg-red-200">Permiso ✗</button>
+              <button onClick={() => bulkAplicar({ matNA: true }, 'sin recursos')} title="Marcar que no requieren recursos" className="rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-600 hover:bg-slate-200">Sin recursos</button>
+              <button onClick={() => bulkAplicar({ matNA: false }, 'requiere recursos')} title="Quitar 'no requiere recursos'" className="rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-600 hover:bg-slate-200">Requiere</button>
+              <span className="flex items-center gap-1"><input list="grupos-dl-bulk" value={bulkGrupo} onChange={(e) => setBulkGrupo(e.target.value)} placeholder="cuadrilla" className="w-20 rounded border border-slate-300 px-1 py-0.5" /><button onClick={() => { const g = bulkGrupo.trim(); if (g) { bulkAplicar({ grupo: g }, `cuadrilla ${g}`); setBulkGrupo('') } }} title="Asignar esta cuadrilla a las seleccionadas" className="rounded bg-blue-100 px-1.5 py-0.5 font-medium text-blue-700 hover:bg-blue-200">Cuadrilla →</button></span>
               <button onClick={() => setSel(new Set())} className="rounded border border-slate-300 bg-white px-1.5 py-0.5 text-slate-500 hover:bg-slate-50">Limpiar</button>
               <datalist id="grupos-dl-bulk">{gruposExist.map((g) => <option key={g} value={g} />)}</datalist>
             </div>

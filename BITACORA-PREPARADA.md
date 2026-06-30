@@ -24,4 +24,6 @@
 
 | R9 | **Preparación ponderada por criticidad**: cruza readiness con ruta crítica → indicador "🔴 Ruta crítica: X/Y listas — prioriza estas" en el header de Preparación + marca 🔴 en las filas críticas (un faltante en la crítica pesa mucho más que con holgura) | C2 real: "🔴 Ruta crítica: 0/1 listas — prioriza estas" + 1 marca 🔴 en la lista; screenshot, build limpio, sin errores de consola, cómputo read-only | Inc 47 |
 
-Próximo (R10): **Deshacer en edición masiva** (M/M) — snapshot + botón "Deshacer" para revertir un bulk equivocado.
+| R10 | **Deshacer en edición masiva**: snapshot de las especificaciones previas antes de cada bulk (permiso/recursos/cuadrilla) + botón "↶ Deshacer (N tarea(s) · acción)" que revierte estado + BD | C2 real: bulk Permiso ✓ a 2 tareas → BD=2 → "Deshacer" → BD=0 (revierte limpio, botón desaparece); build limpio, sin errores de consola, el propio undo limpia los datos de prueba | Inc 48 |
+
+Próximo (R11): **% completado onChange→onBlur** (M/S, robustez) — evitar flood de updates por tecla + race.

@@ -110,6 +110,22 @@ export function CuadrillasPage() {
     })
   }, [tareas, turnoF, lineas])
 
+  // Balance de los 2 turnos de 12h (objetivo central de la parada): ¿está la carga
+  // repartida entre Día y Noche, o el turno noche está infrautilizado y alarga la
+  // parada? Respeta el filtro de línea, ignora el de turno (compara ambos). HH = téc×h.
+  const cargaTurno = useMemo(() => {
+    const acc = { D: { n: 0, hh: 0 }, N: { n: 0, hh: 0 } }
+    for (const t of tareas) {
+      if (lineaF !== 'Todas' && lineaOf(t) !== lineaF) continue
+      const k = turnoOf(t)
+      acc[k].n++
+      acc[k].hh += tecOf(t) * Number(t.duracion_estimada_horas ?? 0)
+    }
+    const total = acc.D.hh + acc.N.hh
+    const pctN = total ? Math.round((acc.N.hh / total) * 100) : 0
+    return { D: acc.D, N: acc.N, total: Math.round(total), pctN }
+  }, [tareas, lineaF])
+
   const { crews, base, totalDias, hourW, totalConf, histo, peakHisto, totalHH, choquePers, espPeak } = useMemo(() => {
     const dated = tareas.filter((t) => t.fecha_inicio_prog && t.fecha_fin_prog && (turnoF === 'Todos' || turnoOf(t) === turnoF) && (lineaF === 'Todas' || lineaOf(t) === lineaF))
     const fch = (t: Tarea) => ({ s: new Date(t.fecha_inicio_prog!).getTime(), e: new Date(t.fecha_fin_prog!).getTime() })
@@ -277,6 +293,28 @@ export function CuadrillasPage() {
             ))}
           </div>
           <p className="mt-1 text-[10px] text-slate-400">«Téc pico» = máximo de técnicos trabajando en paralelo en esa línea (la dotación que necesitas movilizar). HH = horas-hombre totales.</p>
+        </div>
+      )}
+      {cargaTurno.total > 0 && (
+        <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <h3 className="mb-2 text-sm font-semibold text-slate-700">🕑 Balance de los 2 turnos {lineaF !== 'Todas' && <span className="text-xs font-normal text-indigo-600">({lineaF})</span>}</h3>
+          <div className="grid gap-1.5">
+            {([['D', '☀ Día', 'bg-amber-400'], ['N', '🌙 Noche', 'bg-indigo-500']] as const).map(([k, label, color]) => {
+              const c = cargaTurno[k], pct = cargaTurno.total ? Math.round((c.hh / cargaTurno.total) * 100) : 0
+              return (
+                <div key={k} className="flex items-center gap-2 text-xs">
+                  <span className="w-16 shrink-0 font-semibold text-slate-600">{label}</span>
+                  <div className="h-4 flex-1 overflow-hidden rounded bg-slate-100">
+                    <div className={`h-full ${color}`} style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className="w-32 shrink-0 text-right text-slate-500"><b className="text-slate-700">{c.hh.toLocaleString()} HH</b> · {c.n} act · {pct}%</span>
+                </div>
+              )
+            })}
+          </div>
+          {cargaTurno.pctN < 25 && (
+            <p className="mt-2 rounded bg-amber-50 px-2 py-1 text-[11px] text-amber-700">⚠ El turno noche concentra solo {cargaTurno.pctN}% de las HH — está infrautilizado. Mover trabajo a la noche puede acortar la parada.</p>
+          )}
         </div>
       )}
       <div className="rounded-xl border border-slate-200 bg-white">

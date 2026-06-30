@@ -91,12 +91,15 @@ export function GanttPage() {
     const byG: Record<string, Tarea[]> = {}
     for (const t of vis) (byG[keyDe(t)] ??= []).push(t)
     const grupos = Object.entries(byG).map(([nombre, ts]) => {
-      ts.sort((a, b) => (fechas[a.id]?.s ?? 0) - (fechas[b.id]?.s ?? 0))
+      // Orden estable por secuencia (igual que la Lista, como MSProject): las filas NO
+      // se reordenan al cambiar fechas; solo las barras flotan en el tiempo.
+      ts.sort((a, b) => (a.secuencia ?? 0) - (b.secuencia ?? 0))
       const ss = ts.map((t) => fechas[t.id]?.s).filter(Boolean) as number[]
       const ee = ts.map((t) => fechas[t.id]?.e).filter(Boolean) as number[]
-      return { nombre, tareas: ts, s: ss.length ? Math.min(...ss) : 0, e: ee.length ? Math.max(...ee) : 0 }
+      const seq = Math.min(...ts.map((t) => t.secuencia ?? Infinity))
+      return { nombre, tareas: ts, seq, s: ss.length ? Math.min(...ss) : 0, e: ee.length ? Math.max(...ee) : 0 }
     })
-    grupos.sort((a, b) => a.s - b.s)
+    grupos.sort((a, b) => a.seq - b.seq)  // grupos por su secuencia mínima (= orden de la Lista)
     const allS = Object.values(fechas).map((f) => f.s), allE = Object.values(fechas).map((f) => f.e)
     const minS = allS.length ? Math.min(...allS) : Date.now()
     const maxE = allE.length ? Math.max(...allE) : minS + DAY
@@ -402,8 +405,8 @@ export function GanttPage() {
               const left = x(fch.s) + dS * hourW
               const width = Math.max(x(fch.e) - x(fch.s) + dD * hourW, 5)
               return (
-                <div key={t.id} className={`absolute flex w-full border-b border-slate-50 ${idx % 2 ? 'bg-white' : 'bg-slate-50/30'}`} style={{ top, height: ROW }}>
-                  <div className="sticky left-0 z-20 flex shrink-0 items-stretch border-r border-slate-200 bg-inherit text-[11px] text-slate-600" style={{ width: LEFT }}>
+                <div key={t.id} className={`absolute flex w-full border-b border-slate-50 ${idx % 2 ? 'bg-white' : 'bg-slate-50'}`} style={{ top, height: ROW }}>
+                  <div className={`sticky left-0 z-30 flex shrink-0 items-stretch border-r border-slate-200 ${idx % 2 ? 'bg-white' : 'bg-slate-50'} text-[11px] text-slate-600`} style={{ width: LEFT }}>
                     <Cell w={32}><span className="text-slate-400">{t.secuencia}</span></Cell>
                     <Cell w={240} l>
                       {crit && <span className="mr-1 text-[10px] font-bold text-red-600" title="Ruta crítica">◆</span>}

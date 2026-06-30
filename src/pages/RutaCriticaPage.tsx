@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { useRefreshOnFocus } from '../lib/useRefreshOnFocus'
 import { getTareasByParada } from '../lib/api'
 import { rutaCritica } from '../lib/criticalPath'
+import { choquesCuadrilla } from '../lib/resourceLeveling'
 import { CurvaS } from '../components/CurvaS'
 import type { Tarea } from '../types'
 
@@ -43,7 +44,9 @@ export function RutaCriticaPage() {
       .filter((t) => !criticas.has(t.id) && (holguraLibre[t.id] ?? 0) > 0)
       .sort((a, b) => (holguraLibre[b.id] ?? 0) - (holguraLibre[a.id] ?? 0))
       .slice(0, 5)
-    return { criticas, holgura, holguraLibre, total, completadas, avance, crit, durCrit, flexibles }
+    // Factibilidad: ¿alguna cuadrilla está programada en dos frentes a la vez?
+    const choquesCuad = choquesCuadrilla(scoped).ids.size
+    return { criticas, holgura, holguraLibre, total, completadas, avance, crit, durCrit, flexibles, choquesCuad }
   }, [scoped])
 
   if (loading) return <p className="text-sm text-slate-400">Calculando ruta crítica…</p>
@@ -59,6 +62,19 @@ export function RutaCriticaPage() {
             {lineas.map((l) => <option key={l} value={l}>{l}</option>)}
           </select>
           <span className="text-slate-400">cada línea tiene su propia ruta crítica y holguras</span>
+        </div>
+      )}
+      {r.choquesCuad > 0 ? (
+        <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+          <span className="text-xl">⛔</span>
+          <div className="flex-1 text-sm text-red-800">
+            <p className="font-semibold">{r.choquesCuad} tarea{r.choquesCuad === 1 ? '' : 's'} con choque de cuadrilla — el plan aún no es ejecutable</p>
+            <p className="text-xs text-red-600">Una misma cuadrilla está programada en dos frentes a la vez (su trabajo real se solapa). Reprográmalas en la vista <b>Cuadrillas</b> → «Resolver choques».</p>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
+          ✓ Sin choques de cuadrilla — ninguna cuadrilla está en dos frentes a la vez.
         </div>
       )}
       <section className="grid gap-4 sm:grid-cols-3">

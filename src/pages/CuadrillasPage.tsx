@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useOutletContext, useParams } from 'react-router-dom'
 import { getTareasByParada, updateTareaEspec, updateTareaSchedule, getCuadrillasConfig, setCuadrillasConfig, getUsuarios } from '../lib/api'
-import { balancearCuadrillas, resolverCuadrillas, choquesPersona, especialidadRequerida, tramosTrabajo, tieneEspera } from '../lib/resourceLeveling'
+import { balancearCuadrillas, resolverCuadrillas, choquesPersona, choquesCuadrilla, especialidadRequerida, tramosTrabajo, tieneEspera } from '../lib/resourceLeveling'
 import type { Tecnico } from '../lib/resourceLeveling'
 import { colorGrupo } from '../lib/palette'
 import { useRefreshOnFocus } from '../lib/useRefreshOnFocus'
@@ -23,16 +23,6 @@ const turnoOf = (t: Tarea): 'D' | 'N' => { const dn = (t.especificaciones_tecnic
 const lineaOf = (t: Tarea) => String(t.especificaciones_tecnicas?.linea ?? '').trim()
 const tecOf = (t: Tarea) => { const n = Number((t.especificaciones_tecnicas?.tec as number) ?? 0); return Number.isFinite(n) ? Math.max(0, n) : 0 }
 const pad = (n: number) => String(n).padStart(2, '0')
-// Dos tareas de una cuadrilla CHOCAN solo si su TRABAJO REAL se solapa. tramosTrabajo
-// excluye la espera de tareas tipo apertura/cierre (manhole): durante la espera la
-// cuadrilla está libre y puede atender otra tarea — no es un choque. Mismo criterio
-// que el histograma de técnicos/hora (antes la detección usaba el span completo y
-// marcaba choques falsos durante las esperas).
-const solapanTrabajo = (a: Tarea, b: Tarea) => {
-  const ta = tramosTrabajo(a), tb = tramosTrabajo(b)
-  for (const x of ta) for (const y of tb) if (x.s < y.e && y.s < x.e) return true
-  return false
-}
 
 interface Item { t: Tarea; s: number; e: number; lane: number; conflict: boolean }
 interface Crew { nombre: string; items: Item[]; nSub: number; util: number; hh: number; peak: number; conflictos: number }
@@ -133,6 +123,9 @@ export function CuadrillasPage() {
 
     const byC: Record<string, Tarea[]> = {}
     for (const t of dated) (byC[grpOf(t)] ??= []).push(t)
+    // Choques de cuadrilla (trabajo real, sin contar esperas) — única fuente de verdad,
+    // compartida con el control de Ruta crítica.
+    const choqueCuad = choquesCuadrilla(dated).ids
     const crews: Crew[] = Object.entries(byC).map(([nombre, ts]) => {
       const its = ts.map((t) => ({ t, ...fch(t) })).sort((a, b) => a.s - b.s)
       // sub-filas (interval partitioning)
@@ -141,12 +134,8 @@ export function CuadrillasPage() {
         let lane = laneEnd.findIndex((end) => end <= it.s)
         if (lane === -1) { lane = laneEnd.length }
         laneEnd[lane] = it.e
-        return { ...it, lane, conflict: false }
+        return { ...it, lane, conflict: choqueCuad.has(it.t.id) }
       })
-      // conflictos: solapamiento de TRABAJO REAL por pares (la espera no cuenta como choque)
-      for (let i = 0; i < items.length; i++)
-        for (let j = i + 1; j < items.length; j++)
-          if (solapanTrabajo(items[i].t, items[j].t)) { items[i].conflict = true; items[j].conflict = true }
       const conflictos = items.filter((x) => x.conflict).length
       // utilización (unión de intervalos)
       const sorted = [...items].sort((a, b) => a.s - b.s)

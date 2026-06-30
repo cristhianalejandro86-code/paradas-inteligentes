@@ -443,6 +443,34 @@ export function choquesPersona(tareas: Tarea[]): { ids: Set<string>; porTarea: R
   return { ids, porTarea }
 }
 
+/** ¿El TRABAJO REAL de dos tareas se solapa? La espera de tareas tipo apertura/cierre
+ *  (manhole) NO cuenta: durante la espera la cuadrilla está libre. */
+export const solapanTrabajo = (a: Tarea, b: Tarea) => {
+  const ta = tramosTrabajo(a), tb = tramosTrabajo(b)
+  for (const x of ta) for (const y of tb) if (x.s < y.e && y.s < x.e) return true
+  return false
+}
+
+/**
+ * Detecta CHOQUES DE CUADRILLA: el mismo grupo (especificaciones.grupo) trabajando dos
+ * tareas a la vez (su TRABAJO REAL se solapa — la espera no cuenta). Una cuadrilla no
+ * puede estar en dos frentes a la vez, así que el plan no es ejecutable hasta resolverlos.
+ * Única fuente de verdad para la vista Cuadrillas y el control de Ruta crítica.
+ */
+export function choquesCuadrilla(tareas: Tarea[]): { ids: Set<string> } {
+  const ids = new Set<string>()
+  const byG: Record<string, Tarea[]> = {}
+  for (const t of tareas) {
+    if (!t.fecha_inicio_prog || !t.fecha_fin_prog) continue
+    ;(byG[grpDe(t)] ??= []).push(t)
+  }
+  for (const ts of Object.values(byG))
+    for (let i = 0; i < ts.length; i++)
+      for (let j = i + 1; j < ts.length; j++)
+        if (solapanTrabajo(ts[i], ts[j])) { ids.add(ts[i].id); ids.add(ts[j].id) }
+  return { ids }
+}
+
 /**
  * Sugiere PRECEDENCIAS automáticas: dentro de un mismo equipo (sistema) y cuadrilla,
  * encadena las tareas en orden de inicio (una espera a la anterior). Es el patrón

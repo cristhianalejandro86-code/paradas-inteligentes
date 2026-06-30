@@ -10,4 +10,6 @@
 **Auditoría R1 (4 frentes útiles; el visual dio ruido):** convergencias fuertes detectadas → edición masiva (cuello de botella 158 tareas), lead-time/qué-pedir-ya, export para Compras (entregado), ruta crítica que ignore recursos, holgura libre, plan vs ventana comprometida. Detalle en BACKLOG.
 | R2 | **Plan vs ventana comprometida** — KPI en el header del Gantt (visible siempre, no solo al filtrar línea): compara duración del plan (span de todas las tareas) vs `duracion_planeada_horas`/ventana comprometida | C2 real: ventana 115h, plan ~141h → badge rojo "⚠ Plan +26h sobre la ventana (115h)"; build limpio, sin errores de consola, screenshot, sin regresión (cómputo read-only) | Inc 40 |
 
-Próximo (R3): **Holgura LIBRE** además de la total (A/S) — distinguir qué tarea se puede atrasar sin empujar a su sucesora.
+| R3 | **Holgura LIBRE** en el CPM (`holguraLibre` = min(ES sucesoras) − EF) + surfacing: tooltip del Gantt "Holgura total Xh · libre Yh" y panel "🟢 Tareas más flexibles" (top 5 por holgura libre) en Ruta crítica | C2 real: panel muestra 5 tareas con "holgura libre 48h" junto a la crítica (0h); build limpio, sin errores de consola, screenshot, sin regresión | Inc 41 |
+
+Próximo (R4): **Lead-time por ítem de recurso** (A/M) — campo lead/ETA, rojo si lead > días al inicio → "qué pedir YA".

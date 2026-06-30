@@ -4,14 +4,14 @@
 > Estado: ⬜ pendiente · 🔄 en curso · ✅ hecho (con evidencia + commit). ⭐ = coincidencia entre ≥2 auditores (señal fuerte).
 
 ## ✅ Hecho
+- ✅ **R3 — Holgura LIBRE** (CPM `holguraLibre` = min(ES sucesoras) − EF): tooltip del Gantt "total Xh · libre Yh" + panel "🟢 Tareas más flexibles" en Ruta crítica (top 5 por holgura libre). Inc 41. (Operativo #2)
 - ✅ **R2 — Plan vs ventana comprometida** (KPI en header del Gantt, visible siempre): C2 muestra "⚠ Plan +26h sobre la ventana (115h)". Inc 40. (Operativo #3)
 - ✅ **R1 — Exportar consolidado de recursos + alistamiento a Excel** (hoja Recursos para Compras + hoja Alistamiento). Inc 39. (valida auditor Recursos #4)
 - ✅ **R1 — Blindaje: ítem de recurso malformado ya NO revienta el tablero de Preparación** (itemsDe saneado). Inc 39. (auditor Robustez #2)
 - ✅ Verificado falso positivo: `diasParaInicio` NaN ya está guardado por `isFinite` (Robustez #3) — no requería cambio.
 
 ## Alta prioridad (próximas rondas, por valor×esfuerzo)
-- ⬜ **Holgura LIBRE** además de la total en CPM/Gantt/Ruta crítica. A/S. (Operativo #2) ← próximo (R3)
-- ⬜⭐ **Lead-time por ítem de recurso** (campo lead/ETA; rojo si lead > días al inicio) → "qué pedir YA". A/M. (Recursos #1, alineado con el dueño)
+- ⬜⭐ **Lead-time por ítem de recurso** (campo lead/ETA; rojo si lead > días al inicio) → "qué pedir YA". A/M. (Recursos #1, alineado con el dueño) ← próximo (R4)
 - ⬜⭐ **Edición MASIVA**: seleccionar varias tareas y aplicar permiso/recursos/cuadrilla de una vez (hoy 1×1 = cuello de botella con 158 tareas). A/M→L. (Usabilidad #1 y #2)
 - ⬜ **Demanda (consolidado) vs inventario real** (`tabla recurso`/getRecursos): déficit = requerido − disponible. A/M. (Recursos #2)
 - ⬜ **Capacidad de equipos compartidos en Preparación** (pico de grúas/soldadoras vs disponible, no solo en el nivelador del Gantt). A/M. (Recursos #3)

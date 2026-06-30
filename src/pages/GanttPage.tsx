@@ -84,7 +84,7 @@ export function GanttPage() {
     return () => window.removeEventListener('resize', f)
   }, [])
 
-  const { criticas, holgura } = useMemo(() => rutaCritica(tareas), [tareas])
+  const { criticas, holgura, holguraLibre } = useMemo(() => rutaCritica(tareas), [tareas])
   // Plan vs ventana COMPROMETIDA: ¿el cronograma completo cabe en la duración planeada
   // de la parada? Visible siempre (no solo al filtrar 1 línea). Usa horas de span del
   // plan vs duracion_planeada_horas (o fin−inicio planeado) para evitar líos de fecha.
@@ -561,7 +561,7 @@ export function GanttPage() {
                         </div>
                       )
                     })() : (
-                      <div onPointerDown={(e) => onDown(e, t, 'move')} title={`${t.nombre}\n${fmt(fch.s)} → ${fmt(fch.e)} · ${t.duracion_estimada_horas}h · ${t.porcentaje_completado}%\nHolgura: ${holgura[t.id] ?? '?'}h${crit ? ' · CRÍTICA' : ''}`}
+                      <div onPointerDown={(e) => onDown(e, t, 'move')} title={`${t.nombre}\n${fmt(fch.s)} → ${fmt(fch.e)} · ${t.duracion_estimada_horas}h · ${t.porcentaje_completado}%\nHolgura total: ${holgura[t.id] ?? '?'}h · libre: ${holguraLibre[t.id] ?? '?'}h${crit ? ' · CRÍTICA' : ''}`}
                         className="group absolute top-1/2 z-10 flex h-[18px] -translate-y-1/2 cursor-grab items-center rounded shadow-sm active:cursor-grabbing"
                         style={{ left, width, background: colBar(t), boxShadow: ringBar }}>
                         {t.porcentaje_completado > 0 && <div className="absolute left-0 top-0 h-full rounded-l bg-black/25" style={{ width: `${t.porcentaje_completado}%` }} />}

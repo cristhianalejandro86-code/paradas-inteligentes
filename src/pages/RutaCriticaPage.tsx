@@ -20,7 +20,7 @@ export function RutaCriticaPage() {
   useRefreshOnFocus(reloadTareas)
 
   const r = useMemo(() => {
-    const { criticas, holgura } = rutaCritica(tareas)
+    const { criticas, holgura, holguraLibre } = rutaCritica(tareas)
     const total = tareas.length
     const completadas = tareas.filter((t) => t.status === 'Completada').length
     const avance = total ? Math.round((completadas / total) * 100) : 0
@@ -32,7 +32,12 @@ export function RutaCriticaPage() {
         return sa - sb
       })
     const durCrit = crit.reduce((s, t) => s + Number(t.duracion_estimada_horas ?? 0), 0)
-    return { criticas, holgura, total, completadas, avance, crit, durCrit }
+    // Tareas más FLEXIBLES: mayor holgura libre (se pueden posponer hoy sin empujar a nadie)
+    const flexibles = tareas
+      .filter((t) => !criticas.has(t.id) && (holguraLibre[t.id] ?? 0) > 0)
+      .sort((a, b) => (holguraLibre[b.id] ?? 0) - (holguraLibre[a.id] ?? 0))
+      .slice(0, 5)
+    return { criticas, holgura, holguraLibre, total, completadas, avance, crit, durCrit, flexibles }
   }, [tareas])
 
   if (loading) return <p className="text-sm text-slate-400">Calculando ruta crítica…</p>
@@ -72,6 +77,28 @@ export function RutaCriticaPage() {
           </ol>
         )}
       </section>
+
+      {r.flexibles.length > 0 && (
+        <section>
+          <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-slate-500">
+            🟢 Tareas más flexibles — puedes posponerlas hoy sin empujar a ninguna otra
+          </h3>
+          <ol className="grid gap-2">
+            {r.flexibles.map((t) => (
+              <li key={t.id} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
+                <div className="flex-1">
+                  <p className="font-medium text-slate-900">{t.nombre}</p>
+                  <p className="text-xs text-slate-500">
+                    {(t.especificaciones_tecnicas?.sistema as string) || ''} · {t.duracion_estimada_horas}h ·{' '}
+                    {t.fecha_inicio_prog ? new Date(t.fecha_inicio_prog).toLocaleString('es-PE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}
+                  </p>
+                </div>
+                <span className="rounded bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700" title="Holgura libre: se puede atrasar esto sin mover a su sucesora">holgura libre {r.holguraLibre[t.id]}h</span>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
     </div>
   )
 }

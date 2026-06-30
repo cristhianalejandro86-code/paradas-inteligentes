@@ -8,6 +8,7 @@ import type { Tarea } from '../types'
 export function rutaCritica(tareas: Tarea[]): {
   criticas: Set<string>
   holgura: Record<string, number>
+  holguraLibre: Record<string, number>
 } {
   const byId = new Map(tareas.map((t) => [t.id, t]))
   const dur = (t: Tarea) => Number(t.duracion_estimada_horas ?? 0)
@@ -68,10 +69,17 @@ export function rutaCritica(tareas: Tarea[]): {
 
   const criticas = new Set<string>()
   const holgura: Record<string, number> = {}
+  // Holgura LIBRE: cuánto puede atrasarse una tarea sin mover a NINGUNA sucesora
+  // (= min(ES de sucesoras) − EF). La holgura total puede mover una cadena entera;
+  // la libre es la que de verdad puedes posponer hoy sin disparar a nadie.
+  const holguraLibre: Record<string, number> = {}
   for (const t of tareas) {
     const h = Math.round((LS[t.id] - ES[t.id]) * 10) / 10
     holgura[t.id] = h
     if (h <= 0.01 && !esLOE(t)) criticas.add(t.id)   // las hamacas (grúa) nunca son críticas
+    const ss = succ[t.id] ?? []
+    const limite = ss.length ? Math.min(...ss.map((s) => ES[s] ?? fin)) : fin
+    holguraLibre[t.id] = Math.max(0, Math.round((limite - EF[t.id]) * 10) / 10)
   }
-  return { criticas, holgura }
+  return { criticas, holgura, holguraLibre }
 }

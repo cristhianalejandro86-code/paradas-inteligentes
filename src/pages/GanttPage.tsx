@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useOutletContext, useParams } from 'react-router-dom'
-import { getTareasByParada, updateTareaSchedule, updateTareaEspec, updateTarea, createTarea, guardarLineaBase, restaurarLineaBase, getCuadrillasConfig } from '../lib/api'
+import { getTareasByParada, updateTareaSchedule, updateTareaEspec, updateTarea, createTarea, guardarLineaBase, restaurarLineaBase, getCuadrillasConfig, setCuadrillasConfig } from '../lib/api'
 import { useRefreshOnFocus } from '../lib/useRefreshOnFocus'
 import type { Roster, Tecnico } from '../lib/resourceLeveling'
 import { colorGrupo, disciplina as discDe } from '../lib/palette'
@@ -25,6 +25,7 @@ const DISCIPLINAS = ['Todas', 'Mecánica', 'Eléctrica', 'Instrumentación'] as 
 const sysOf = (t: Tarea) => (t.especificaciones_tecnicas?.sistema as string) || 'General'
 const grpOf = (t: Tarea) => (t.especificaciones_tecnicas?.grupo as string) || '—'
 const turnoOf = (t: Tarea): 'D' | 'N' => { const dn = (t.especificaciones_tecnicas?.turno_dn as string) || ''; return (dn ? dn.toUpperCase().startsWith('N') : (t.turno_asignado || '').toLowerCase().startsWith('n')) ? 'N' : 'D' }
+const lineaOf = (t: Tarea) => String(t.especificaciones_tecnicas?.linea ?? '').trim()
 const tecOf = (t: Tarea) => (t.especificaciones_tecnicas?.tec as number) ?? ''
 const wbsOf = (t: Tarea) => (t.especificaciones_tecnicas?.wbs as string) || ''
 const discOf = (t: Tarea) => (t.especificaciones_tecnicas?.disciplina as string) || discDe(`${t.nombre} ${sysOf(t)}`)
@@ -41,6 +42,9 @@ export function GanttPage() {
   const [groupBy, setGroupBy] = useState<'sistema' | 'disciplina'>('sistema')
   const [filtro, setFiltro] = useState<(typeof DISCIPLINAS)[number]>('Todas')
   const [turnoF, setTurnoF] = useState<'Todos' | 'D' | 'N'>('Todos')
+  const [lineaF, setLineaF] = useState('Todas')
+  const [lineaDias, setLineaDias] = useState<Record<string, number>>({})
+  const [cfgRaw, setCfgRaw] = useState<Record<string, { cap?: number; turno?: string; dias?: number; tecnicos?: Tecnico[] }>>({})
   const [turnosOn, setTurnosOn] = useState(true)
   const [gruas, setGruas] = useState(0)
   const [hitoModal, setHitoModal] = useState(false)
@@ -65,8 +69,11 @@ export function GanttPage() {
     setLoading(true)
     reloadTareas().finally(() => setLoading(false))
     getCuadrillasConfig(id).then((cfg) => {
-      setCaps(Object.fromEntries(Object.entries(cfg).filter(([, v]) => v.cap).map(([k, v]) => [k, v.cap as number])))
-      setRoster(Object.fromEntries(Object.entries(cfg).filter(([, v]) => v.tecnicos?.length).map(([k, v]) => [k, v.tecnicos as Tecnico[]])))
+      setCfgRaw(cfg)
+      setCaps(Object.fromEntries(Object.entries(cfg).filter(([k, v]) => v.cap && !k.startsWith('__')).map(([k, v]) => [k, v.cap as number])))
+      setRoster(Object.fromEntries(Object.entries(cfg).filter(([k, v]) => v.tecnicos?.length && !k.startsWith('__')).map(([k, v]) => [k, v.tecnicos as Tecnico[]])))
+      // días de ventana de parada por línea (claves reservadas __dias_<linea>)
+      setLineaDias(Object.fromEntries(Object.entries(cfg).filter(([k, v]) => k.startsWith('__dias_') && v.dias).map(([k, v]) => [k.slice(7), v.dias as number])))
     }).catch(() => {})
   }, [id])
   useRefreshOnFocus(reloadTareas)
@@ -79,7 +86,8 @@ export function GanttPage() {
   const { criticas, holgura } = useMemo(() => rutaCritica(tareas), [tareas])
   const nivel = useMemo(() => infoNivel(tareas), [tareas])
   const topeC = targetC ?? nivel?.recC ?? 20
-  const vis = useMemo(() => tareas.filter((t) => (filtro === 'Todas' || discOf(t) === filtro) && (turnoF === 'Todos' || turnoOf(t) === turnoF)), [tareas, filtro, turnoF])
+  const lineas = useMemo(() => [...new Set(tareas.map(lineaOf).filter(Boolean))].sort(), [tareas])
+  const vis = useMemo(() => tareas.filter((t) => (filtro === 'Todas' || discOf(t) === filtro) && (turnoF === 'Todos' || turnoOf(t) === turnoF) && (lineaF === 'Todas' || lineaOf(t) === lineaF)), [tareas, filtro, turnoF, lineaF])
   const keyDe = (t: Tarea) => (groupBy === 'disciplina' ? discOf(t) : sysOf(t))
 
   const fechas = useMemo(() => {
@@ -291,6 +299,15 @@ export function GanttPage() {
       await reloadTareas()
     } catch (e) { setError(String(e)) }
   }
+  // Duración de la ventana de parada por línea (L1 ≈ 3 días, L2 ≈ 5 días). Se guarda
+  // en config bajo clave reservada __dias_<linea> y dibuja un deadline en el Gantt.
+  function setDiasLinea(linea: string, dias: number | undefined) {
+    setLineaDias((d) => { const n = { ...d }; if (dias && dias > 0) n[linea] = dias; else delete n[linea]; return n })
+    if (!id) return
+    const next = { ...cfgRaw, [`__dias_${linea}`]: { dias: dias && dias > 0 ? dias : undefined } }
+    setCfgRaw(next)
+    setCuadrillasConfig(id, next).catch((e) => setError(String(e)))
+  }
   // Edición inline desde la grilla del Gantt (persiste y se refleja en las otras vistas).
   function editar(id: string, fields: Parameters<typeof updateTarea>[1]) {
     setTareas((ts) => ts.map((t) => (t.id === id ? { ...t, ...fields } : t)))
@@ -350,6 +367,18 @@ export function GanttPage() {
           <div className="flex overflow-hidden rounded-md border border-slate-200" title="Filtra por turno (Día 07–22 / Noche 19–10)">
             {(['Todos', 'D', 'N'] as const).map((tt) => <button key={tt} onClick={() => setTurnoF(tt)} className={`px-2 py-0.5 ${turnoF === tt ? 'bg-indigo-500 text-white' : 'bg-white text-slate-500'}`}>{tt === 'D' ? '☀ Día' : tt === 'N' ? '🌙 Noche' : 'Turno'}</button>)}
           </div>
+          {lineas.length > 0 && (
+            <label className="flex items-center gap-1" title="Separa las actividades por línea (cada línea tiene su propia ventana de parada)">Línea:
+              <select value={lineaF} onChange={(e) => setLineaF(e.target.value)} className="rounded border border-slate-200 px-1 py-0.5">
+                <option value="Todas">Todas</option>
+                {lineas.map((l) => <option key={l} value={l}>{l}</option>)}
+              </select>
+            </label>
+          )}
+          {lineaF !== 'Todas' && (
+            <label className="flex items-center gap-1 rounded-md border border-fuchsia-300 bg-fuchsia-50 px-1.5 py-0.5 text-fuchsia-700" title="Días de duración de la parada para esta línea. Dibuja el fin de ventana y marca en rojo las tareas que se pasan.">⏱ Ventana
+              <input type="number" min={0} step={0.5} value={lineaDias[lineaF] ?? ''} placeholder="días" onChange={(e) => setDiasLinea(lineaF, e.target.value ? Number(e.target.value) : undefined)} className="w-12 rounded border border-fuchsia-300 px-1 py-0.5 text-center" />días</label>
+          )}
           <button onClick={() => setVerDeps((v) => !v)} className={`rounded-md border px-2 py-0.5 ${verDeps ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-slate-200 bg-white'}`}>Dependencias</button>
           <button onClick={sugerirPrec} title="Encadena en serie las tareas de cada equipo+cuadrilla (orden por fecha) para habilitar la ruta crítica. Solo a las que no tienen predecesora." className="rounded-md border border-sky-300 bg-sky-50 px-2 py-0.5 font-medium text-sky-700 hover:bg-sky-100">Sugerir precedencias</button>
           {precSnap && <button onClick={deshacerPrec} className="rounded-md border border-slate-300 bg-white px-2 py-0.5 text-slate-600 hover:bg-slate-50">Deshacer prec.</button>}
@@ -412,6 +441,11 @@ export function GanttPage() {
               {Date.now() >= base && Date.now() <= base + totalDias * DAY && (
                 <div className="absolute top-0 z-10 w-0.5 bg-red-500/70" style={{ left: x(Date.now()), height: bodyH }} title="Hoy" />
               )}
+              {lineaF !== 'Todas' && lineaDias[lineaF] > 0 && (
+                <div className="absolute top-0 z-20 w-0.5 bg-fuchsia-600" style={{ left: x(base + lineaDias[lineaF] * DAY), height: bodyH }} title={`Fin de ventana ${lineaF}: ${lineaDias[lineaF]} días`}>
+                  <span className="absolute top-1 -translate-x-1/2 whitespace-nowrap rounded bg-fuchsia-600 px-1 text-[9px] font-semibold text-white">fin {lineaF} · {lineaDias[lineaF]}d</span>
+                </div>
+              )}
             </div>
 
             {verDeps && (
@@ -447,6 +481,9 @@ export function GanttPage() {
               }
               const t = f.t!, fch = fechas[t.id]; if (!fch) return null
               const crit = criticas.has(t.id)
+              // Tarea que se PASA de la ventana de parada de su línea (deadline)
+              const overrun = lineaF !== 'Todas' && lineaDias[lineaF] > 0 && fch.e > base + lineaDias[lineaF] * DAY
+              const ringBar = crit ? '0 0 0 2px #dc2626' : overrun ? '0 0 0 2px #c026d3' : undefined
               const hito = Number(t.duracion_estimada_horas ?? 0) <= 0 || !!t.especificaciones_tecnicas?.hito_inicio
               const dS = draft?.id === t.id ? draft.dS : 0, dD = draft?.id === t.id ? draft.dD : 0
               const left = x(fch.s) + dS * hourW
@@ -487,14 +524,14 @@ export function GanttPage() {
                         <div onPointerDown={(e) => onDown(e, t, 'move')} title={`${t.nombre}\n${fmt(fch.s)} → ${fmt(fch.e)} · trabajo ${dur}h CON ESPERA (otra área)\n${t.porcentaje_completado}%`}
                           className="absolute top-1/2 z-10 h-[18px] -translate-y-1/2 cursor-grab active:cursor-grabbing" style={{ left, width }}>
                           <div className="absolute top-1/2 h-[3px] w-full -translate-y-1/2 rounded bg-slate-300" title="Espera (otra área)" />
-                          <div className="absolute left-0 top-0 h-full rounded shadow-sm" style={{ width: iniW, background: colBar(t), boxShadow: crit ? '0 0 0 2px #dc2626' : undefined }} />
+                          <div className="absolute left-0 top-0 h-full rounded shadow-sm" style={{ width: iniW, background: colBar(t), boxShadow: ringBar }} />
                           {dur - Math.ceil(dur / 2) > 0 && <div className="absolute right-0 top-0 h-full rounded shadow-sm" style={{ width: finW, background: colBar(t) }} />}
                         </div>
                       )
                     })() : (
                       <div onPointerDown={(e) => onDown(e, t, 'move')} title={`${t.nombre}\n${fmt(fch.s)} → ${fmt(fch.e)} · ${t.duracion_estimada_horas}h · ${t.porcentaje_completado}%\nHolgura: ${holgura[t.id] ?? '?'}h${crit ? ' · CRÍTICA' : ''}`}
                         className="group absolute top-1/2 z-10 flex h-[18px] -translate-y-1/2 cursor-grab items-center rounded shadow-sm active:cursor-grabbing"
-                        style={{ left, width, background: colBar(t), boxShadow: crit ? '0 0 0 2px #dc2626' : undefined }}>
+                        style={{ left, width, background: colBar(t), boxShadow: ringBar }}>
                         {t.porcentaje_completado > 0 && <div className="absolute left-0 top-0 h-full rounded-l bg-black/25" style={{ width: `${t.porcentaje_completado}%` }} />}
                         <div onPointerDown={(e) => onDown(e, t, 'resize')} className="absolute right-0 top-0 h-full w-2 cursor-ew-resize rounded-r bg-black/0 group-hover:bg-white/40" />
                       </div>

@@ -12,7 +12,7 @@ const H = 3600000
 const DAY = 86400000
 const ROW = 32
 const HEAD = 46
-const LEFT = 694
+const LEFT = 756
 
 const COLOR: Record<TaskStatus, string> = {
   Por_Hacer: '#64748b', En_Progreso: '#2563eb', En_Revision: '#7c3aed',
@@ -242,6 +242,22 @@ export function GanttPage() {
     Promise.all(Object.entries(snap).map(([tid, v]) => updateTarea(tid, { bloqueado_por: v }))).catch((e) => setError(String(e)))
     setPrecSnap(null)
   }
+  // Edición inline desde la grilla del Gantt (persiste y se refleja en las otras vistas).
+  function editar(id: string, fields: Parameters<typeof updateTarea>[1]) {
+    setTareas((ts) => ts.map((t) => (t.id === id ? { ...t, ...fields } : t)))
+    updateTarea(id, fields).catch((e) => setError(String(e)))
+  }
+  function editarTec(t: Tarea, v: number) {
+    const next = { ...(t.especificaciones_tecnicas ?? {}), tec: v }
+    setTareas((ts) => ts.map((x) => (x.id === t.id ? { ...x, especificaciones_tecnicas: next } : x)))
+    updateTareaEspec(t.id, next).catch((e) => setError(String(e)))
+  }
+  function editarHrs(t: Tarea, v: number) {
+    // En un Gantt, cambiar las horas debe redimensionar la barra (fin = inicio + horas).
+    const ini = t.fecha_inicio_prog ? new Date(t.fecha_inicio_prog).getTime() : null
+    const fin = ini != null ? new Date(ini + v * H).toISOString() : t.fecha_fin_prog
+    editar(t.id, { duracion_estimada_horas: v, fecha_fin_prog: fin })
+  }
   async function guardarBase() {
     if (!id) return
     try {
@@ -319,7 +335,7 @@ export function GanttPage() {
           {/* HEADER */}
           <div className="sticky top-0 z-30 flex bg-white" style={{ height: HEAD }}>
             <div className="sticky left-0 z-40 flex shrink-0 items-stretch border-b border-r border-slate-200 bg-slate-50 text-[10px] font-semibold uppercase tracking-wide text-slate-400" style={{ width: LEFT }}>
-              <Cell w={32}>#</Cell><Cell w={178} l>Actividad</Cell><Cell w={52}>WBS</Cell><Cell w={86}>Disciplina</Cell><Cell w={42}>Grp</Cell><Cell w={30}>Téc</Cell><Cell w={32}>Hrs</Cell><Cell w={82}>Comienzo</Cell><Cell w={82}>Fin</Cell><Cell w={44}>Pred</Cell><Cell w={34}>%</Cell>
+              <Cell w={32}>#</Cell><Cell w={240} l>Actividad</Cell><Cell w={52}>WBS</Cell><Cell w={86}>Disciplina</Cell><Cell w={42}>Grp</Cell><Cell w={30}>Téc</Cell><Cell w={32}>Hrs</Cell><Cell w={82}>Comienzo</Cell><Cell w={82}>Fin</Cell><Cell w={44}>Pred</Cell><Cell w={34}>%</Cell>
             </div>
             <div className="relative shrink-0 border-b border-slate-200" style={{ width: timelineW }}>
               {dias.map(({ i, d }) => (
@@ -389,20 +405,22 @@ export function GanttPage() {
                 <div key={t.id} className={`absolute flex w-full border-b border-slate-50 ${idx % 2 ? 'bg-white' : 'bg-slate-50/30'}`} style={{ top, height: ROW }}>
                   <div className="sticky left-0 z-20 flex shrink-0 items-stretch border-r border-slate-200 bg-inherit text-[11px] text-slate-600" style={{ width: LEFT }}>
                     <Cell w={32}><span className="text-slate-400">{t.secuencia}</span></Cell>
-                    <Cell w={178} l>
+                    <Cell w={240} l>
                       {crit && <span className="mr-1 text-[10px] font-bold text-red-600" title="Ruta crítica">◆</span>}
                       <span className="mr-1 inline-block h-2 w-2 shrink-0 rounded-full align-middle" style={{ background: COLOR[t.status] }} />
-                      <span className="truncate align-middle" title={t.nombre}>{t.nombre}</span>
+                      <input key={`n-${t.nombre}`} defaultValue={t.nombre} title={t.nombre}
+                        onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== t.nombre) editar(t.id, { nombre: v }) }}
+                        className="w-full min-w-0 truncate rounded border border-transparent bg-transparent px-0.5 align-middle hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none" />
                     </Cell>
                     <Cell w={52}>{wbsOf(t)}</Cell>
                     <Cell w={86}><span className="text-[10px]">{discOf(t)}</span></Cell>
                     <Cell w={42}><span className="rounded px-1 text-white" style={{ background: colorGrupo(sysOf(t)) }}>{grpOf(t)}</span></Cell>
-                    <Cell w={30}>{tecOf(t)}</Cell>
-                    <Cell w={32}>{t.duracion_estimada_horas}h</Cell>
+                    <Cell w={30}><input key={`tec-${tecOf(t)}`} type="number" min={0} defaultValue={tecOf(t)} onBlur={(e) => { const v = Number(e.target.value); if (Number.isFinite(v) && v >= 0 && v !== tecOf(t)) editarTec(t, v) }} className="w-full min-w-0 rounded border border-transparent bg-transparent text-center [appearance:textfield] hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" /></Cell>
+                    <Cell w={32}><input key={`h-${t.duracion_estimada_horas}`} type="number" min={0} step={0.5} defaultValue={Number(t.duracion_estimada_horas ?? 0)} onBlur={(e) => { const v = Number(e.target.value); if (Number.isFinite(v) && v > 0 && v !== Number(t.duracion_estimada_horas)) editarHrs(t, v) }} className="w-full min-w-0 rounded border border-transparent bg-transparent text-center [appearance:textfield] hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" /></Cell>
                     <Cell w={82}>{fmt(fch.s)}</Cell>
                     <Cell w={82}>{fmt(fch.e)}</Cell>
                     <Cell w={44}>{t.bloqueado_por ? `#${secById[t.bloqueado_por]}` : ''}</Cell>
-                    <Cell w={34}>{t.porcentaje_completado}%</Cell>
+                    <Cell w={34}><input key={`p-${t.porcentaje_completado}`} type="number" min={0} max={100} step={5} defaultValue={t.porcentaje_completado} onBlur={(e) => { const v = Math.min(100, Math.max(0, Number(e.target.value))); if (Number.isFinite(v) && v !== t.porcentaje_completado) editar(t.id, { porcentaje_completado: v }) }} className="w-full min-w-0 rounded border border-transparent bg-transparent text-center [appearance:textfield] hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" /></Cell>
                   </div>
                   <div className="relative shrink-0" style={{ width: timelineW }}>
                     {t.fecha_inicio_base && t.fecha_fin_base && Math.abs(new Date(t.fecha_inicio_base).getTime() - fch.s) > 36e5 && (

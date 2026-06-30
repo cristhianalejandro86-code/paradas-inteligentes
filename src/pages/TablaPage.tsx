@@ -15,6 +15,7 @@ const DISCS = ['Mecánica', 'Eléctrica', 'Instrumentación']
 const esp = (t: Tarea) => (t.especificaciones_tecnicas ?? {}) as Record<string, unknown>
 const grpOf = (t: Tarea) => (esp(t).grupo as string) || ''
 const sysOf = (t: Tarea) => (esp(t).sistema as string) || ''
+const lineaOf = (t: Tarea) => String(esp(t).linea ?? '').trim()
 const discOf = (t: Tarea) => (esp(t).disciplina as string) || discDe(`${t.nombre} ${sysOf(t)}`)
 const toInput = (s?: string | null) => {
   if (!s) return ''
@@ -31,6 +32,7 @@ export function TablaPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [q, setQ] = useState('')
+  const [lineaF, setLineaF] = useState('Todas')
   const [creando, setCreando] = useState(false)
   const [asignando, setAsignando] = useState<Tarea | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
@@ -114,10 +116,13 @@ export function TablaPage() {
     } catch (e) { setError(String(e)) }
   }
 
+  const lineas = useMemo(() => [...new Set(tareas.map(lineaOf).filter(Boolean))].sort(), [tareas])
   const filas = useMemo(() => {
-    const r = q ? tareas.filter((t) => t.nombre.toLowerCase().includes(q.toLowerCase()) || sysOf(t).toLowerCase().includes(q.toLowerCase())) : tareas
+    const r = tareas.filter((t) =>
+      (!q || t.nombre.toLowerCase().includes(q.toLowerCase()) || sysOf(t).toLowerCase().includes(q.toLowerCase())) &&
+      (lineaF === 'Todas' || lineaOf(t) === lineaF))
     return [...r].sort((a, b) => (a.secuencia ?? 0) - (b.secuencia ?? 0))
-  }, [tareas, q])
+  }, [tareas, q, lineaF])
 
   if (loading) return <p className="text-sm text-slate-400">Cargando…</p>
   if (error) return <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">Error: {error}<button onClick={() => setError(null)} className="ml-2 underline">cerrar</button></div>
@@ -128,6 +133,12 @@ export function TablaPage() {
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar…" className="w-56 rounded-lg border border-slate-300 px-3 py-1.5 text-sm" />
+        {lineas.length > 0 && (
+          <select value={lineaF} onChange={(e) => setLineaF(e.target.value)} title="Filtra por línea" className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
+            <option value="Todas">Todas las líneas</option>
+            {lineas.map((l) => <option key={l} value={l}>{l}</option>)}
+          </select>
+        )}
         <span className="text-xs text-slate-400">{filas.length} actividades</span>
         {msg && <span className="rounded bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">{msg}</span>}
         <div className="ml-auto flex items-center gap-2">

@@ -20,6 +20,7 @@ const MES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct
 const sysOf = (t: Tarea) => (t.especificaciones_tecnicas?.sistema as string) || 'General'
 const grpOf = (t: Tarea) => (t.especificaciones_tecnicas?.grupo as string) || '—'
 const turnoOf = (t: Tarea): 'D' | 'N' => { const dn = (t.especificaciones_tecnicas?.turno_dn as string) || ''; return (dn ? dn.toUpperCase().startsWith('N') : (t.turno_asignado || '').toLowerCase().startsWith('n')) ? 'N' : 'D' }
+const lineaOf = (t: Tarea) => String(t.especificaciones_tecnicas?.linea ?? '').trim()
 const tecOf = (t: Tarea) => { const n = Number((t.especificaciones_tecnicas?.tec as number) ?? 0); return Number.isFinite(n) ? Math.max(0, n) : 0 }
 const pad = (n: number) => String(n).padStart(2, '0')
 
@@ -42,6 +43,7 @@ export function CuadrillasPage() {
   const dragRef = useRef<{ id: string; x0: number; s0: number; dur: number; dH: number; moved: boolean } | null>(null)
   const [draft, setDraft] = useState<{ id: string; dH: number } | null>(null)
   const [turnoF, setTurnoF] = useState<'Todos' | 'D' | 'N'>('Todos')
+  const [lineaF, setLineaF] = useState('Todas')
 
   const reloadTareas = () => {
     if (!id) return Promise.resolve()
@@ -85,8 +87,31 @@ export function CuadrillasPage() {
     return () => window.removeEventListener('resize', f)
   }, [])
 
-  const { crews, base, totalDias, hourW, totalConf, histo, peakHisto, totalHH, choquePers, espPeak } = useMemo(() => {
+  const lineas = useMemo(() => [...new Set(tareas.map(lineaOf).filter(Boolean))].sort(), [tareas])
+  // Personal pico (técnicos en paralelo) y HH por LÍNEA — responde "cuánta gente
+  // necesito para L1 y para L2". Ignora el filtro de línea (siempre muestra todas).
+  const personalPorLinea = useMemo(() => {
+    const fch = (t: Tarea) => ({ s: new Date(t.fecha_inicio_prog!).getTime(), e: new Date(t.fecha_fin_prog!).getTime() })
     const dated = tareas.filter((t) => t.fecha_inicio_prog && t.fecha_fin_prog && (turnoF === 'Todos' || turnoOf(t) === turnoF))
+    if (!dated.length || !lineas.length) return []
+    const base = Math.min(...dated.map((t) => fch(t).s)), maxE = Math.max(...dated.map((t) => fch(t).e))
+    const horas = Math.max(1, Math.ceil((maxE - base) / H))
+    return lineas.map((ln) => {
+      const ts = dated.filter((t) => lineaOf(t) === ln)
+      const arr = new Array(horas).fill(0)
+      let hh = 0
+      for (const t of ts) {
+        const tec = tecOf(t)
+        hh += tec * Number(t.duracion_estimada_horas ?? 0)
+        for (const tr of (tieneEspera(t) ? tramosTrabajo(t) : [fch(t)]))
+          for (let h = Math.max(0, Math.floor((tr.s - base) / H)); h < Math.min(horas, Math.ceil((tr.e - base) / H)); h++) arr[h] += tec
+      }
+      return { linea: ln, pico: Math.max(0, ...arr), hh: Math.round(hh), tareas: ts.length }
+    })
+  }, [tareas, turnoF, lineas])
+
+  const { crews, base, totalDias, hourW, totalConf, histo, peakHisto, totalHH, choquePers, espPeak } = useMemo(() => {
+    const dated = tareas.filter((t) => t.fecha_inicio_prog && t.fecha_fin_prog && (turnoF === 'Todos' || turnoOf(t) === turnoF) && (lineaF === 'Todas' || lineaOf(t) === lineaF))
     const fch = (t: Tarea) => ({ s: new Date(t.fecha_inicio_prog!).getTime(), e: new Date(t.fecha_fin_prog!).getTime() })
     const allS = dated.map((t) => fch(t).s), allE = dated.map((t) => fch(t).e)
     const minS = allS.length ? Math.min(...allS) : Date.now()
@@ -155,7 +180,7 @@ export function CuadrillasPage() {
     // S2 — choques de PERSONA (mismo técnico nominado en dos tareas solapadas)
     const choquePers = choquesPersona(dated).ids
     return { crews, base, totalDias, hourW, totalConf, histo, peakHisto: Math.max(1, ...histo), totalHH, choquePers, espPeak }
-  }, [tareas, vw, turnoF])
+  }, [tareas, vw, turnoF, lineaF])
 
   const timelineW = totalDias * 24 * hourW
   const x = (ms: number) => ((ms - base) / H) * hourW
@@ -238,6 +263,23 @@ export function CuadrillasPage() {
   return (
     <div className="grid gap-4">
       <PuenteGruaPanel tareas={tareas} opDia={gruaOps.D} opNoche={gruaOps.N} onRename={renombrarOpGrua} />
+      {personalPorLinea.length > 0 && (
+        <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <h3 className="mb-2 text-sm font-semibold text-slate-700">👷 Personal necesario por línea {turnoF !== 'Todos' && <span className="text-xs font-normal text-indigo-600">(turno {turnoF === 'D' ? 'Día' : 'Noche'})</span>}</h3>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {personalPorLinea.map((l) => (
+              <div key={l.linea} className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                <span className="text-sm font-semibold text-slate-700">{l.linea}</span>
+                <div className="flex items-center gap-3 text-xs">
+                  <span title="Técnicos máximos trabajando a la vez (lo que debes movilizar)"><b className="text-base text-amber-600">{l.pico}</b> téc pico</span>
+                  <span className="text-slate-400">{l.hh.toLocaleString()} HH · {l.tareas} act</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-1 text-[10px] text-slate-400">«Téc pico» = máximo de técnicos trabajando en paralelo en esa línea (la dotación que necesitas movilizar). HH = horas-hombre totales.</p>
+        </div>
+      )}
       <div className="rounded-xl border border-slate-200 bg-white">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
         <h3 className="text-sm font-semibold text-slate-700">Distribución por cuadrilla · {crews.length} grupos</h3>
@@ -245,6 +287,14 @@ export function CuadrillasPage() {
           <div className="flex overflow-hidden rounded-md border border-slate-200" title="Filtra por turno (Día 07–22 / Noche 19–10)">
             {(['Todos', 'D', 'N'] as const).map((tt) => <button key={tt} onClick={() => setTurnoF(tt)} className={`px-2 py-1 ${turnoF === tt ? 'bg-indigo-500 text-white' : 'bg-white text-slate-500'}`}>{tt === 'D' ? '☀ Día' : tt === 'N' ? '🌙 Noche' : 'Turno'}</button>)}
           </div>
+          {lineas.length > 0 && (
+            <label className="flex items-center gap-1" title="Filtra las cuadrillas por línea">Línea:
+              <select value={lineaF} onChange={(e) => setLineaF(e.target.value)} className="rounded border border-slate-200 px-1 py-1">
+                <option value="Todas">Todas</option>
+                {lineas.map((l) => <option key={l} value={l}>{l}</option>)}
+              </select>
+            </label>
+          )}
           <span className={totalConf ? 'font-semibold text-red-600' : 'text-emerald-600'}>{totalConf ? `${totalConf} choque cuadrilla` : 'sin choque grupo'}</span>
           {choquePers.size > 0 && <span className="rounded bg-orange-100 px-1.5 py-0.5 font-semibold text-orange-700" title="El mismo técnico nominado quedó en dos tareas a la vez">⛔ {choquePers.size} choque persona</span>}
           <span className="text-slate-400">Arrastra una barra para mover · clic para reasignar</span>

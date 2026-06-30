@@ -12,7 +12,7 @@ const H = 3600000
 const DAY = 86400000
 const ROW = 32
 const HEAD = 46
-const LEFT = 756
+const LEFT = 824
 
 const COLOR: Record<TaskStatus, string> = {
   Por_Hacer: '#64748b', En_Progreso: '#2563eb', En_Revision: '#7c3aed',
@@ -30,6 +30,7 @@ const tecOf = (t: Tarea) => (t.especificaciones_tecnicas?.tec as number) ?? ''
 const wbsOf = (t: Tarea) => (t.especificaciones_tecnicas?.wbs as string) || ''
 const discOf = (t: Tarea) => (t.especificaciones_tecnicas?.disciplina as string) || discDe(`${t.nombre} ${sysOf(t)}`)
 const pad = (n: number) => String(n).padStart(2, '0')
+const toInput = (s?: string | null) => { if (!s) return ''; const d = new Date(s); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}` }
 
 export function GanttPage() {
   const { id } = useParams<{ id: string }>()
@@ -318,6 +319,16 @@ export function GanttPage() {
     setTareas((ts) => ts.map((x) => (x.id === t.id ? { ...x, especificaciones_tecnicas: next } : x)))
     updateTareaEspec(t.id, next).catch((e) => setError(String(e)))
   }
+  function editarFechaG(t: Tarea, which: 'inicio' | 'fin', v: string) {
+    if (!v) return
+    const iso = new Date(v).toISOString()
+    const s = which === 'inicio' ? new Date(v).getTime() : t.fecha_inicio_prog ? new Date(t.fecha_inicio_prog).getTime() : NaN
+    const e = which === 'fin' ? new Date(v).getTime() : t.fecha_fin_prog ? new Date(t.fecha_fin_prog).getTime() : NaN
+    if (!Number.isFinite(s) || !Number.isFinite(e)) return
+    if (e <= s) { setError('La fecha de fin debe ser posterior al inicio.'); return }
+    const dur = Math.round(((e - s) / H) * 10) / 10
+    editar(t.id, which === 'inicio' ? { fecha_inicio_prog: iso, duracion_estimada_horas: dur } : { fecha_fin_prog: iso, duracion_estimada_horas: dur })
+  }
   function editarHrs(t: Tarea, v: number) {
     // En un Gantt, cambiar las horas debe redimensionar la barra (fin = inicio + horas).
     const ini = t.fecha_inicio_prog ? new Date(t.fecha_inicio_prog).getTime() : null
@@ -414,7 +425,7 @@ export function GanttPage() {
           {/* HEADER */}
           <div className="sticky top-0 z-30 flex bg-white" style={{ height: HEAD }}>
             <div className="sticky left-0 z-40 flex shrink-0 items-stretch border-b border-r border-slate-200 bg-slate-50 text-[10px] font-semibold uppercase tracking-wide text-slate-400" style={{ width: LEFT }}>
-              <Cell w={32}>#</Cell><Cell w={240} l>Actividad</Cell><Cell w={52}>WBS</Cell><Cell w={86}>Disciplina</Cell><Cell w={42}>Grp</Cell><Cell w={30}>Téc</Cell><Cell w={32}>Hrs</Cell><Cell w={82}>Comienzo</Cell><Cell w={82}>Fin</Cell><Cell w={44}>Pred</Cell><Cell w={34}>%</Cell>
+              <Cell w={32}>#</Cell><Cell w={240} l>Actividad</Cell><Cell w={52}>WBS</Cell><Cell w={86}>Disciplina</Cell><Cell w={42}>Grp</Cell><Cell w={30}>Téc</Cell><Cell w={32}>Hrs</Cell><Cell w={116}>Comienzo</Cell><Cell w={116}>Fin</Cell><Cell w={44}>Pred</Cell><Cell w={34}>%</Cell>
             </div>
             <div className="relative shrink-0 border-b border-slate-200" style={{ width: timelineW }}>
               {dias.map(({ i, d }) => (
@@ -504,8 +515,8 @@ export function GanttPage() {
                     <Cell w={42}><span className="rounded px-1 text-white" style={{ background: colorGrupo(sysOf(t)) }}>{grpOf(t)}</span></Cell>
                     <Cell w={30}><input key={`tec-${tecOf(t)}`} type="number" min={0} defaultValue={tecOf(t)} onBlur={(e) => { const v = Number(e.target.value); if (Number.isFinite(v) && v >= 0 && v !== tecOf(t)) editarTec(t, v) }} className="w-full min-w-0 rounded border border-transparent bg-transparent text-center [appearance:textfield] hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" /></Cell>
                     <Cell w={32}><input key={`h-${t.duracion_estimada_horas}`} type="number" min={0} step={0.5} defaultValue={Number(t.duracion_estimada_horas ?? 0)} onBlur={(e) => { const v = Number(e.target.value); if (Number.isFinite(v) && v > 0 && v !== Number(t.duracion_estimada_horas)) editarHrs(t, v) }} className="w-full min-w-0 rounded border border-transparent bg-transparent text-center [appearance:textfield] hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" /></Cell>
-                    <Cell w={82}>{fmt(fch.s)}</Cell>
-                    <Cell w={82}>{fmt(fch.e)}</Cell>
+                    <Cell w={116}><input key={`fi-${t.fecha_inicio_prog ?? ''}`} type="datetime-local" defaultValue={toInput(t.fecha_inicio_prog)} onBlur={(e) => editarFechaG(t, 'inicio', e.target.value)} className="w-full min-w-0 rounded border border-transparent bg-transparent text-[10px] hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none" /></Cell>
+                    <Cell w={116}><input key={`ff-${t.fecha_fin_prog ?? ''}`} type="datetime-local" defaultValue={toInput(t.fecha_fin_prog)} onBlur={(e) => editarFechaG(t, 'fin', e.target.value)} className="w-full min-w-0 rounded border border-transparent bg-transparent text-[10px] hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none" /></Cell>
                     <Cell w={44}>{t.bloqueado_por ? `#${secById[t.bloqueado_por]}` : ''}</Cell>
                     <Cell w={34}><input key={`p-${t.porcentaje_completado}`} type="number" min={0} max={100} step={5} defaultValue={t.porcentaje_completado} onBlur={(e) => { const v = Math.min(100, Math.max(0, Number(e.target.value))); if (Number.isFinite(v) && v !== t.porcentaje_completado) editar(t.id, { porcentaje_completado: v }) }} className="w-full min-w-0 rounded border border-transparent bg-transparent text-center [appearance:textfield] hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" /></Cell>
                   </div>

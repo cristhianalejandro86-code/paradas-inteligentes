@@ -4,6 +4,7 @@
 > Estado: ⬜ pendiente · 🔄 en curso · ✅ hecho (con evidencia + commit). ⭐ = coincidencia entre ≥2 auditores (señal fuerte).
 
 ## ✅ Hecho
+- ✅ **R12 — Fix choque-de-cuadrilla falso durante la espera** (Cuadrillas): la detección usaba el span completo; ahora compara tramos de TRABAJO REAL (`solapanTrabajo` reusa `tramosTrabajo`), consistente con el histograma. C2: 77→65 tareas en choque (12 falsos positivos; 24 pares). Inc 50. (Programador/edge case — convergente con "consistencia entre vistas")
 - ✅ **R11 — Fix robustez % completado** (Lista): `value/onChange` → `defaultValue + key + onBlur` (con guard de vacío). Elimina el flood de updates por tecla + la race que dejaba un valor intermedio, y el borrar-manda-0. Inc 49. (Robustez #1)
 - ✅ **R10 — Deshacer en edición masiva**: snapshot de las especificaciones previas antes de cada bulk + botón "↶ Deshacer (N tarea(s) · acción)" que revierte y persiste. Inc 48. (Usabilidad #3)
 - ✅ **R9 — Preparación ponderada por criticidad**: indicador "🔴 Ruta crítica: X/Y listas — prioriza estas" en el header + marca 🔴 en las filas críticas de la lista (cruza readiness con la ruta crítica). Inc 47. (Operativo #5)
@@ -19,8 +20,8 @@
 - ✅ Verificado falso positivo: `diasParaInicio` NaN ya está guardado por `isFinite` (Robustez #3) — no requería cambio.
 
 ## Alta prioridad (próximas rondas, por valor×esfuerzo)
-- 🔁 **R12 → RE-AUDITAR (refill)**: los ítems de alto valor sembrados están mayormente hechos; lanzar fan-out de auditores para hallazgos frescos antes de seguir.
-- ⬜ **Capacidad de equipos compartidos en Preparación** (pico de grúas/soldadoras vs disponible). A/M. (Recursos #3)
+- ⛔ **BLOQUEADOS por datos vacíos en C2** (verificado R12 con SQL): `recursos`=0/158 → demanda-vs-inventario, equipos-compartidos-en-Preparación, alquiler-vs-compra, lead-time NO demostrables; `bloqueado_por`=0/158 → critical-chain y multi-predecesora sin base real; roster≈vacío → personal-disponible-vs-demanda. Requieren cargar datos primero, no son hueco de código.
+- ⬜ **Resolver choques tramo-aware** (seguimiento de R12): `resolverCuadrillas` usa horas de trabajo contiguas (modelo distinto, no bugueado), pero conviene que respete esperas al re-secuenciar. M/M.
 - ⬜ **Personal disponible vs demanda**: déficit de dotación. Bloqueado: roster casi vacío en C2 (cargar roster primero).
 - ⬜ **Demanda (consolidado) vs inventario real** (`tabla recurso`): déficit = requerido − disponible. A/M. (Recursos #2)
 - ⬜ **Demanda (consolidado) vs inventario real** (`tabla recurso`/getRecursos): déficit = requerido − disponible. A/M. (Recursos #2)

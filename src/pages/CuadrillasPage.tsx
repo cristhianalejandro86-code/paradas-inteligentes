@@ -5,6 +5,7 @@ import { balancearCuadrillas, resolverCuadrillas, choquesPersona, especialidadRe
 import type { Tecnico } from '../lib/resourceLeveling'
 import { colorGrupo } from '../lib/palette'
 import { useRefreshOnFocus } from '../lib/useRefreshOnFocus'
+import { PuenteGruaPanel } from '../components/PuenteGruaPanel'
 import type { Parada, Tarea } from '../types'
 
 type CrewCfg = { cap?: number; turno?: string; tecnicos?: Tecnico[] }
@@ -63,6 +64,15 @@ export function CuadrillasPage() {
   function setRoster(crew: string, tecnicos: Tecnico[]) {
     // El roster define también la capacidad (cuántos frentes en paralelo).
     const next = { ...config, [crew]: { ...config[crew], tecnicos, cap: tecnicos.length || config[crew]?.cap } }
+    setConfig(next)
+    if (id) setCuadrillasConfig(id, next).catch((e) => setError(String(e)))
+  }
+  // Operadores del puente grúa (1 por turno), guardados en claves reservadas del
+  // config — no se muestran como cuadrillas porque las cuadrillas salen de task.grupo.
+  const gruaOps = { D: config['__gruaDia']?.tecnicos?.[0]?.nombre ?? '', N: config['__gruaNoche']?.tecnicos?.[0]?.nombre ?? '' }
+  function renombrarOpGrua(turno: 'D' | 'N', nombre: string) {
+    const key = turno === 'D' ? '__gruaDia' : '__gruaNoche'
+    const next = { ...config, [key]: { tecnicos: nombre ? [{ id: key, nombre, rol: 'Operador grúa' }] : [] } }
     setConfig(next)
     if (id) setCuadrillasConfig(id, next).catch((e) => setError(String(e)))
   }
@@ -222,7 +232,9 @@ export function CuadrillasPage() {
   const crewList = [...new Set(tareas.map(grpOf))].filter((g) => g !== '—').sort((a, b) => gnum(a) - gnum(b))
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white">
+    <div className="grid gap-4">
+      <PuenteGruaPanel tareas={tareas} opDia={gruaOps.D} opNoche={gruaOps.N} onRename={renombrarOpGrua} />
+      <div className="rounded-xl border border-slate-200 bg-white">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
         <h3 className="text-sm font-semibold text-slate-700">Distribución por cuadrilla · {crews.length} grupos</h3>
         <div className="flex flex-wrap items-center gap-3 text-xs">
@@ -371,6 +383,7 @@ export function CuadrillasPage() {
           onSave={(tecs) => { setRoster(rosterCrew, tecs); setRosterCrew(null) }}
         />
       )}
+      </div>
     </div>
   )
 }

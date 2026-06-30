@@ -36,4 +36,23 @@
 
 | R15 | **Balance de los 2 turnos en Cuadrillas** (Día vs Noche): objetivo central de la parada, pero ninguna vista mostraba el reparto (solo filtro D/N). Panel "🕑 Balance de los 2 turnos" con barras HH/actividades/% por turno, respeta filtro de línea + aviso cuando la noche <25% | C2 real: Día 2560 HH/86% vs Noche 415 HH/14% (= BD); LINEA 1 1263/81% vs 292/19% (= BD); aviso de noche infrautilizada visible; build EXIT=0, sin ErrorBoundary, sin tocar datos | Inc 53 |
 
-Próximo (R16): backlog operativo demostrable **agotado**. Lo que queda está BLOQUEADO por datos vacíos en C2 (recursos/roster/dependencias — necesitan carga, no código) o es robustez de valor bajo/riesgoso (rollback nivelación, resolver-choques tramo-aware [L], import colisión secuencia, targets táctiles). Llegamos al umbral de PARADA del prompt: si la próxima auditoría no halla un hueco operativo real y demostrable, **DETENER** y dejar el resumen ejecutivo (abajo).
+---
+
+## 🏁 RESUMEN EJECUTIVO — Loop multi-agente PRE-PARADA (DETENIDO en R15)
+
+**Veredicto:** el backlog operativo PRE-PARADA *demostrable con los datos reales de C2* quedó agotado tras 15 mejoras. El loop se detiene por su propia regla de PARADA (no quedan huecos operativos relevantes que se puedan implementar Y verificar con evidencia) — antes que caer en churn.
+
+**Qué se mejoró (15 incrementos, Inc 39→53, todos con build limpio + verificación en preview + round-trip contra BD, sin tocar seguridad):**
+- **Planificación / ruta crítica:** plan vs ventana comprometida (R2), holgura LIBRE + tareas flexibles (R3), filtro de línea en ruta crítica = cada línea su propia ruta (R8), readiness ponderada por criticidad (R9), factibilidad de cuadrilla en la vista del jefe (R13).
+- **Recursos / Compras:** export a Excel para Compras (R1), lead-time "qué pedir YA" (R4).
+- **Cuadrillas / 2 turnos:** fix de choque-de-cuadrilla falso durante esperas (R12, 77→65), balance Día/Noche con aviso de turno infrautilizado (R15, 86/14).
+- **Edición a escala:** edición masiva de permiso/recursos/cuadrilla (R5, R6), multi-filtro para aislar lotes (R7), deshacer del bulk (R10).
+- **Integridad de datos:** blindaje de recurso malformado (R1), fix del input % que floodeaba (R11), guard de fechas inválidas fin≤inicio (R14).
+
+**Hallazgos de valor encontrados auditando los datos reales:** 2 tareas con cronograma corrupto (#98, #100); 65 tareas con choque de cuadrilla (plan no ejecutable como está); turno noche al 14% (capacidad ociosa que alarga la parada); plan +26h sobre la ventana de 115h. Todos ahora VISIBLES para el planificador.
+
+**Lo que queda y por qué NO se hizo (honesto):**
+- **BLOQUEADO por datos vacíos en C2** (verificado por SQL): `recursos`=0/158, `bloqueado_por`(dependencias)=0/158, roster≈vacío. ⇒ demanda-vs-inventario, equipos-compartidos-en-Preparación, alquiler-vs-compra, critical-chain, personal-vs-demanda, multi-predecesora **no son huecos de código sino de carga de datos**. Cárgalos y se vuelven implementables.
+- **Robustez de valor bajo o difícil de evidenciar:** rollback en nivelación masiva (real, pero sin forma limpia de probarlo en preview), resolver-choques tramo-aware (L, riesgoso), import colisión de secuencia, targets táctiles tablet.
+
+**Para reanudar con valor:** carga recursos/herramientas por tarea (la RecursosModal de R4 ya existe) y el roster por cuadrilla; eso desbloquea la familia de mejoras de Compras/Logística y dotación. O pide explícitamente los ítems de robustez aunque su evidencia sea por código y no por screenshot.

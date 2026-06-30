@@ -4,6 +4,7 @@
 > Estado: ⬜ pendiente · 🔄 en curso · ✅ hecho (con evidencia + commit). ⭐ = coincidencia entre ≥2 auditores (señal fuerte).
 
 ## ✅ Hecho
+- ✅ **R13 — Factibilidad de cuadrilla en Ruta crítica + 1 sola fuente de verdad**: `choquesCuadrilla`/`solapanTrabajo` extraídos a resourceLeveling.ts; Cuadrillas los consume (sin loop duplicado) y la vista de decisión del jefe muestra banner "N choques — plan no ejecutable" (o verde si limpio), respetando el filtro de línea. C2: 65 (toda) / 31 (L1), coinciden con BD. Inc 51. (Consistencia entre vistas + dashboard ejecutivo)
 - ✅ **R12 — Fix choque-de-cuadrilla falso durante la espera** (Cuadrillas): la detección usaba el span completo; ahora compara tramos de TRABAJO REAL (`solapanTrabajo` reusa `tramosTrabajo`), consistente con el histograma. C2: 77→65 tareas en choque (12 falsos positivos; 24 pares). Inc 50. (Programador/edge case — convergente con "consistencia entre vistas")
 - ✅ **R11 — Fix robustez % completado** (Lista): `value/onChange` → `defaultValue + key + onBlur` (con guard de vacío). Elimina el flood de updates por tecla + la race que dejaba un valor intermedio, y el borrar-manda-0. Inc 49. (Robustez #1)
 - ✅ **R10 — Deshacer en edición masiva**: snapshot de las especificaciones previas antes de cada bulk + botón "↶ Deshacer (N tarea(s) · acción)" que revierte y persiste. Inc 48. (Usabilidad #3)

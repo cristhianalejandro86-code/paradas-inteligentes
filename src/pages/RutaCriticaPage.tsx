@@ -6,11 +6,14 @@ import { rutaCritica } from '../lib/criticalPath'
 import { CurvaS } from '../components/CurvaS'
 import type { Tarea } from '../types'
 
+const lineaOf = (t: Tarea) => String(t.especificaciones_tecnicas?.linea ?? '').trim()
+
 export function RutaCriticaPage() {
   const { id } = useParams<{ id: string }>()
   const [tareas, setTareas] = useState<Tarea[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [lineaF, setLineaF] = useState('Todas')
 
   const reloadTareas = () => id && getTareasByParada(id).then(setTareas).catch((e) => setError(e.message))
   useEffect(() => {
@@ -19,12 +22,15 @@ export function RutaCriticaPage() {
   }, [id])
   useRefreshOnFocus(reloadTareas)
 
+  const lineas = useMemo(() => [...new Set(tareas.map(lineaOf).filter(Boolean))].sort(), [tareas])
+  const scoped = useMemo(() => (lineaF === 'Todas' ? tareas : tareas.filter((t) => lineaOf(t) === lineaF)), [tareas, lineaF])
+
   const r = useMemo(() => {
-    const { criticas, holgura, holguraLibre } = rutaCritica(tareas)
-    const total = tareas.length
-    const completadas = tareas.filter((t) => t.status === 'Completada').length
+    const { criticas, holgura, holguraLibre } = rutaCritica(scoped)
+    const total = scoped.length
+    const completadas = scoped.filter((t) => t.status === 'Completada').length
     const avance = total ? Math.round((completadas / total) * 100) : 0
-    const crit = tareas
+    const crit = scoped
       .filter((t) => criticas.has(t.id))
       .sort((a, b) => {
         const sa = a.fecha_inicio_prog ? new Date(a.fecha_inicio_prog).getTime() : (a.secuencia ?? 0)
@@ -33,25 +39,35 @@ export function RutaCriticaPage() {
       })
     const durCrit = crit.reduce((s, t) => s + Number(t.duracion_estimada_horas ?? 0), 0)
     // Tareas más FLEXIBLES: mayor holgura libre (se pueden posponer hoy sin empujar a nadie)
-    const flexibles = tareas
+    const flexibles = scoped
       .filter((t) => !criticas.has(t.id) && (holguraLibre[t.id] ?? 0) > 0)
       .sort((a, b) => (holguraLibre[b.id] ?? 0) - (holguraLibre[a.id] ?? 0))
       .slice(0, 5)
     return { criticas, holgura, holguraLibre, total, completadas, avance, crit, durCrit, flexibles }
-  }, [tareas])
+  }, [scoped])
 
   if (loading) return <p className="text-sm text-slate-400">Calculando ruta crítica…</p>
   if (error) return <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">Error: {error}</div>
 
   return (
     <div className="grid gap-6">
+      {lineas.length > 0 && (
+        <div className="flex items-center gap-2 text-xs">
+          <span className="font-medium text-slate-500">Ruta crítica de:</span>
+          <select value={lineaF} onChange={(e) => setLineaF(e.target.value)} className="rounded border border-slate-300 px-2 py-1 text-sm">
+            <option value="Todas">Toda la parada</option>
+            {lineas.map((l) => <option key={l} value={l}>{l}</option>)}
+          </select>
+          <span className="text-slate-400">cada línea tiene su propia ruta crítica y holguras</span>
+        </div>
+      )}
       <section className="grid gap-4 sm:grid-cols-3">
         <Kpi label="Avance general" value={`${r.avance}%`} sub={`${r.completadas}/${r.total} tareas`} />
         <Kpi label="Tareas críticas" value={String(r.crit.length)} sub="holgura ≈ 0" accent="text-red-600" />
         <Kpi label="Duración ruta crítica" value={`${r.durCrit}h`} sub="suma de críticas" />
       </section>
 
-      <CurvaS tareas={tareas} />
+      <CurvaS tareas={scoped} />
 
       <section>
         <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-slate-500">

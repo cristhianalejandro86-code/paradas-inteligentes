@@ -20,4 +20,6 @@
 
 | R7 | **Multi-filtro** en Preparación: dropdowns Sistema + Cuadrilla(G1..G18) + "Falta" (sin cuadrilla/recursos/permiso), combinables con Línea y Solo pendientes (aplican a la lista, no al gauge) → aísla un lote para la edición masiva | C2 real: 158 → 12 al filtrar cuadrilla G3 → 12 con "sin permiso"; screenshot con filtros, build limpio, sin errores de consola, filtros read-only (sin riesgo) | Inc 45 |
 
-Próximo (R8): **Personal disponible vs demanda por línea/turno** (A/M) — alertar déficit de dotación (pico de demanda > roster cargado).
+| R8 | **Filtro de línea en Ruta crítica**: KPIs (avance/críticas/duración), ruta crítica, holguras, tareas flexibles y Curva S todo scopeado a la línea elegida (cada línea = su propia ruta crítica) | C2 real: KPI total 158 → 80 (L1) → 76 (L2); screenshot L1 con su crítica y curva; build limpio, sin errores de consola, filtro read-only. Pivot desde "déficit de dotación" (roster casi vacío, no demostrable) | Inc 46 |
+
+Próximo (R9): **Preparación ponderada por criticidad** (M/M) — % de tareas CRÍTICAS listas (cruzar readiness con ruta crítica).

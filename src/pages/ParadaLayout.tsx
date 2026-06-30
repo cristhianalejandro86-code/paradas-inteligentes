@@ -41,17 +41,19 @@ export function ParadaLayout() {
     <>
       <Link
         to="/"
-        className="mb-3 inline-block text-sm text-slate-400 hover:text-slate-600"
+        className="group mb-3 inline-flex items-center gap-1 text-sm text-slate-400 transition-colors hover:text-slate-700"
       >
-        ← Todas las paradas
+        <span className="transition-transform group-hover:-translate-x-0.5">←</span> Todas las paradas
       </Link>
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">{parada.nombre}</h2>
-          <p className="text-sm text-slate-500">
-            {parada.equipo_afectado} · {parada.fecha_inicio_planeada} →{' '}
-            {parada.fecha_fin_planeada}
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900">{parada.nombre}</h2>
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-slate-500">
+            {parada.equipo_afectado && <span>{parada.equipo_afectado}</span>}
+            <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-0.5 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
+              🗓 {fmtFecha(parada.fecha_inicio_planeada)} → {fmtFecha(parada.fecha_fin_planeada)}
+            </span>
           </p>
         </div>
         <ParadaBadge status={parada.status} />
@@ -64,10 +66,10 @@ export function ParadaLayout() {
             to={t.to}
             end={t.end}
             className={({ isActive }) =>
-              `-mb-px whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+              `-mb-px whitespace-nowrap rounded-t-lg border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
                 isActive
-                  ? 'border-amber-500 text-amber-600'
-                  : 'border-transparent text-slate-500 hover:text-slate-700'
+                  ? 'border-amber-500 bg-amber-50/70 text-amber-700'
+                  : 'border-transparent text-slate-500 hover:bg-slate-100/70 hover:text-slate-700'
               }`
             }
           >
@@ -81,19 +83,22 @@ export function ParadaLayout() {
   )
 }
 
+const fmtFecha = (s?: string | null) =>
+  s ? new Date(`${s}T00:00:00`).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
+
 function ParadaBadge({ status }: { status: ParadaStatus }) {
-  const map: Record<ParadaStatus, string> = {
-    Planificada: 'bg-slate-100 text-slate-600',
-    Aprobada: 'bg-blue-50 text-blue-700',
-    Activa: 'bg-emerald-50 text-emerald-700',
-    Suspendida: 'bg-amber-50 text-amber-700',
-    Cerrada: 'bg-slate-100 text-slate-500',
-    Cancelada: 'bg-red-50 text-red-700',
+  const map: Record<ParadaStatus, { cls: string; dot: string }> = {
+    Planificada: { cls: 'bg-slate-100 text-slate-600 ring-slate-200', dot: 'bg-slate-400' },
+    Aprobada: { cls: 'bg-blue-50 text-blue-700 ring-blue-200', dot: 'bg-blue-500' },
+    Activa: { cls: 'bg-emerald-50 text-emerald-700 ring-emerald-200', dot: 'bg-emerald-500' },
+    Suspendida: { cls: 'bg-amber-50 text-amber-700 ring-amber-200', dot: 'bg-amber-500' },
+    Cerrada: { cls: 'bg-slate-100 text-slate-500 ring-slate-200', dot: 'bg-slate-400' },
+    Cancelada: { cls: 'bg-red-50 text-red-700 ring-red-200', dot: 'bg-red-500' },
   }
+  const s = map[status]
   return (
-    <span
-      className={`shrink-0 rounded-full px-3 py-1 text-sm font-medium ${map[status]}`}
-    >
+    <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium ring-1 ${s.cls}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
       {status}
     </span>
   )

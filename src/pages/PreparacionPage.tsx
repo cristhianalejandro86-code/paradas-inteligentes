@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useOutletContext, useParams } from 'react-router-dom'
-import { getTareasByParada, updateTareaEspec, getCuadrillasConfig, getPrevios, setPrevios } from '../lib/api'
+import { getTareasByParada, updateTareaEspec, getCuadrillasConfig } from '../lib/api'
 import type { Previo } from '../lib/api'
 import { exportarPreparacion } from '../lib/excel'
 import { rutaCritica } from '../lib/criticalPath'
@@ -38,6 +38,25 @@ const permisoDe = (t: Tarea) => !!esp(t).permiso
 const conCuadrilla = (t: Tarea) => { const g = grpOf(t); const a = esp(t).asignados as unknown[]; return (!!g && g !== '—') || (Array.isArray(a) && a.length > 0) }
 // Especialidad legible de un técnico (oficial mecánico, soldador 3G/4G, andamiero…).
 const espTec = (u: Tecnico) => u.especialidad || u.cargo || (u.rol ? String(u.rol).replace(/_/g, ' ') : '') || ''
+// Previos por ACTIVIDAD (lo que hay que preparar antes de empezar ESA tarea: separar
+// sus pernos, verificar sus medidas, llevar su aceite…). Saneado: un registro
+// malformado no debe romper el tablero.
+const previosDe = (t: Tarea): Previo[] => {
+  const raw = esp(t).previos
+  if (!Array.isArray(raw)) return []
+  return raw.map((p: Partial<Previo> | null) => ({
+    id: String(p?.id ?? ''),
+    texto: String(p?.texto ?? '').trim(),
+    estado: (p?.estado === 'hecho' || p?.estado === 'en_proceso' ? p.estado : 'pendiente') as Previo['estado'],
+  })).filter((p) => p.texto)
+}
+const avancePrevioDe = (t: Tarea) => {
+  const ps = previosDe(t)
+  if (!ps.length) return { has: false, pct: 0, hechos: 0, total: 0 }
+  const hechos = ps.filter((p) => p.estado === 'hecho').length
+  const proceso = ps.filter((p) => p.estado === 'en_proceso').length
+  return { has: true, pct: Math.round(((hechos + proceso * 0.5) / ps.length) * 100), hechos, total: ps.length }
+}
 const esTrabajo = (t: Tarea) => !esp(t).hito_inicio && Number(t.duracion_estimada_horas ?? 0) > 0
 // materiales listo = marcado "no requiere" o todos los ítems en estado listo
 const matListo = (t: Tarea) => { const it = itemsDe(t); return matNA(t) || (it.length > 0 && it.every((i) => i.e === 'listo')) }
@@ -71,37 +90,12 @@ export function PreparacionPage() {
   const [grpF, setGrpF] = useState('Todos')
   const [faltaF, setFaltaF] = useState<'Todas' | 'cuadrilla' | 'recursos' | 'permiso'>('Todas')
   const [config, setConfig] = useState<Record<string, { tecnicos?: Tecnico[] }>>({})
-  const [previos, setPreviosState] = useState<Previo[]>([])
-  const [nuevoPrevio, setNuevoPrevio] = useState('')
+  const [editPrev, setEditPrev] = useState<Tarea | null>(null)
 
   const reload = () => id && getTareasByParada(id).then(setTareas).catch((e) => setError(e.message))
   useEffect(() => { if (!id) return; setLoading(true); getTareasByParada(id).then(setTareas).catch((e) => setError(e.message)).finally(() => setLoading(false)) }, [id])
   useEffect(() => { if (id) getCuadrillasConfig(id).then(setConfig).catch(() => {}) }, [id])
-  useEffect(() => { if (id) getPrevios(id).then(setPreviosState).catch(() => {}) }, [id])
   useRefreshOnFocus(reload)
-
-  // Previos de parada (checklist de preparación): se persiste la lista completa en cada
-  // cambio (optimista). estado: pendiente → en_proceso → hecho. Avance proporcional.
-  function guardarPrevios(next: Previo[]) {
-    setPreviosState(next)
-    if (id) setPrevios(id, next).catch((e) => setError(String(e)))
-  }
-  function addPrevio() {
-    const texto = nuevoPrevio.trim()
-    if (!texto) return
-    guardarPrevios([...previos, { id: crypto.randomUUID(), texto, estado: 'pendiente' }])
-    setNuevoPrevio('')
-  }
-  const CICLO: Record<Previo['estado'], Previo['estado']> = { pendiente: 'en_proceso', en_proceso: 'hecho', hecho: 'pendiente' }
-  const ciclarPrevio = (pid: string) => guardarPrevios(previos.map((p) => (p.id === pid ? { ...p, estado: CICLO[p.estado] } : p)))
-  const editarPrevio = (pid: string, texto: string) => guardarPrevios(previos.map((p) => (p.id === pid ? { ...p, texto } : p)))
-  const borrarPrevio = (pid: string) => guardarPrevios(previos.filter((p) => p.id !== pid))
-  const avancePrevios = useMemo(() => {
-    if (!previos.length) return { pct: 0, hechos: 0, proceso: 0, total: 0 }
-    const hechos = previos.filter((p) => p.estado === 'hecho').length
-    const proceso = previos.filter((p) => p.estado === 'en_proceso').length
-    return { pct: Math.round(((hechos + proceso * 0.5) / previos.length) * 100), hechos, proceso, total: previos.length }
-  }, [previos])
   // Técnicos de una actividad: los nominados en la tarea (asignados) o, si no, el
   // roster de su cuadrilla (definido en la vista Cuadrillas). Trae su especialidad.
   const tecnicosDe = (t: Tarea): Tecnico[] => {
@@ -218,38 +212,6 @@ export function PreparacionPage() {
         </div>
       </div>
 
-      {/* PREVIOS de parada (checklist de preparación) */}
-      <div className="rounded-xl border border-slate-200 bg-white p-4">
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold text-slate-700">✅ Previos de parada <span className="font-normal text-slate-400">— preparación a hacer ANTES de arrancar</span></h3>
-          <div className="flex items-center gap-2">
-            <div className="h-2 w-40 overflow-hidden rounded-full bg-slate-100">
-              <div className={`h-full ${avancePrevios.pct >= 100 ? 'bg-emerald-500' : avancePrevios.pct >= 50 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${avancePrevios.pct}%` }} />
-            </div>
-            <span className={`text-sm font-bold ${avancePrevios.pct >= 100 ? 'text-emerald-600' : 'text-slate-700'}`}>{avancePrevios.pct}%</span>
-          </div>
-        </div>
-        {previos.length > 0 && <p className="mb-2 text-[11px] text-slate-400">{avancePrevios.hechos}/{avancePrevios.total} hechos{avancePrevios.proceso ? ` · ${avancePrevios.proceso} en proceso` : ''}</p>}
-        <div className="grid gap-1">
-          {previos.map((p) => {
-            const chip = p.estado === 'hecho' ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : p.estado === 'en_proceso' ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-slate-300 bg-white text-slate-400'
-            const icon = p.estado === 'hecho' ? '✅ hecho' : p.estado === 'en_proceso' ? '🔄 en proceso' : '⬜ pendiente'
-            return (
-              <div key={p.id} className="flex items-center gap-2">
-                <button onClick={() => ciclarPrevio(p.id)} title="Cambiar estado (pendiente → en proceso → hecho)" className={`w-28 shrink-0 rounded border px-2 py-0.5 text-[11px] font-medium ${chip}`}>{icon}</button>
-                <input defaultValue={p.texto} key={p.texto} onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== p.texto) editarPrevio(p.id, v) }} className={`flex-1 rounded border border-transparent bg-transparent px-1 py-0.5 text-sm hover:border-slate-200 focus:border-slate-300 focus:outline-none ${p.estado === 'hecho' ? 'text-slate-400 line-through' : 'text-slate-700'}`} />
-                <button onClick={() => borrarPrevio(p.id)} className="shrink-0 rounded px-1.5 text-slate-300 hover:bg-red-50 hover:text-red-600" title="Eliminar">✕</button>
-              </div>
-            )
-          })}
-          {previos.length === 0 && <p className="text-xs text-slate-400">Agrega los previos: separar pernos, llevar el aceite al punto, verificar medidas de tuberías, fabricar juntas, traer andamios…</p>}
-        </div>
-        <div className="mt-2 flex gap-2">
-          <input value={nuevoPrevio} onChange={(e) => setNuevoPrevio(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addPrevio()} placeholder="+ Agregar previo (ej. separar pernos de la brida X)…" className="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm" />
-          <button onClick={addPrevio} className="rounded-lg bg-slate-700 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-800">Agregar</button>
-        </div>
-      </div>
-
       {/* CONSOLIDADO de recursos necesarios */}
       <div className="rounded-xl border border-slate-200 bg-white p-4">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -309,7 +271,7 @@ export function PreparacionPage() {
             <thead className="sticky top-0 bg-slate-50 text-[10px] uppercase tracking-wide text-slate-400">
               <tr>
                 <th className="px-2 py-2"><input type="checkbox" title="Seleccionar todas (visibles)" checked={d.lista.length > 0 && d.lista.every((t) => sel.has(t.id))} onChange={(e) => setSel((s) => { const n = new Set(s); if (e.target.checked) d.lista.forEach((t) => n.add(t.id)); else d.lista.forEach((t) => n.delete(t.id)); return n })} className="accent-amber-500" /></th>
-                <th className="px-2 py-2 text-left">#</th><th className="px-2 py-2 text-left">Actividad</th><th className="px-2 py-2 text-center">Cuadrilla / Técnicos</th><th className="px-2 py-2 text-center">Recursos (herram./equipo/material)</th><th className="px-2 py-2 text-center">Permiso</th><th className="px-2 py-2 text-center">Estado</th>
+                <th className="px-2 py-2 text-left">#</th><th className="px-2 py-2 text-left">Actividad</th><th className="px-2 py-2 text-center">Cuadrilla / Técnicos</th><th className="px-2 py-2 text-center">Recursos (herram./equipo/material)</th><th className="px-2 py-2 text-center">Previos (separar pernos, medidas…)</th><th className="px-2 py-2 text-center">Permiso</th><th className="px-2 py-2 text-center">Estado</th>
               </tr>
             </thead>
             <tbody>
@@ -346,18 +308,73 @@ export function PreparacionPage() {
                         {matNA(t) ? '— no requiere' : n ? `🧰 ${n} ítem(s) · ${txt(me)}` : '➕ listar recursos'}
                       </button>
                     </td>
+                    <td className="px-2 py-1.5 text-center">
+                      {(() => {
+                        const a = avancePrevioDe(t)
+                        const cls = !a.has ? 'bg-slate-100 text-slate-400' : a.pct >= 100 ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                        return <button onClick={() => setEditPrev(t)} className={`rounded px-2 py-0.5 text-[11px] font-medium ${cls}`} title="Previos de esta actividad: separar sus pernos, verificar sus medidas, llevar su aceite…">{a.has ? `✅ ${a.hechos}/${a.total} · ${a.pct}%` : '➕ previos'}</button>
+                      })()}
+                    </td>
                     <td className="px-2 py-1.5 text-center"><button onClick={() => guardar(t, { permiso: !permisoDe(t) })} className={`rounded px-2 py-0.5 text-[11px] font-medium ${permisoDe(t) ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{permisoDe(t) ? '✓ OK' : '✗ falta'}</button></td>
                     <td className="px-2 py-1.5 text-center">{ok ? <span className="rounded-full bg-emerald-500 px-2 py-0.5 text-[11px] font-semibold text-white">LISTA</span> : <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-500">pendiente</span>}</td>
                   </tr>
                 )
               })}
-              {d.lista.length === 0 && <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-emerald-600">🎉 Todo listo para arrancar en este filtro.</td></tr>}
+              {d.lista.length === 0 && <tr><td colSpan={8} className="px-4 py-10 text-center text-sm text-emerald-600">🎉 Todo listo para arrancar en este filtro.</td></tr>}
             </tbody>
           </table>
         </div>
       </div>
 
       {editRec && <RecursosModal tarea={editRec} onClose={() => setEditRec(null)} onSave={(items, na) => { guardar(editRec, { recursos: items, matNA: na }); setEditRec(null) }} />}
+      {editPrev && <PreviosModal tarea={editPrev} onClose={() => setEditPrev(null)} onSave={(prev) => { guardar(editPrev, { previos: prev }); setEditPrev(null) }} />}
+    </div>
+  )
+}
+
+function PreviosModal({ tarea, onClose, onSave }: { tarea: Tarea; onClose: () => void; onSave: (previos: Previo[]) => void }) {
+  const [items, setItems] = useState<Previo[]>(previosDe(tarea).map((p) => ({ ...p, id: p.id || crypto.randomUUID() })))
+  const [nuevo, setNuevo] = useState('')
+  const CICLO: Record<Previo['estado'], Previo['estado']> = { pendiente: 'en_proceso', en_proceso: 'hecho', hecho: 'pendiente' }
+  const add = () => { const t = nuevo.trim(); if (!t) return; setItems((x) => [...x, { id: crypto.randomUUID(), texto: t, estado: 'pendiente' }]); setNuevo('') }
+  const cycle = (pid: string) => setItems((x) => x.map((p) => (p.id === pid ? { ...p, estado: CICLO[p.estado] } : p)))
+  const edit = (pid: string, texto: string) => setItems((x) => x.map((p) => (p.id === pid ? { ...p, texto } : p)))
+  const del = (pid: string) => setItems((x) => x.filter((p) => p.id !== pid))
+  const hechos = items.filter((p) => p.estado === 'hecho').length, proceso = items.filter((p) => p.estado === 'en_proceso').length
+  const pct = items.length ? Math.round(((hechos + proceso * 0.5) / items.length) * 100) : 0
+  return (
+    <div role="dialog" aria-modal="true" onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div onClick={(e) => e.stopPropagation()} className="flex max-h-[88vh] w-full max-w-2xl flex-col rounded-xl bg-white p-5 shadow-xl">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold text-slate-900">✅ Previos de la actividad</h3>
+          <div className="flex items-center gap-2"><div className="h-2 w-32 overflow-hidden rounded-full bg-slate-100"><div className={`h-full ${pct >= 100 ? 'bg-emerald-500' : pct >= 50 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${pct}%` }} /></div><span className={`text-sm font-bold ${pct >= 100 ? 'text-emerald-600' : 'text-slate-700'}`}>{pct}%</span></div>
+        </div>
+        <p className="mb-3 truncate text-xs text-slate-500" title={tarea.nombre}>{tarea.nombre}</p>
+        <div className="flex-1 overflow-auto">
+          <div className="grid gap-1">
+            {items.map((p) => {
+              const chip = p.estado === 'hecho' ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : p.estado === 'en_proceso' ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-slate-300 bg-white text-slate-400'
+              const icon = p.estado === 'hecho' ? '✅ hecho' : p.estado === 'en_proceso' ? '🔄 en proceso' : '⬜ pendiente'
+              return (
+                <div key={p.id} className="flex items-center gap-2">
+                  <button onClick={() => cycle(p.id)} title="Cambiar estado (pendiente → en proceso → hecho)" className={`w-28 shrink-0 rounded border px-2 py-0.5 text-[11px] font-medium ${chip}`}>{icon}</button>
+                  <input defaultValue={p.texto} key={p.texto} onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== p.texto) edit(p.id, v) }} className={`flex-1 rounded border border-slate-200 px-2 py-1 text-sm ${p.estado === 'hecho' ? 'text-slate-400 line-through' : 'text-slate-700'}`} />
+                  <button onClick={() => del(p.id)} className="shrink-0 rounded px-1.5 text-slate-300 hover:bg-red-50 hover:text-red-600" title="Eliminar">✕</button>
+                </div>
+              )
+            })}
+            {items.length === 0 && <p className="px-1 py-2 text-xs text-slate-400">Sin previos. Agrega lo que hay que preparar antes de esta actividad: separar sus pernos, verificar sus medidas, llevar el aceite, fabricar la junta…</p>}
+          </div>
+          <div className="mt-2 flex gap-2">
+            <input value={nuevo} onChange={(e) => setNuevo(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && add()} placeholder="+ Agregar previo (ej. separar pernos de la brida)…" className="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm" />
+            <button onClick={add} className="rounded-lg bg-slate-700 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-800">Agregar</button>
+          </div>
+        </div>
+        <div className="mt-3 flex justify-end gap-2 border-t border-slate-100 pt-3">
+          <button onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-1.5 text-sm text-slate-600 hover:bg-slate-50">Cancelar</button>
+          <button onClick={() => onSave(items.filter((p) => p.texto.trim()))} className="rounded-lg bg-amber-500 px-4 py-1.5 text-sm font-semibold text-white hover:bg-amber-600">Guardar</button>
+        </div>
+      </div>
     </div>
   )
 }

@@ -66,7 +66,9 @@ const matEstado = (t: Tarea): 'listo' | 'falta' | 'en_ruta' | 'sin_definir' => {
   if (it.every((i) => i.e === 'listo')) return 'listo'
   return it.some((i) => i.e === 'falta') ? 'falta' : 'en_ruta'
 }
-const listaParaArrancar = (t: Tarea) => conCuadrilla(t) && matListo(t) && permisoDe(t)
+// Previos OK = no quedan previos pendientes en esa actividad (sin previos = nada que preparar).
+const previosOK = (t: Tarea) => previosDe(t).every((p) => p.estado === 'hecho')
+const listaParaArrancar = (t: Tarea) => conCuadrilla(t) && matListo(t) && permisoDe(t) && previosOK(t)
 
 /**
  * Tablero de PREPARACIÓN (readiness) — fase pre-parada. Mide por tarea: CUADRILLA +

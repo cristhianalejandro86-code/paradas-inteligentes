@@ -36,6 +36,17 @@ export function TablaPage() {
   const [creando, setCreando] = useState(false)
   const [asignando, setAsignando] = useState<Tarea | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
+  // Ancho (arrastrable) de la columna «Actividad» para leer el nombre completo. Se recuerda.
+  const [actW, setActW] = useState(() => { const s = typeof localStorage !== 'undefined' ? localStorage.getItem('tabla-act-w') : null; const n = s ? Number(s) : NaN; return Number.isFinite(n) ? Math.max(140, Math.min(680, n)) : 280 })
+  const actResize = useRef<{ x0: number; w0: number } | null>(null)
+  function onActResize(e: React.PointerEvent) {
+    e.preventDefault(); e.stopPropagation()
+    actResize.current = { x0: e.clientX, w0: actW }
+    const move = (ev: PointerEvent) => { const d = actResize.current; if (!d) return; setActW(Math.max(140, Math.min(680, Math.round(d.w0 + (ev.clientX - d.x0))))) }
+    const up = () => { actResize.current = null; window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up) }
+    window.addEventListener('pointermove', move); window.addEventListener('pointerup', up)
+  }
+  useEffect(() => { try { localStorage.setItem('tabla-act-w', String(actW)) } catch { /* sin persistencia */ } }, [actW])
   const fileRef = useRef<HTMLInputElement>(null)
 
   const recargar = () => id && getTareasByParada(id).then(setTareas)
@@ -155,7 +166,11 @@ export function TablaPage() {
           <thead className="sticky top-0 z-10 bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500">
             <tr>
               {['#', 'Actividad', 'WBS', 'Área', 'Disciplina', 'Grupo', 'Téc', 'Hrs', 'Comienzo', 'Fin', 'Predec.', 'Responsable', 'Estado', '%'].map((h) => (
-                <th key={h} className="whitespace-nowrap px-2 py-2 text-left font-semibold">{h}</th>
+                h === 'Actividad' ? (
+                  <th key={h} className="relative whitespace-nowrap px-2 py-2 text-left font-semibold" style={{ width: actW, minWidth: actW }}>Actividad
+                    <div onPointerDown={onActResize} title="Arrastra para ensanchar/reducir la columna y leer el nombre completo" className="absolute right-0 top-0 z-10 h-full w-2 cursor-col-resize hover:bg-amber-400/70" style={{ touchAction: 'none' }} />
+                  </th>
+                ) : <th key={h} className="whitespace-nowrap px-2 py-2 text-left font-semibold">{h}</th>
               ))}
             </tr>
           </thead>
@@ -163,7 +178,7 @@ export function TablaPage() {
             {filas.map((t, i) => (
               <tr key={t.id} className={i % 2 ? 'bg-white' : 'bg-slate-50/40'}>
                 <td className="px-2 py-1 text-slate-400">{t.secuencia}</td>
-                <td className="px-1 py-1" style={{ minWidth: 240 }}><input key={`n-${t.nombre}`} defaultValue={t.nombre} onBlur={(e) => e.target.value !== t.nombre && save(t.id, { nombre: e.target.value })} className={inp} /></td>
+                <td className="px-1 py-1" style={{ width: actW, minWidth: actW, maxWidth: actW }}><input key={`n-${t.nombre}`} defaultValue={t.nombre} title={t.nombre} onBlur={(e) => e.target.value !== t.nombre && save(t.id, { nombre: e.target.value })} className={inp} /></td>
                 <td className="px-1 py-1" style={{ width: 70 }}><input defaultValue={String(esp(t).wbs ?? '')} onBlur={(e) => saveEspec(t, { wbs: e.target.value })} className={inp} /></td>
                 <td className="px-1 py-1" style={{ minWidth: 150 }}><input defaultValue={sysOf(t)} onBlur={(e) => saveEspec(t, { sistema: e.target.value })} className={inp} /></td>
                 <td className="px-1 py-1"><select value={discOf(t)} onChange={(e) => saveEspec(t, { disciplina: e.target.value })} className="w-full rounded border border-transparent bg-transparent py-0.5 text-xs hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none">{DISCS.map((d) => <option key={d} value={d}>{d}</option>)}</select></td>

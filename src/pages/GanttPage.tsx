@@ -12,7 +12,9 @@ const H = 3600000
 const DAY = 86400000
 const ROW = 32
 const HEAD = 46
-const LEFT = 824
+// Ancho de las columnas fijas del panel izquierdo (todo menos «Actividad»):
+// # 32 · WBS 52 · Disciplina 86 · Grp 42 · Téc 30 · Hrs 32 · Comienzo 116 · Fin 116 · Pred 44 · % 34
+const COLS_NO_ACT = 584
 
 const COLOR: Record<TaskStatus, string> = {
   Por_Hacer: '#64748b', En_Progreso: '#2563eb', En_Revision: '#7c3aed',
@@ -54,6 +56,18 @@ export function GanttPage() {
   const [precSnap, setPrecSnap] = useState<Record<string, string | null> | null>(null)
   const [verDeps, setVerDeps] = useState(true)
   const [vw, setVw] = useState(typeof window !== 'undefined' ? window.innerWidth : 1600)
+  // Ancho (arrastrable) de la columna «Actividad» para leer el nombre completo. Se recuerda.
+  const [actW, setActW] = useState(() => { const s = typeof localStorage !== 'undefined' ? localStorage.getItem('gantt-act-w') : null; const n = s ? Number(s) : NaN; return Number.isFinite(n) ? Math.max(140, Math.min(680, n)) : 280 })
+  const LEFT = COLS_NO_ACT + actW
+  const actResize = useRef<{ x0: number; w0: number } | null>(null)
+  function onActResize(e: React.PointerEvent) {
+    e.preventDefault(); e.stopPropagation()
+    actResize.current = { x0: e.clientX, w0: actW }
+    const move = (ev: PointerEvent) => { const d = actResize.current; if (!d) return; setActW(Math.max(140, Math.min(680, Math.round(d.w0 + (ev.clientX - d.x0))))) }
+    const up = () => { actResize.current = null; window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up) }
+    window.addEventListener('pointermove', move); window.addEventListener('pointerup', up)
+  }
+  useEffect(() => { try { localStorage.setItem('gantt-act-w', String(actW)) } catch { /* sin persistencia */ } }, [actW])
   const [targetC, setTargetC] = useState<number | null>(null)
   const [caps, setCaps] = useState<Record<string, number>>({})
   const [roster, setRoster] = useState<Roster>({})
@@ -142,7 +156,7 @@ export function GanttPage() {
     const totalDias = Math.max(1, Math.ceil((maxE - base) / DAY))
     const hourW = Math.max(7, Math.min(40, Math.floor((vw - LEFT - 120) / (totalDias * 24))))
     return { grupos, base, totalDias, hourW }
-  }, [vis, fechas, vw, groupBy])
+  }, [vis, fechas, vw, groupBy, actW])
 
   const timelineW = totalDias * 24 * hourW
   const x = (ms: number) => ((ms - base) / H) * hourW
@@ -463,7 +477,12 @@ export function GanttPage() {
           {/* HEADER */}
           <div className="sticky top-0 z-30 flex bg-white" style={{ height: HEAD }}>
             <div className="sticky left-0 z-40 flex shrink-0 items-stretch border-b border-r border-slate-200 bg-slate-50 text-[10px] font-semibold uppercase tracking-wide text-slate-400" style={{ width: LEFT }}>
-              <Cell w={32}>#</Cell><Cell w={240} l>Actividad</Cell><Cell w={52}>WBS</Cell><Cell w={86}>Disciplina</Cell><Cell w={42}>Grp</Cell><Cell w={30}>Téc</Cell><Cell w={32}>Hrs</Cell><Cell w={116}>Comienzo</Cell><Cell w={116}>Fin</Cell><Cell w={44}>Pred</Cell><Cell w={34}>%</Cell>
+              <Cell w={32}>#</Cell>
+              <div className="relative flex items-center overflow-hidden px-1.5" style={{ width: actW }}>
+                Actividad
+                <div onPointerDown={onActResize} title="Arrastra para ensanchar/reducir la columna y leer el nombre completo" className="absolute right-0 top-0 z-10 h-full w-2 cursor-col-resize hover:bg-amber-400/70" style={{ touchAction: 'none' }} />
+              </div>
+              <Cell w={52}>WBS</Cell><Cell w={86}>Disciplina</Cell><Cell w={42}>Grp</Cell><Cell w={30}>Téc</Cell><Cell w={32}>Hrs</Cell><Cell w={116}>Comienzo</Cell><Cell w={116}>Fin</Cell><Cell w={44}>Pred</Cell><Cell w={34}>%</Cell>
             </div>
             <div className="relative shrink-0 border-b border-slate-200" style={{ width: timelineW }}>
               {dias.map(({ i, d }) => (
@@ -541,7 +560,7 @@ export function GanttPage() {
                 <div key={t.id} className={`absolute flex w-full border-b border-slate-50 ${idx % 2 ? 'bg-white' : 'bg-slate-50'}`} style={{ top, height: ROW }}>
                   <div className={`sticky left-0 z-30 flex shrink-0 items-stretch border-r border-slate-200 ${idx % 2 ? 'bg-white' : 'bg-slate-50'} text-[11px] text-slate-600`} style={{ width: LEFT }}>
                     <Cell w={32}><span className="text-slate-400">{t.secuencia}</span></Cell>
-                    <Cell w={240} l>
+                    <Cell w={actW} l>
                       {crit && <span className="mr-1 text-[10px] font-bold text-red-600" title="Ruta crítica">◆</span>}
                       <span className="mr-1 inline-block h-2 w-2 shrink-0 rounded-full align-middle" style={{ background: COLOR[t.status] }} />
                       <input key={`n-${t.nombre}`} defaultValue={t.nombre} title={t.nombre}

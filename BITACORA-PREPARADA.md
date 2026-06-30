@@ -12,4 +12,6 @@
 
 | R3 | **Holgura LIBRE** en el CPM (`holguraLibre` = min(ES sucesoras) − EF) + surfacing: tooltip del Gantt "Holgura total Xh · libre Yh" y panel "🟢 Tareas más flexibles" (top 5 por holgura libre) en Ruta crítica | C2 real: panel muestra 5 tareas con "holgura libre 48h" junto a la crítica (0h); build limpio, sin errores de consola, screenshot, sin regresión | Inc 41 |
 
-Próximo (R4): **Lead-time por ítem de recurso** (A/M) — campo lead/ETA, rojo si lead > días al inicio → "qué pedir YA".
+| R4 | **Lead-time por ítem de recurso** ("qué pedir YA"): campo `lead` (días) en el item + modal; urgente = no listo y lead > días al inicio → chip "🛒 PEDIR YA" en el consolidado (ordenado urgentes primero) + contador "N por pedir YA" junto a la cuenta regresiva | C2 real: con "Junta especial" lead 30 y faltan 20 días → "🛒 1 por pedir YA" + chip; "Llave 24" listo no cuenta; build limpio, sin errores de consola, screenshot, datos restaurados | Inc 42 |
+
+Próximo (R5): **Edición MASIVA** (A/M-L) — selección múltiple + aplicar permiso/recursos a varias tareas (cuello de botella con 158 tareas).

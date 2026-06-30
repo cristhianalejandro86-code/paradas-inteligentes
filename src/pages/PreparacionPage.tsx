@@ -8,7 +8,7 @@ import type { Parada, Tarea } from '../types'
 const DAY = 86400000
 const TIPOS = ['Herramienta', 'Equipo', 'Máquina soldar', 'Bomba', 'Material/Perno', 'Tubería', 'Andamio', 'Otro'] as const
 type Estado = 'falta' | 'en_ruta' | 'listo'
-type Item = { t: string; n: string; q: number; e: Estado }
+type Item = { t: string; n: string; q: number; e: Estado; lead?: number }
 
 const esp = (t: Tarea) => t.especificaciones_tecnicas ?? {}
 const sysOf = (t: Tarea) => (esp(t).sistema as string) || 'General'
@@ -24,8 +24,12 @@ const itemsDe = (t: Tarea): Item[] => {
     n: String(i?.n ?? '').trim(),
     q: Number.isFinite(Number(i?.q)) ? Number(i?.q) : 0,
     e: (i?.e === 'listo' || i?.e === 'en_ruta' ? i.e : 'falta') as Estado,
+    lead: Number.isFinite(Number(i?.lead)) ? Number(i?.lead) : 0,
   }))
 }
+// "Pedir YA": el ítem no está listo y su lead-time supera los días que faltan para
+// el inicio → si no se pide hoy, no llega a tiempo. (diasInicio null = sin fecha → no alerta)
+const urgenteItem = (it: Item, diasInicio: number | null) => it.e !== 'listo' && (it.lead ?? 0) > 0 && diasInicio != null && (it.lead ?? 0) > diasInicio
 const matNA = (t: Tarea) => !!esp(t).matNA
 const permisoDe = (t: Tarea) => !!esp(t).permiso
 const conCuadrilla = (t: Tarea) => { const g = grpOf(t); const a = esp(t).asignados as unknown[]; return (!!g && g !== '—') || (Array.isArray(a) && a.length > 0) }
@@ -70,6 +74,12 @@ export function PreparacionPage() {
 
   const scope = useMemo(() => tareas.filter(esTrabajo).filter((t) => lineaF === 'Todas' || lineaOf(t) === lineaF), [tareas, lineaF])
 
+  // Días para el inicio de la parada (fecha planeada o el arranque más temprano).
+  const diasParaInicio = useMemo(() => {
+    const ms = parada?.fecha_inicio_planeada ? new Date(parada.fecha_inicio_planeada).getTime() : Math.min(...tareas.map((t) => (t.fecha_inicio_prog ? new Date(t.fecha_inicio_prog).getTime() : Infinity)).filter(isFinite))
+    return Number.isFinite(ms) ? Math.ceil((ms - Date.now()) / DAY) : null
+  }, [parada, tareas])
+
   const d = useMemo(() => {
     const total = scope.length
     const listas = scope.filter(listaParaArrancar).length
@@ -77,24 +87,26 @@ export function PreparacionPage() {
     const sinMat = scope.filter((t) => !matListo(t)).length
     const sinPerm = scope.filter((t) => !permisoDe(t)).length
     const pct = total ? Math.round((listas / total) * 100) : 0
-    const ms = (parada?.fecha_inicio_planeada ? new Date(parada.fecha_inicio_planeada).getTime() : Math.min(...tareas.map((t) => (t.fecha_inicio_prog ? new Date(t.fecha_inicio_prog).getTime() : Infinity)).filter(isFinite)))
-    const diasParaInicio = isFinite(ms) ? Math.ceil((ms - Date.now()) / DAY) : null
     const lista = [...scope].sort((a, b) => (a.secuencia ?? 0) - (b.secuencia ?? 0)).filter((t) => !soloPend || !listaParaArrancar(t))
-    return { total, listas, sinCuad, sinMat, sinPerm, pct, diasParaInicio, lista }
-  }, [scope, soloPend, parada, tareas])
+    return { total, listas, sinCuad, sinMat, sinPerm, pct, lista }
+  }, [scope, soloPend])
 
-  // Consolidado: suma de todos los ítems del scope por tipo+nombre
+  // Consolidado: suma de todos los ítems del scope por tipo+nombre + flag "pedir YA"
+  // (algún ítem con lead > días al inicio y sin estar listo).
   const consolidado = useMemo(() => {
-    const m: Record<string, { t: string; n: string; total: number; listos: number; faltan: number }> = {}
+    const m: Record<string, { t: string; n: string; total: number; listos: number; faltan: number; leadMax: number; urgente: boolean }> = {}
     for (const tk of scope) for (const it of itemsDe(tk)) {
       const k = `${it.t}|${it.n.trim().toLowerCase()}`
-      const row = (m[k] ??= { t: it.t, n: it.n.trim(), total: 0, listos: 0, faltan: 0 })
+      const row = (m[k] ??= { t: it.t, n: it.n.trim(), total: 0, listos: 0, faltan: 0, leadMax: 0, urgente: false })
       row.total += it.q || 0
       if (it.e === 'listo') row.listos += it.q || 0
       if (it.e === 'falta') row.faltan += it.q || 0
+      row.leadMax = Math.max(row.leadMax, it.lead ?? 0)
+      if (urgenteItem(it, diasParaInicio)) row.urgente = true
     }
-    return Object.values(m).sort((a, b) => a.t.localeCompare(b.t) || a.n.localeCompare(b.n))
-  }, [scope])
+    return Object.values(m).sort((a, b) => Number(b.urgente) - Number(a.urgente) || a.t.localeCompare(b.t) || a.n.localeCompare(b.n))
+  }, [scope, diasParaInicio])
+  const porPedirYa = consolidado.filter((r) => r.urgente).length
 
   if (loading) return <p className="text-sm text-slate-400">Cargando preparación…</p>
   if (error) return <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">Error: {error}</div>
@@ -118,7 +130,7 @@ export function PreparacionPage() {
         <div className="flex-1">
           <h2 className="text-lg font-bold text-slate-900">Preparación de la parada</h2>
           <p className="text-sm text-slate-500"><b className="text-slate-700">{d.listas}</b> de {d.total} actividades listas (cuadrilla + recursos + permiso).</p>
-          {d.diasParaInicio != null && <p className={`mt-1 text-sm font-semibold ${d.diasParaInicio <= 0 ? 'text-red-600' : d.diasParaInicio <= 3 ? 'text-amber-600' : 'text-slate-600'}`}>{d.diasParaInicio > 0 ? `⏳ Faltan ${d.diasParaInicio} día(s) para el inicio` : '🚨 La parada ya debió iniciar'}</p>}
+          {diasParaInicio != null && <p className={`mt-1 text-sm font-semibold ${diasParaInicio <= 0 ? 'text-red-600' : diasParaInicio <= 3 ? 'text-amber-600' : 'text-slate-600'}`}>{diasParaInicio > 0 ? `⏳ Faltan ${diasParaInicio} día(s) para el inicio` : '🚨 La parada ya debió iniciar'}{porPedirYa > 0 && <span className="ml-2 rounded bg-red-100 px-1.5 py-0.5 text-xs text-red-700" title="Recursos cuyo lead-time supera los días que faltan: pídelos hoy o no llegan">🛒 {porPedirYa} por pedir YA</span>}</p>}
         </div>
         <div className="flex flex-wrap gap-2">
           <Block n={d.sinCuad} label="sin cuadrilla" tone="amber" />
@@ -138,10 +150,11 @@ export function PreparacionPage() {
         ) : (
           <div className="flex flex-wrap gap-2">
             {consolidado.map((r) => (
-              <div key={`${r.t}-${r.n}`} className={`rounded-lg border px-2 py-1 text-xs ${r.faltan > 0 ? 'border-red-200 bg-red-50' : r.listos >= r.total ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`} title={`${r.t}: ${r.listos}/${r.total} listos${r.faltan ? `, faltan ${r.faltan}` : ''}`}>
+              <div key={`${r.t}-${r.n}`} className={`rounded-lg border px-2 py-1 text-xs ${r.urgente ? 'border-red-400 bg-red-50 ring-1 ring-red-300' : r.faltan > 0 ? 'border-red-200 bg-red-50' : r.listos >= r.total ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`} title={`${r.t}: ${r.listos}/${r.total} listos${r.faltan ? `, faltan ${r.faltan}` : ''}${r.leadMax ? ` · lead ${r.leadMax}d` : ''}`}>
                 <span className="font-semibold text-slate-700">{r.n}</span> <span className="text-slate-400">×{r.total}</span>
                 <span className="ml-1 text-[10px] text-slate-400">({r.t})</span>
                 {r.faltan > 0 ? <span className="ml-1 font-semibold text-red-600">faltan {r.faltan}</span> : r.listos >= r.total ? <span className="ml-1 text-emerald-600">✓</span> : <span className="ml-1 text-amber-600">{r.listos}/{r.total}</span>}
+                {r.urgente && <span className="ml-1 rounded bg-red-600 px-1 font-bold text-white" title={`Lead ${r.leadMax}d > ${diasParaInicio}d para el inicio`}>🛒 PEDIR YA</span>}
               </div>
             ))}
           </div>
@@ -198,7 +211,7 @@ export function PreparacionPage() {
 function RecursosModal({ tarea, onClose, onSave }: { tarea: Tarea; onClose: () => void; onSave: (items: Item[], na: boolean) => void }) {
   const [items, setItems] = useState<Item[]>(itemsDe(tarea))
   const [na, setNa] = useState(matNA(tarea))
-  const add = () => setItems((x) => [...x, { t: 'Herramienta', n: '', q: 1, e: 'falta' }])
+  const add = () => setItems((x) => [...x, { t: 'Herramienta', n: '', q: 1, e: 'falta', lead: 0 }])
   const upd = (i: number, p: Partial<Item>) => setItems((x) => x.map((it, j) => (j === i ? { ...it, ...p } : it)))
   const del = (i: number) => setItems((x) => x.filter((_, j) => j !== i))
   return (
@@ -210,18 +223,19 @@ function RecursosModal({ tarea, onClose, onSave }: { tarea: Tarea; onClose: () =
         {!na && (
           <div className="flex-1 overflow-auto">
             <table className="w-full text-xs">
-              <thead className="text-[10px] uppercase text-slate-400"><tr><th className="px-1 py-1 text-left">Tipo</th><th className="px-1 py-1 text-left">Nombre (ej. Llave 24, Máquina soldar, Perno 1")</th><th className="px-1 py-1">Cant.</th><th className="px-1 py-1">Estado</th><th /></tr></thead>
+              <thead className="text-[10px] uppercase text-slate-400"><tr><th className="px-1 py-1 text-left">Tipo</th><th className="px-1 py-1 text-left">Nombre (ej. Llave 24, Máquina soldar, Perno 1")</th><th className="px-1 py-1">Cant.</th><th className="px-1 py-1" title="Días de lead-time: cuánto tarda en llegar desde que se pide">Lead (d)</th><th className="px-1 py-1">Estado</th><th /></tr></thead>
               <tbody>
                 {items.map((it, i) => (
                   <tr key={i}>
                     <td className="px-1 py-1"><select value={it.t} onChange={(e) => upd(i, { t: e.target.value })} className="w-full rounded border border-slate-300 px-1 py-1">{TIPOS.map((tp) => <option key={tp} value={tp}>{tp}</option>)}</select></td>
                     <td className="px-1 py-1"><input value={it.n} onChange={(e) => upd(i, { n: e.target.value })} placeholder="nombre…" className="w-full rounded border border-slate-300 px-2 py-1" /></td>
                     <td className="px-1 py-1"><input type="number" min={1} value={it.q} onChange={(e) => upd(i, { q: Math.max(1, Number(e.target.value) || 1) })} className="w-14 rounded border border-slate-300 px-1 py-1 text-center" /></td>
+                    <td className="px-1 py-1"><input type="number" min={0} value={it.lead ?? 0} onChange={(e) => upd(i, { lead: Math.max(0, Number(e.target.value) || 0) })} title="Días que tarda en llegar" className="w-14 rounded border border-slate-300 px-1 py-1 text-center" /></td>
                     <td className="px-1 py-1"><select value={it.e} onChange={(e) => upd(i, { e: e.target.value as Estado })} className={`rounded border px-1 py-1 font-medium ${it.e === 'listo' ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : it.e === 'en_ruta' ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-red-300 bg-red-50 text-red-700'}`}><option value="falta">❌ Falta</option><option value="en_ruta">⏳ En ruta</option><option value="listo">✓ Listo</option></select></td>
                     <td className="px-1 py-1"><button onClick={() => del(i)} className="rounded px-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600">✕</button></td>
                   </tr>
                 ))}
-                {items.length === 0 && <tr><td colSpan={5} className="px-2 py-3 text-center text-slate-400">Sin recursos. Agrega herramientas, equipos, máquinas, pernos, tuberías…</td></tr>}
+                {items.length === 0 && <tr><td colSpan={6} className="px-2 py-3 text-center text-slate-400">Sin recursos. Agrega herramientas, equipos, máquinas, pernos, tuberías…</td></tr>}
               </tbody>
             </table>
             <button onClick={add} className="mt-2 rounded-lg border border-slate-300 px-3 py-1 text-xs text-slate-600 hover:bg-slate-50">+ Agregar recurso</button>

@@ -4,6 +4,7 @@
 > Estado: ⬜ pendiente · 🔄 en curso · ✅ hecho (con evidencia + commit). ⭐ = coincidencia entre ≥2 auditores (señal fuerte).
 
 ## ✅ Hecho
+- ✅ **R4 — Lead-time por ítem de recurso** ("qué pedir YA"): campo Lead(d) en el modal de recursos; ítem urgente = no listo y lead > días al inicio → chip "🛒 PEDIR YA" en el consolidado + contador "N por pedir YA" junto a la cuenta regresiva. Inc 42. (Recursos #1)
 - ✅ **R3 — Holgura LIBRE** (CPM `holguraLibre` = min(ES sucesoras) − EF): tooltip del Gantt "total Xh · libre Yh" + panel "🟢 Tareas más flexibles" en Ruta crítica (top 5 por holgura libre). Inc 41. (Operativo #2)
 - ✅ **R2 — Plan vs ventana comprometida** (KPI en header del Gantt, visible siempre): C2 muestra "⚠ Plan +26h sobre la ventana (115h)". Inc 40. (Operativo #3)
 - ✅ **R1 — Exportar consolidado de recursos + alistamiento a Excel** (hoja Recursos para Compras + hoja Alistamiento). Inc 39. (valida auditor Recursos #4)
@@ -11,8 +12,7 @@
 - ✅ Verificado falso positivo: `diasParaInicio` NaN ya está guardado por `isFinite` (Robustez #3) — no requería cambio.
 
 ## Alta prioridad (próximas rondas, por valor×esfuerzo)
-- ⬜⭐ **Lead-time por ítem de recurso** (campo lead/ETA; rojo si lead > días al inicio) → "qué pedir YA". A/M. (Recursos #1, alineado con el dueño) ← próximo (R4)
-- ⬜⭐ **Edición MASIVA**: seleccionar varias tareas y aplicar permiso/recursos/cuadrilla de una vez (hoy 1×1 = cuello de botella con 158 tareas). A/M→L. (Usabilidad #1 y #2)
+- ⬜⭐ **Edición MASIVA**: seleccionar varias tareas y aplicar permiso/recursos/cuadrilla de una vez (hoy 1×1 = cuello de botella con 158 tareas). A/M→L. (Usabilidad #1 y #2) ← próximo (R5)
 - ⬜ **Demanda (consolidado) vs inventario real** (`tabla recurso`/getRecursos): déficit = requerido − disponible. A/M. (Recursos #2)
 - ⬜ **Capacidad de equipos compartidos en Preparación** (pico de grúas/soldadoras vs disponible, no solo en el nivelador del Gantt). A/M. (Recursos #3)
 - ⬜ **Ruta crítica que considere recursos (critical chain)**: tras nivelar, marcar como crítica la cadena por recurso, no solo por dependencia. A/M. (Operativo #1)

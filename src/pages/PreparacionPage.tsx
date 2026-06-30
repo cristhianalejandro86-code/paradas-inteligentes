@@ -60,12 +60,14 @@ export function PreparacionPage() {
   const [soloPend, setSoloPend] = useState(true)
   const [editRec, setEditRec] = useState<Tarea | null>(null)
   const [sel, setSel] = useState<Set<string>>(new Set())
+  const [bulkGrupo, setBulkGrupo] = useState('')
 
   const reload = () => id && getTareasByParada(id).then(setTareas).catch((e) => setError(e.message))
   useEffect(() => { if (!id) return; setLoading(true); getTareasByParada(id).then(setTareas).catch((e) => setError(e.message)).finally(() => setLoading(false)) }, [id])
   useRefreshOnFocus(reload)
 
   const lineas = useMemo(() => [...new Set(tareas.map(lineaOf).filter(Boolean))].sort(), [tareas])
+  const gruposExist = useMemo(() => [...new Set(tareas.map(grpOf).filter((g) => g && g !== '—'))].sort((a, b) => (parseInt(a.replace(/\D/g, '')) || 0) - (parseInt(b.replace(/\D/g, '')) || 0)), [tareas])
 
   function guardar(t: Tarea, patch: Record<string, unknown>) {
     const next = { ...esp(t), ...patch }
@@ -191,7 +193,9 @@ export function PreparacionPage() {
               <button onClick={() => bulkAplicar({ permiso: false })} className="rounded bg-red-100 px-1.5 py-0.5 font-medium text-red-700 hover:bg-red-200">Permiso ✗</button>
               <button onClick={() => bulkAplicar({ matNA: true })} title="Marcar que no requieren recursos" className="rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-600 hover:bg-slate-200">Sin recursos</button>
               <button onClick={() => bulkAplicar({ matNA: false })} title="Quitar 'no requiere recursos'" className="rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-600 hover:bg-slate-200">Requiere</button>
+              <span className="flex items-center gap-1"><input list="grupos-dl-bulk" value={bulkGrupo} onChange={(e) => setBulkGrupo(e.target.value)} placeholder="cuadrilla" className="w-20 rounded border border-slate-300 px-1 py-0.5" /><button onClick={() => { const g = bulkGrupo.trim(); if (g) { bulkAplicar({ grupo: g }); setBulkGrupo('') } }} title="Asignar esta cuadrilla a las seleccionadas" className="rounded bg-blue-100 px-1.5 py-0.5 font-medium text-blue-700 hover:bg-blue-200">Cuadrilla →</button></span>
               <button onClick={() => setSel(new Set())} className="rounded border border-slate-300 bg-white px-1.5 py-0.5 text-slate-500 hover:bg-slate-50">Limpiar</button>
+              <datalist id="grupos-dl-bulk">{gruposExist.map((g) => <option key={g} value={g} />)}</datalist>
             </div>
           )}
         </div>

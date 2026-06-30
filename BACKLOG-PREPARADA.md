@@ -4,6 +4,7 @@
 > Estado: ⬜ pendiente · 🔄 en curso · ✅ hecho (con evidencia + commit). ⭐ = coincidencia entre ≥2 auditores (señal fuerte).
 
 ## ✅ Hecho
+- ✅ **R6 — Bulk de CUADRILLA**: input de grupo (con datalist de los existentes) en la barra masiva → asigna esa cuadrilla a las seleccionadas en una acción. Inc 44.
 - ✅ **R5 — Edición MASIVA** (Preparación): checkbox por fila + "seleccionar todas (visibles)" + barra "N sel. → Permiso ✓/✗ · Sin recursos · Requiere · Limpiar" que aplica a todas las seleccionadas en una acción. Inc 43. (Usabilidad #1/#2). Falta: bulk de CUADRILLA (siguiente).
 - ✅ **R4 — Lead-time por ítem de recurso** ("qué pedir YA"): campo Lead(d) en el modal de recursos; ítem urgente = no listo y lead > días al inicio → chip "🛒 PEDIR YA" en el consolidado + contador "N por pedir YA" junto a la cuenta regresiva. Inc 42. (Recursos #1)
 - ✅ **R3 — Holgura LIBRE** (CPM `holguraLibre` = min(ES sucesoras) − EF): tooltip del Gantt "total Xh · libre Yh" + panel "🟢 Tareas más flexibles" en Ruta crítica (top 5 por holgura libre). Inc 41. (Operativo #2)
@@ -13,7 +14,7 @@
 - ✅ Verificado falso positivo: `diasParaInicio` NaN ya está guardado por `isFinite` (Robustez #3) — no requería cambio.
 
 ## Alta prioridad (próximas rondas, por valor×esfuerzo)
-- ⬜ **Bulk de CUADRILLA**: aplicar un grupo a las tareas seleccionadas (reusa la selección de R5). A/S. ← próximo (R6)
+- ⬜ **Multi-filtro** (disciplina/sistema/grupo/estado, combinables) en Lista y Preparación → aislar un lote y usar la edición masiva sobre él. M/M. (Usabilidad #4) ← próximo (R7)
 - ⬜ **Demanda (consolidado) vs inventario real** (`tabla recurso`): déficit = requerido − disponible. A/M. (Recursos #2)
 - ⬜ **Demanda (consolidado) vs inventario real** (`tabla recurso`/getRecursos): déficit = requerido − disponible. A/M. (Recursos #2)
 - ⬜ **Capacidad de equipos compartidos en Preparación** (pico de grúas/soldadoras vs disponible, no solo en el nivelador del Gantt). A/M. (Recursos #3)

@@ -16,4 +16,6 @@
 
 | R5 | **Edición MASIVA** en Preparación: checkbox por fila + "seleccionar todas (visibles)" + barra de acción "N sel. → Permiso ✓/✗ · Sin recursos · Requiere · Limpiar" que aplica el patch a todas las seleccionadas en una sola acción (setTareas optimista + Promise.all updateTareaEspec) | C2 real: seleccioné 3 tareas → "Permiso ✓" → seq 1,2,3 permiso=true en BD desde 1 click, contador 158→155 sin permiso; build limpio, sin errores de consola, screenshot con barra+selección, datos restaurados | Inc 43 |
 
-Próximo (R6): **Bulk de CUADRILLA** (A/S) — aplicar un grupo a las tareas seleccionadas (reusa la selección de R5).
+| R6 | **Bulk de CUADRILLA**: input de grupo (datalist con G1..G18 existentes) en la barra de edición masiva → asigna esa cuadrilla a todas las seleccionadas en una acción | C2 real: seleccioné 2 tareas, "G7" → Cuadrilla → seq 1,2 grupo=G7 en BD desde 1 click, seq 3 intacto; build limpio, sin errores de consola, screenshot con el control, grupos restaurados (G1/G2) | Inc 44 |
+
+Próximo (R7): **Multi-filtro** (disciplina/sistema/grupo/estado) en Lista y Preparación (M/M) — aislar un lote y aplicarle la edición masiva.

@@ -4,6 +4,7 @@
 > Estado: ⬜ pendiente · 🔄 en curso · ✅ hecho (con evidencia + commit). ⭐ = coincidencia entre ≥2 auditores (señal fuerte).
 
 ## ✅ Hecho
+- ✅ **R9 — Preparación ponderada por criticidad**: indicador "🔴 Ruta crítica: X/Y listas — prioriza estas" en el header + marca 🔴 en las filas críticas de la lista (cruza readiness con la ruta crítica). Inc 47. (Operativo #5)
 - ✅ **R8 — Filtro de línea en Ruta crítica** (KPIs + ruta crítica + holguras + Curva S scopeados a la línea; cada línea tiene su propia ruta crítica). Inc 46. Pivot desde "déficit de dotación" (roster vacío en C2, no demostrable).
 - ✅ **R7 — Multi-filtro** en Preparación: dropdowns Sistema + Cuadrilla(G) + "Falta" (sin cuadrilla/recursos/permiso), combinables con Línea y Solo pendientes → aísla un lote para la edición masiva. Inc 45. (Usabilidad #4)
 - ✅ **R6 — Bulk de CUADRILLA**: input de grupo (con datalist de los existentes) en la barra masiva → asigna esa cuadrilla a las seleccionadas en una acción. Inc 44.
@@ -16,7 +17,7 @@
 - ✅ Verificado falso positivo: `diasParaInicio` NaN ya está guardado por `isFinite` (Robustez #3) — no requería cambio.
 
 ## Alta prioridad (próximas rondas, por valor×esfuerzo)
-- ⬜ **Preparación ponderada por criticidad**: cruzar readiness con ruta crítica → "% de tareas CRÍTICAS listas" (un faltante en la ruta crítica pesa más que con 40h de holgura). M/M. (Operativo #5) ← próximo (R9)
+- ⬜ **Deshacer en edición masiva** (Preparación): snapshot antes del bulk + botón "Deshacer" (hoy un bulk equivocado no se revierte; Cuadrillas/Gantt sí tienen undo). M/M. (Usabilidad #3) ← próximo (R10)
 - ⬜ **Personal disponible vs demanda**: déficit de dotación. Bloqueado: roster casi vacío en C2 (cargar roster primero).
 - ⬜ **Demanda (consolidado) vs inventario real** (`tabla recurso`): déficit = requerido − disponible. A/M. (Recursos #2)
 - ⬜ **Demanda (consolidado) vs inventario real** (`tabla recurso`/getRecursos): déficit = requerido − disponible. A/M. (Recursos #2)

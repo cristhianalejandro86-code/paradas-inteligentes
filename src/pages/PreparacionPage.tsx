@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useOutletContext, useParams } from 'react-router-dom'
 import { getTareasByParada, updateTareaEspec } from '../lib/api'
 import { exportarPreparacion } from '../lib/excel'
+import { rutaCritica } from '../lib/criticalPath'
 import { useRefreshOnFocus } from '../lib/useRefreshOnFocus'
 import type { Parada, Tarea } from '../types'
 
@@ -89,6 +90,7 @@ export function PreparacionPage() {
   const toggleSel = (id: string) => setSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
 
   const scope = useMemo(() => tareas.filter(esTrabajo).filter((t) => lineaF === 'Todas' || lineaOf(t) === lineaF), [tareas, lineaF])
+  const criticas = useMemo(() => rutaCritica(tareas).criticas, [tareas])
 
   // Días para el inicio de la parada (fecha planeada o el arranque más temprano).
   const diasParaInicio = useMemo(() => {
@@ -103,11 +105,14 @@ export function PreparacionPage() {
     const sinMat = scope.filter((t) => !matListo(t)).length
     const sinPerm = scope.filter((t) => !permisoDe(t)).length
     const pct = total ? Math.round((listas / total) * 100) : 0
+    // Readiness de la RUTA CRÍTICA: un faltante aquí pesa mucho más que con holgura.
+    const crit = scope.filter((t) => criticas.has(t.id))
+    const critListas = crit.filter(listaParaArrancar).length
     const faltaOK = (t: Tarea) => faltaF === 'Todas' || (faltaF === 'cuadrilla' ? !conCuadrilla(t) : faltaF === 'recursos' ? !matListo(t) : !permisoDe(t))
     const lista = [...scope].sort((a, b) => (a.secuencia ?? 0) - (b.secuencia ?? 0))
       .filter((t) => (!soloPend || !listaParaArrancar(t)) && (sysF === 'Todos' || sysOf(t) === sysF) && (grpF === 'Todos' || grpOf(t) === grpF) && faltaOK(t))
-    return { total, listas, sinCuad, sinMat, sinPerm, pct, lista }
-  }, [scope, soloPend, sysF, grpF, faltaF])
+    return { total, listas, sinCuad, sinMat, sinPerm, pct, lista, critTotal: crit.length, critListas }
+  }, [scope, soloPend, sysF, grpF, faltaF, criticas])
 
   // Consolidado: suma de todos los ítems del scope por tipo+nombre + flag "pedir YA"
   // (algún ítem con lead > días al inicio y sin estar listo).
@@ -148,6 +153,11 @@ export function PreparacionPage() {
         <div className="flex-1">
           <h2 className="text-lg font-bold text-slate-900">Preparación de la parada</h2>
           <p className="text-sm text-slate-500"><b className="text-slate-700">{d.listas}</b> de {d.total} actividades listas (cuadrilla + recursos + permiso).</p>
+          {d.critTotal > 0 && (
+            <p className={`mt-1 text-sm font-semibold ${d.critListas === d.critTotal ? 'text-emerald-600' : 'text-red-600'}`} title="Las actividades de la ruta crítica: un faltante aquí atrasa toda la parada">
+              🔴 Ruta crítica: {d.critListas}/{d.critTotal} listas{d.critListas < d.critTotal && ' — prioriza estas'}
+            </p>
+          )}
           {diasParaInicio != null && <p className={`mt-1 text-sm font-semibold ${diasParaInicio <= 0 ? 'text-red-600' : diasParaInicio <= 3 ? 'text-amber-600' : 'text-slate-600'}`}>{diasParaInicio > 0 ? `⏳ Faltan ${diasParaInicio} día(s) para el inicio` : '🚨 La parada ya debió iniciar'}{porPedirYa > 0 && <span className="ml-2 rounded bg-red-100 px-1.5 py-0.5 text-xs text-red-700" title="Recursos cuyo lead-time supera los días que faltan: pídelos hoy o no llegan">🛒 {porPedirYa} por pedir YA</span>}</p>}
         </div>
         <div className="flex flex-wrap gap-2">
@@ -223,7 +233,7 @@ export function PreparacionPage() {
                   <tr key={t.id} className={`border-b border-slate-50 hover:bg-slate-50/50 ${sel.has(t.id) ? 'bg-amber-50/50' : ''}`}>
                     <td className="px-2 py-1.5 text-center"><input type="checkbox" checked={sel.has(t.id)} onChange={() => toggleSel(t.id)} className="accent-amber-500" /></td>
                     <td className="px-2 py-1.5 text-slate-400">{t.secuencia}</td>
-                    <td className="px-2 py-1.5"><div className="max-w-md truncate font-medium text-slate-700" title={t.nombre}>{t.nombre}</div><div className="text-[10px] text-slate-400">{sysOf(t)}{lineaOf(t) ? ` · ${lineaOf(t)}` : ''}</div></td>
+                    <td className="px-2 py-1.5"><div className="max-w-md truncate font-medium text-slate-700" title={t.nombre}>{criticas.has(t.id) && <span className="mr-1 text-red-600" title="Ruta crítica">🔴</span>}{t.nombre}</div><div className="text-[10px] text-slate-400">{sysOf(t)}{lineaOf(t) ? ` · ${lineaOf(t)}` : ''}</div></td>
                     <td className="px-2 py-1.5 text-center">{conCuadrilla(t) ? <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[11px] font-medium text-emerald-700">✓ {grpOf(t) || 'asignada'}</span> : <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-700">✗ falta</span>}</td>
                     <td className="px-2 py-1.5 text-center">
                       <button onClick={() => setEditRec(t)} className={`rounded px-2 py-0.5 text-[11px] font-medium ${badge(me)}`} title="Listar herramientas, equipos, materiales…">

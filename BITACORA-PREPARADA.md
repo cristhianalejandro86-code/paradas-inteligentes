@@ -22,4 +22,6 @@
 
 | R8 | **Filtro de línea en Ruta crítica**: KPIs (avance/críticas/duración), ruta crítica, holguras, tareas flexibles y Curva S todo scopeado a la línea elegida (cada línea = su propia ruta crítica) | C2 real: KPI total 158 → 80 (L1) → 76 (L2); screenshot L1 con su crítica y curva; build limpio, sin errores de consola, filtro read-only. Pivot desde "déficit de dotación" (roster casi vacío, no demostrable) | Inc 46 |
 
-Próximo (R9): **Preparación ponderada por criticidad** (M/M) — % de tareas CRÍTICAS listas (cruzar readiness con ruta crítica).
+| R9 | **Preparación ponderada por criticidad**: cruza readiness con ruta crítica → indicador "🔴 Ruta crítica: X/Y listas — prioriza estas" en el header de Preparación + marca 🔴 en las filas críticas (un faltante en la crítica pesa mucho más que con holgura) | C2 real: "🔴 Ruta crítica: 0/1 listas — prioriza estas" + 1 marca 🔴 en la lista; screenshot, build limpio, sin errores de consola, cómputo read-only | Inc 47 |
+
+Próximo (R10): **Deshacer en edición masiva** (M/M) — snapshot + botón "Deshacer" para revertir un bulk equivocado.

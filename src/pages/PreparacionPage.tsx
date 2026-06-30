@@ -61,6 +61,9 @@ export function PreparacionPage() {
   const [editRec, setEditRec] = useState<Tarea | null>(null)
   const [sel, setSel] = useState<Set<string>>(new Set())
   const [bulkGrupo, setBulkGrupo] = useState('')
+  const [sysF, setSysF] = useState('Todos')
+  const [grpF, setGrpF] = useState('Todos')
+  const [faltaF, setFaltaF] = useState<'Todas' | 'cuadrilla' | 'recursos' | 'permiso'>('Todas')
 
   const reload = () => id && getTareasByParada(id).then(setTareas).catch((e) => setError(e.message))
   useEffect(() => { if (!id) return; setLoading(true); getTareasByParada(id).then(setTareas).catch((e) => setError(e.message)).finally(() => setLoading(false)) }, [id])
@@ -68,6 +71,7 @@ export function PreparacionPage() {
 
   const lineas = useMemo(() => [...new Set(tareas.map(lineaOf).filter(Boolean))].sort(), [tareas])
   const gruposExist = useMemo(() => [...new Set(tareas.map(grpOf).filter((g) => g && g !== '—'))].sort((a, b) => (parseInt(a.replace(/\D/g, '')) || 0) - (parseInt(b.replace(/\D/g, '')) || 0)), [tareas])
+  const sistemas = useMemo(() => [...new Set(tareas.filter(esTrabajo).map(sysOf).filter(Boolean))].sort(), [tareas])
 
   function guardar(t: Tarea, patch: Record<string, unknown>) {
     const next = { ...esp(t), ...patch }
@@ -99,9 +103,11 @@ export function PreparacionPage() {
     const sinMat = scope.filter((t) => !matListo(t)).length
     const sinPerm = scope.filter((t) => !permisoDe(t)).length
     const pct = total ? Math.round((listas / total) * 100) : 0
-    const lista = [...scope].sort((a, b) => (a.secuencia ?? 0) - (b.secuencia ?? 0)).filter((t) => !soloPend || !listaParaArrancar(t))
+    const faltaOK = (t: Tarea) => faltaF === 'Todas' || (faltaF === 'cuadrilla' ? !conCuadrilla(t) : faltaF === 'recursos' ? !matListo(t) : !permisoDe(t))
+    const lista = [...scope].sort((a, b) => (a.secuencia ?? 0) - (b.secuencia ?? 0))
+      .filter((t) => (!soloPend || !listaParaArrancar(t)) && (sysF === 'Todos' || sysOf(t) === sysF) && (grpF === 'Todos' || grpOf(t) === grpF) && faltaOK(t))
     return { total, listas, sinCuad, sinMat, sinPerm, pct, lista }
-  }, [scope, soloPend])
+  }, [scope, soloPend, sysF, grpF, faltaF])
 
   // Consolidado: suma de todos los ítems del scope por tipo+nombre + flag "pedir YA"
   // (algún ítem con lead > días al inicio y sin estar listo).
@@ -183,6 +189,9 @@ export function PreparacionPage() {
               {lineas.map((l) => <option key={l} value={l}>{l}</option>)}
             </select>
           )}
+          <select value={sysF} onChange={(e) => setSysF(e.target.value)} title="Filtrar por sistema/equipo" className="max-w-[10rem] rounded border border-slate-300 px-2 py-1"><option value="Todos">Todo sistema</option>{sistemas.map((s) => <option key={s} value={s}>{s}</option>)}</select>
+          <select value={grpF} onChange={(e) => setGrpF(e.target.value)} title="Filtrar por cuadrilla" className="rounded border border-slate-300 px-2 py-1"><option value="Todos">Toda cuadrilla</option>{gruposExist.map((g) => <option key={g} value={g}>{g}</option>)}</select>
+          <select value={faltaF} onChange={(e) => setFaltaF(e.target.value as typeof faltaF)} title="Filtrar por lo que falta" className="rounded border border-slate-300 px-2 py-1"><option value="Todas">Falta: cualquiera</option><option value="cuadrilla">sin cuadrilla</option><option value="recursos">sin recursos</option><option value="permiso">sin permiso</option></select>
           <label className="flex items-center gap-1 text-slate-600"><input type="checkbox" checked={soloPend} onChange={(e) => setSoloPend(e.target.checked)} className="accent-amber-500" />Solo pendientes</label>
           <span className="text-slate-400">{d.lista.length} actividades</span>
           {sel.size > 0 && (

@@ -18,4 +18,6 @@
 
 | R6 | **Bulk de CUADRILLA**: input de grupo (datalist con G1..G18 existentes) en la barra de edición masiva → asigna esa cuadrilla a todas las seleccionadas en una acción | C2 real: seleccioné 2 tareas, "G7" → Cuadrilla → seq 1,2 grupo=G7 en BD desde 1 click, seq 3 intacto; build limpio, sin errores de consola, screenshot con el control, grupos restaurados (G1/G2) | Inc 44 |
 
-Próximo (R7): **Multi-filtro** (disciplina/sistema/grupo/estado) en Lista y Preparación (M/M) — aislar un lote y aplicarle la edición masiva.
+| R7 | **Multi-filtro** en Preparación: dropdowns Sistema + Cuadrilla(G1..G18) + "Falta" (sin cuadrilla/recursos/permiso), combinables con Línea y Solo pendientes (aplican a la lista, no al gauge) → aísla un lote para la edición masiva | C2 real: 158 → 12 al filtrar cuadrilla G3 → 12 con "sin permiso"; screenshot con filtros, build limpio, sin errores de consola, filtros read-only (sin riesgo) | Inc 45 |
+
+Próximo (R8): **Personal disponible vs demanda por línea/turno** (A/M) — alertar déficit de dotación (pico de demanda > roster cargado).

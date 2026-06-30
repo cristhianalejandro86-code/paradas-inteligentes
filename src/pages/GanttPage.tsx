@@ -97,6 +97,17 @@ export function GanttPage() {
       : (parada?.fecha_inicio_planeada && parada?.fecha_fin_planeada ? Math.round((new Date(parada.fecha_fin_planeada).getTime() - new Date(parada.fecha_inicio_planeada).getTime()) / H) : null)
     return ventH && ventH > 0 ? { planH, ventH, overrun: planH - ventH } : { planH, ventH: null as number | null, overrun: null as number | null }
   }, [tareas, parada])
+  // Tareas con fechas INVÁLIDAS (fin ≤ inicio → duración negativa/cero). Corrompen la
+  // barra del Gantt y la ruta crítica, y se pierden en silencio en el histograma de
+  // técnicos/hora. Hay que corregirlas antes de planificar (a menudo un error de carga).
+  const fechasInval = useMemo(() => tareas.filter((t) => {
+    if (!t.fecha_inicio_prog || !t.fecha_fin_prog) return false
+    const ini = new Date(t.fecha_inicio_prog).getTime(), fin = new Date(t.fecha_fin_prog).getTime()
+    // Inválida: fin antes del inicio (siempre erróneo) o span cero con duración planeada
+    // > 0 (tarea que debe tomar horas pero no avanza en el tiempo). Un hito real
+    // (duración 0, fin = inicio) NO se marca.
+    return fin < ini || (fin === ini && Number(t.duracion_estimada_horas ?? 0) > 0)
+  }), [tareas])
   const nivel = useMemo(() => infoNivel(tareas), [tareas])
   const topeC = targetC ?? nivel?.recC ?? 20
   const lineas = useMemo(() => [...new Set(tareas.map(lineaOf).filter(Boolean))].sort(), [tareas])
@@ -384,6 +395,12 @@ export function GanttPage() {
             </span>
           )}
           {ventana && ventana.overrun == null && <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-500" title="Define duración planeada en la parada para comparar">Plan {ventana.planH}h · ventana sin definir</span>}
+          {fechasInval.length > 0 && (
+            <span className="rounded bg-red-600 px-2 py-0.5 text-xs font-semibold text-white"
+              title={`Fecha fin ≤ inicio (duración inválida). Corrígelas en la Lista o el Gantt:\n${fechasInval.map((t) => `· #${t.secuencia} ${t.nombre}`).join('\n')}`}>
+              ⛔ {fechasInval.length} con fecha inválida
+            </span>
+          )}
         </h3>
         <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
           <label className="flex items-center gap-1">Agrupar:

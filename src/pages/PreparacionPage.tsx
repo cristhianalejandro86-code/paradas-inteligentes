@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useOutletContext, useParams } from 'react-router-dom'
-import { getTareasByParada, updateTareaEspec } from '../lib/api'
+import { getTareasByParada, updateTareaEspec, getCuadrillasConfig } from '../lib/api'
 import { exportarPreparacion } from '../lib/excel'
 import { rutaCritica } from '../lib/criticalPath'
 import { useRefreshOnFocus } from '../lib/useRefreshOnFocus'
+import type { Tecnico } from '../lib/resourceLeveling'
 import type { Parada, Tarea } from '../types'
 
 const DAY = 86400000
@@ -34,6 +35,8 @@ const urgenteItem = (it: Item, diasInicio: number | null) => it.e !== 'listo' &&
 const matNA = (t: Tarea) => !!esp(t).matNA
 const permisoDe = (t: Tarea) => !!esp(t).permiso
 const conCuadrilla = (t: Tarea) => { const g = grpOf(t); const a = esp(t).asignados as unknown[]; return (!!g && g !== '—') || (Array.isArray(a) && a.length > 0) }
+// Especialidad legible de un técnico (oficial mecánico, soldador 3G/4G, andamiero…).
+const espTec = (u: Tecnico) => u.especialidad || u.cargo || (u.rol ? String(u.rol).replace(/_/g, ' ') : '') || ''
 const esTrabajo = (t: Tarea) => !esp(t).hito_inicio && Number(t.duracion_estimada_horas ?? 0) > 0
 // materiales listo = marcado "no requiere" o todos los ítems en estado listo
 const matListo = (t: Tarea) => { const it = itemsDe(t); return matNA(t) || (it.length > 0 && it.every((i) => i.e === 'listo')) }
@@ -66,10 +69,20 @@ export function PreparacionPage() {
   const [sysF, setSysF] = useState('Todos')
   const [grpF, setGrpF] = useState('Todos')
   const [faltaF, setFaltaF] = useState<'Todas' | 'cuadrilla' | 'recursos' | 'permiso'>('Todas')
+  const [config, setConfig] = useState<Record<string, { tecnicos?: Tecnico[] }>>({})
 
   const reload = () => id && getTareasByParada(id).then(setTareas).catch((e) => setError(e.message))
   useEffect(() => { if (!id) return; setLoading(true); getTareasByParada(id).then(setTareas).catch((e) => setError(e.message)).finally(() => setLoading(false)) }, [id])
+  useEffect(() => { if (id) getCuadrillasConfig(id).then(setConfig).catch(() => {}) }, [id])
   useRefreshOnFocus(reload)
+  // Técnicos de una actividad: los nominados en la tarea (asignados) o, si no, el
+  // roster de su cuadrilla (definido en la vista Cuadrillas). Trae su especialidad.
+  const tecnicosDe = (t: Tarea): Tecnico[] => {
+    const asig = esp(t).asignados as Tecnico[] | undefined
+    if (Array.isArray(asig) && asig.length) return asig
+    const g = grpOf(t)
+    return (g && config[g]?.tecnicos) || []
+  }
 
   const lineas = useMemo(() => [...new Set(tareas.map(lineaOf).filter(Boolean))].sort(), [tareas])
   const gruposExist = useMemo(() => [...new Set(tareas.map(grpOf).filter((g) => g && g !== '—'))].sort((a, b) => (parseInt(a.replace(/\D/g, '')) || 0) - (parseInt(b.replace(/\D/g, '')) || 0)), [tareas])
@@ -237,7 +250,7 @@ export function PreparacionPage() {
             <thead className="sticky top-0 bg-slate-50 text-[10px] uppercase tracking-wide text-slate-400">
               <tr>
                 <th className="px-2 py-2"><input type="checkbox" title="Seleccionar todas (visibles)" checked={d.lista.length > 0 && d.lista.every((t) => sel.has(t.id))} onChange={(e) => setSel((s) => { const n = new Set(s); if (e.target.checked) d.lista.forEach((t) => n.add(t.id)); else d.lista.forEach((t) => n.delete(t.id)); return n })} className="accent-amber-500" /></th>
-                <th className="px-2 py-2 text-left">#</th><th className="px-2 py-2 text-left">Actividad</th><th className="px-2 py-2 text-center">Cuadrilla</th><th className="px-2 py-2 text-center">Recursos (herram./equipo/material)</th><th className="px-2 py-2 text-center">Permiso</th><th className="px-2 py-2 text-center">Estado</th>
+                <th className="px-2 py-2 text-left">#</th><th className="px-2 py-2 text-left">Actividad</th><th className="px-2 py-2 text-center">Cuadrilla / Técnicos</th><th className="px-2 py-2 text-center">Recursos (herram./equipo/material)</th><th className="px-2 py-2 text-center">Permiso</th><th className="px-2 py-2 text-center">Estado</th>
               </tr>
             </thead>
             <tbody>
@@ -248,7 +261,27 @@ export function PreparacionPage() {
                     <td className="px-2 py-1.5 text-center"><input type="checkbox" checked={sel.has(t.id)} onChange={() => toggleSel(t.id)} className="accent-amber-500" /></td>
                     <td className="px-2 py-1.5 text-slate-400">{t.secuencia}</td>
                     <td className="px-2 py-1.5"><div className="max-w-md truncate font-medium text-slate-700" title={t.nombre}>{criticas.has(t.id) && <span className="mr-1 text-red-600" title="Ruta crítica">🔴</span>}{t.nombre}</div><div className="text-[10px] text-slate-400">{sysOf(t)}{lineaOf(t) ? ` · ${lineaOf(t)}` : ''}</div></td>
-                    <td className="px-2 py-1.5 text-center">{conCuadrilla(t) ? <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[11px] font-medium text-emerald-700">✓ {grpOf(t) || 'asignada'}</span> : <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-700">✗ falta</span>}</td>
+                    <td className="px-2 py-1.5 align-top">
+                      <div className="flex flex-col items-center gap-1">
+                        {conCuadrilla(t) ? <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[11px] font-medium text-emerald-700">✓ {grpOf(t) || 'asignada'}</span> : <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-700">✗ falta</span>}
+                        {(() => {
+                          const tecs = tecnicosDe(t)
+                          if (tecs.length) return (
+                            <div className="flex flex-wrap justify-center gap-0.5">
+                              {tecs.map((u, i) => (
+                                <span key={u.id ?? i} className="inline-flex items-center gap-0.5 rounded bg-slate-100 px-1 py-0.5 text-[9px]" title={`${u.nombre}${espTec(u) ? ` · ${espTec(u)}` : ''}`}>
+                                  <span className="font-medium text-slate-700">{(u.nombre || '').split(' ').slice(0, 2).join(' ')}</span>
+                                  {espTec(u) && <span className="text-violet-600">{espTec(u)}</span>}
+                                </span>
+                              ))}
+                            </div>
+                          )
+                          const g = grpOf(t)
+                          if (g && g !== '—') return <span className="text-[9px] text-slate-400" title="Asigna los técnicos de esta cuadrilla en la vista Cuadrillas (botón 👤)">sin técnicos asignados</span>
+                          return null
+                        })()}
+                      </div>
+                    </td>
                     <td className="px-2 py-1.5 text-center">
                       <button onClick={() => setEditRec(t)} className={`rounded px-2 py-0.5 text-[11px] font-medium ${badge(me)}`} title="Listar herramientas, equipos, materiales…">
                         {matNA(t) ? '— no requiere' : n ? `🧰 ${n} ítem(s) · ${txt(me)}` : '➕ listar recursos'}

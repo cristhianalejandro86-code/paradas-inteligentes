@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useOutletContext, useParams } from 'react-router-dom'
-import { getTareasByParada, updateTareaEspec, getCuadrillasConfig } from '../lib/api'
+import { getTareasByParada, updateTareaEspec, getCuadrillasConfig, getPrevios, setPrevios } from '../lib/api'
+import type { Previo } from '../lib/api'
 import { exportarPreparacion } from '../lib/excel'
 import { rutaCritica } from '../lib/criticalPath'
 import { useRefreshOnFocus } from '../lib/useRefreshOnFocus'
@@ -70,11 +71,37 @@ export function PreparacionPage() {
   const [grpF, setGrpF] = useState('Todos')
   const [faltaF, setFaltaF] = useState<'Todas' | 'cuadrilla' | 'recursos' | 'permiso'>('Todas')
   const [config, setConfig] = useState<Record<string, { tecnicos?: Tecnico[] }>>({})
+  const [previos, setPreviosState] = useState<Previo[]>([])
+  const [nuevoPrevio, setNuevoPrevio] = useState('')
 
   const reload = () => id && getTareasByParada(id).then(setTareas).catch((e) => setError(e.message))
   useEffect(() => { if (!id) return; setLoading(true); getTareasByParada(id).then(setTareas).catch((e) => setError(e.message)).finally(() => setLoading(false)) }, [id])
   useEffect(() => { if (id) getCuadrillasConfig(id).then(setConfig).catch(() => {}) }, [id])
+  useEffect(() => { if (id) getPrevios(id).then(setPreviosState).catch(() => {}) }, [id])
   useRefreshOnFocus(reload)
+
+  // Previos de parada (checklist de preparación): se persiste la lista completa en cada
+  // cambio (optimista). estado: pendiente → en_proceso → hecho. Avance proporcional.
+  function guardarPrevios(next: Previo[]) {
+    setPreviosState(next)
+    if (id) setPrevios(id, next).catch((e) => setError(String(e)))
+  }
+  function addPrevio() {
+    const texto = nuevoPrevio.trim()
+    if (!texto) return
+    guardarPrevios([...previos, { id: crypto.randomUUID(), texto, estado: 'pendiente' }])
+    setNuevoPrevio('')
+  }
+  const CICLO: Record<Previo['estado'], Previo['estado']> = { pendiente: 'en_proceso', en_proceso: 'hecho', hecho: 'pendiente' }
+  const ciclarPrevio = (pid: string) => guardarPrevios(previos.map((p) => (p.id === pid ? { ...p, estado: CICLO[p.estado] } : p)))
+  const editarPrevio = (pid: string, texto: string) => guardarPrevios(previos.map((p) => (p.id === pid ? { ...p, texto } : p)))
+  const borrarPrevio = (pid: string) => guardarPrevios(previos.filter((p) => p.id !== pid))
+  const avancePrevios = useMemo(() => {
+    if (!previos.length) return { pct: 0, hechos: 0, proceso: 0, total: 0 }
+    const hechos = previos.filter((p) => p.estado === 'hecho').length
+    const proceso = previos.filter((p) => p.estado === 'en_proceso').length
+    return { pct: Math.round(((hechos + proceso * 0.5) / previos.length) * 100), hechos, proceso, total: previos.length }
+  }, [previos])
   // Técnicos de una actividad: los nominados en la tarea (asignados) o, si no, el
   // roster de su cuadrilla (definido en la vista Cuadrillas). Trae su especialidad.
   const tecnicosDe = (t: Tarea): Tecnico[] => {
@@ -188,6 +215,38 @@ export function PreparacionPage() {
           <Block n={d.sinCuad} label="sin cuadrilla" tone="amber" />
           <Block n={d.sinMat} label="sin recursos" tone="red" />
           <Block n={d.sinPerm} label="sin permiso" tone="red" />
+        </div>
+      </div>
+
+      {/* PREVIOS de parada (checklist de preparación) */}
+      <div className="rounded-xl border border-slate-200 bg-white p-4">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold text-slate-700">✅ Previos de parada <span className="font-normal text-slate-400">— preparación a hacer ANTES de arrancar</span></h3>
+          <div className="flex items-center gap-2">
+            <div className="h-2 w-40 overflow-hidden rounded-full bg-slate-100">
+              <div className={`h-full ${avancePrevios.pct >= 100 ? 'bg-emerald-500' : avancePrevios.pct >= 50 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${avancePrevios.pct}%` }} />
+            </div>
+            <span className={`text-sm font-bold ${avancePrevios.pct >= 100 ? 'text-emerald-600' : 'text-slate-700'}`}>{avancePrevios.pct}%</span>
+          </div>
+        </div>
+        {previos.length > 0 && <p className="mb-2 text-[11px] text-slate-400">{avancePrevios.hechos}/{avancePrevios.total} hechos{avancePrevios.proceso ? ` · ${avancePrevios.proceso} en proceso` : ''}</p>}
+        <div className="grid gap-1">
+          {previos.map((p) => {
+            const chip = p.estado === 'hecho' ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : p.estado === 'en_proceso' ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-slate-300 bg-white text-slate-400'
+            const icon = p.estado === 'hecho' ? '✅ hecho' : p.estado === 'en_proceso' ? '🔄 en proceso' : '⬜ pendiente'
+            return (
+              <div key={p.id} className="flex items-center gap-2">
+                <button onClick={() => ciclarPrevio(p.id)} title="Cambiar estado (pendiente → en proceso → hecho)" className={`w-28 shrink-0 rounded border px-2 py-0.5 text-[11px] font-medium ${chip}`}>{icon}</button>
+                <input defaultValue={p.texto} key={p.texto} onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== p.texto) editarPrevio(p.id, v) }} className={`flex-1 rounded border border-transparent bg-transparent px-1 py-0.5 text-sm hover:border-slate-200 focus:border-slate-300 focus:outline-none ${p.estado === 'hecho' ? 'text-slate-400 line-through' : 'text-slate-700'}`} />
+                <button onClick={() => borrarPrevio(p.id)} className="shrink-0 rounded px-1.5 text-slate-300 hover:bg-red-50 hover:text-red-600" title="Eliminar">✕</button>
+              </div>
+            )
+          })}
+          {previos.length === 0 && <p className="text-xs text-slate-400">Agrega los previos: separar pernos, llevar el aceite al punto, verificar medidas de tuberías, fabricar juntas, traer andamios…</p>}
+        </div>
+        <div className="mt-2 flex gap-2">
+          <input value={nuevoPrevio} onChange={(e) => setNuevoPrevio(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addPrevio()} placeholder="+ Agregar previo (ej. separar pernos de la brida X)…" className="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm" />
+          <button onClick={addPrevio} className="rounded-lg bg-slate-700 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-800">Agregar</button>
         </div>
       </div>
 

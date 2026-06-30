@@ -17,6 +17,23 @@ export async function setCuadrillasConfig(paradaId: string, config: Record<strin
   if (error) throw new Error(error.message)
 }
 
+/** Un "previo" de parada: trabajo de preparación a hacer ANTES de la parada
+ *  (separar pernos, llevar aceite al punto, verificar medidas de tuberías…). */
+export type Previo = { id: string; texto: string; estado: 'pendiente' | 'en_proceso' | 'hecho'; linea?: string }
+
+/** Lee la checklist de previos de una parada. */
+export async function getPrevios(paradaId: string): Promise<Previo[]> {
+  const { data, error } = await supabase.from('parada').select('previos').eq('id', paradaId).maybeSingle()
+  if (error) throw new Error(error.message)
+  return Array.isArray(data?.previos) ? (data!.previos as Previo[]) : []
+}
+
+/** Guarda la checklist de previos de una parada. */
+export async function setPrevios(paradaId: string, previos: Previo[]): Promise<void> {
+  const { error } = await supabase.from('parada').update({ previos }).eq('id', paradaId)
+  if (error) throw new Error(error.message)
+}
+
 /** Actualiza las especificaciones técnicas (p. ej. mover de cuadrilla). */
 export async function updateTareaEspec(
   id: string,

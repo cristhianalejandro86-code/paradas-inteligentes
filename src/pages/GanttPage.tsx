@@ -5,6 +5,7 @@ import { useRefreshOnFocus } from '../lib/useRefreshOnFocus'
 import type { Roster, Tecnico } from '../lib/resourceLeveling'
 import { colorGrupo, disciplina as discDe } from '../lib/palette'
 import { rutaCritica } from '../lib/criticalPath'
+import { useColWidth, ColResizeHandle } from '../components/ColResize'
 import { nivelarPersonal, nivelarSinExtender, nivelarPorCuadrilla, resolverCuadrillas, resolverPorPersona, sugerirPrecedencias, tramosTrabajo, tieneEspera, infoNivel } from '../lib/resourceLeveling'
 import type { Parada, Tarea, TaskStatus } from '../types'
 
@@ -56,18 +57,9 @@ export function GanttPage() {
   const [precSnap, setPrecSnap] = useState<Record<string, string | null> | null>(null)
   const [verDeps, setVerDeps] = useState(true)
   const [vw, setVw] = useState(typeof window !== 'undefined' ? window.innerWidth : 1600)
-  // Ancho (arrastrable) de la columna «Actividad» para leer el nombre completo. Se recuerda.
-  const [actW, setActW] = useState(() => { const s = typeof localStorage !== 'undefined' ? localStorage.getItem('gantt-act-w') : null; const n = s ? Number(s) : NaN; return Number.isFinite(n) ? Math.max(140, Math.min(680, n)) : 280 })
+  // Ancho (arrastrable, recordado) de la columna «Actividad» para leer el nombre completo.
+  const { w: actW, onResize: onActResize } = useColWidth('gantt-act-w')
   const LEFT = COLS_NO_ACT + actW
-  const actResize = useRef<{ x0: number; w0: number } | null>(null)
-  function onActResize(e: React.PointerEvent) {
-    e.preventDefault(); e.stopPropagation()
-    actResize.current = { x0: e.clientX, w0: actW }
-    const move = (ev: PointerEvent) => { const d = actResize.current; if (!d) return; setActW(Math.max(140, Math.min(680, Math.round(d.w0 + (ev.clientX - d.x0))))) }
-    const up = () => { actResize.current = null; window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up) }
-    window.addEventListener('pointermove', move); window.addEventListener('pointerup', up)
-  }
-  useEffect(() => { try { localStorage.setItem('gantt-act-w', String(actW)) } catch { /* sin persistencia */ } }, [actW])
   const [targetC, setTargetC] = useState<number | null>(null)
   const [caps, setCaps] = useState<Record<string, number>>({})
   const [roster, setRoster] = useState<Roster>({})
@@ -480,7 +472,7 @@ export function GanttPage() {
               <Cell w={32}>#</Cell>
               <div className="relative flex items-center overflow-hidden px-1.5" style={{ width: actW }}>
                 Actividad
-                <div onPointerDown={onActResize} title="Arrastra para ensanchar/reducir la columna y leer el nombre completo" className="absolute right-0 top-0 z-10 h-full w-2 cursor-col-resize hover:bg-amber-400/70" style={{ touchAction: 'none' }} />
+                <ColResizeHandle onResize={onActResize} />
               </div>
               <Cell w={52}>WBS</Cell><Cell w={86}>Disciplina</Cell><Cell w={42}>Grp</Cell><Cell w={30}>Téc</Cell><Cell w={32}>Hrs</Cell><Cell w={116}>Comienzo</Cell><Cell w={116}>Fin</Cell><Cell w={44}>Pred</Cell><Cell w={34}>%</Cell>
             </div>

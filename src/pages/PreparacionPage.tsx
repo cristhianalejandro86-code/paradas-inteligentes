@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useOutletContext, useParams } from 'react-router-dom'
 import { getTareasByParada, updateTareaEspec, getCuadrillasConfig } from '../lib/api'
 import type { Previo } from '../lib/api'
+import { useColWidth, ColResizeHandle } from '../components/ColResize'
 import { exportarPreparacion } from '../lib/excel'
 import { rutaCritica } from '../lib/criticalPath'
 import { useRefreshOnFocus } from '../lib/useRefreshOnFocus'
@@ -93,6 +94,7 @@ export function PreparacionPage() {
   const [faltaF, setFaltaF] = useState<'Todas' | 'cuadrilla' | 'recursos' | 'permiso'>('Todas')
   const [config, setConfig] = useState<Record<string, { tecnicos?: Tecnico[] }>>({})
   const [editPrev, setEditPrev] = useState<Tarea | null>(null)
+  const { w: actW, onResize: onActResize } = useColWidth('prep-act-w')
 
   const reload = () => id && getTareasByParada(id).then(setTareas).catch((e) => setError(e.message))
   useEffect(() => { if (!id) return; setLoading(true); getTareasByParada(id).then(setTareas).catch((e) => setError(e.message)).finally(() => setLoading(false)) }, [id])
@@ -273,7 +275,7 @@ export function PreparacionPage() {
             <thead className="sticky top-0 bg-slate-50 text-[10px] uppercase tracking-wide text-slate-400">
               <tr>
                 <th className="px-2 py-2"><input type="checkbox" title="Seleccionar todas (visibles)" checked={d.lista.length > 0 && d.lista.every((t) => sel.has(t.id))} onChange={(e) => setSel((s) => { const n = new Set(s); if (e.target.checked) d.lista.forEach((t) => n.add(t.id)); else d.lista.forEach((t) => n.delete(t.id)); return n })} className="accent-amber-500" /></th>
-                <th className="px-2 py-2 text-left">#</th><th className="px-2 py-2 text-left">Actividad</th><th className="px-2 py-2 text-center">Cuadrilla / Técnicos</th><th className="px-2 py-2 text-center">Recursos (herram./equipo/material)</th><th className="px-2 py-2 text-center">Previos (separar pernos, medidas…)</th><th className="px-2 py-2 text-center">Permiso</th><th className="px-2 py-2 text-center">Estado</th>
+                <th className="px-2 py-2 text-left">#</th><th className="relative px-2 py-2 text-left" style={{ width: actW, minWidth: actW }}>Actividad<ColResizeHandle onResize={onActResize} /></th><th className="px-2 py-2 text-center">Cuadrilla / Técnicos</th><th className="px-2 py-2 text-center">Recursos (herram./equipo/material)</th><th className="px-2 py-2 text-center">Previos (separar pernos, medidas…)</th><th className="px-2 py-2 text-center">Permiso</th><th className="px-2 py-2 text-center">Estado</th>
               </tr>
             </thead>
             <tbody>
@@ -283,7 +285,7 @@ export function PreparacionPage() {
                   <tr key={t.id} className={`border-b border-slate-50 hover:bg-slate-50/50 ${sel.has(t.id) ? 'bg-amber-50/50' : ''}`}>
                     <td className="px-2 py-1.5 text-center"><input type="checkbox" checked={sel.has(t.id)} onChange={() => toggleSel(t.id)} className="accent-amber-500" /></td>
                     <td className="px-2 py-1.5 text-slate-400">{t.secuencia}</td>
-                    <td className="px-2 py-1.5"><div className="max-w-md truncate font-medium text-slate-700" title={t.nombre}>{criticas.has(t.id) && <span className="mr-1 text-red-600" title="Ruta crítica">🔴</span>}{t.nombre}</div><div className="text-[10px] text-slate-400">{sysOf(t)}{lineaOf(t) ? ` · ${lineaOf(t)}` : ''}</div></td>
+                    <td className="px-2 py-1.5" style={{ width: actW, minWidth: actW, maxWidth: actW }}><div className="truncate font-medium text-slate-700" title={t.nombre}>{criticas.has(t.id) && <span className="mr-1 text-red-600" title="Ruta crítica">🔴</span>}{t.nombre}</div><div className="text-[10px] text-slate-400">{sysOf(t)}{lineaOf(t) ? ` · ${lineaOf(t)}` : ''}</div></td>
                     <td className="px-2 py-1.5 align-top">
                       <div className="flex flex-col items-center gap-1">
                         {conCuadrilla(t) ? <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[11px] font-medium text-emerald-700">✓ {grpOf(t) || 'asignada'}</span> : <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-700">✗ falta</span>}

@@ -8,6 +8,7 @@ import { colorGrupo, disciplina as discDe } from '../lib/palette'
 import { exportarExcel, descargarPlantilla, leerExcel } from '../lib/excel'
 import { NuevaTareaModal } from '../components/NuevaTareaModal'
 import { AsignarTecnicosModal } from '../components/AsignarTecnicosModal'
+import { useColWidth, ColResizeHandle } from '../components/ColResize'
 import type { Parada, Tarea, TaskStatus } from '../types'
 
 const ESTADOS: TaskStatus[] = ['Por_Hacer', 'En_Progreso', 'En_Revision', 'Completada', 'Bloqueada', 'Cancelada']
@@ -36,17 +37,8 @@ export function TablaPage() {
   const [creando, setCreando] = useState(false)
   const [asignando, setAsignando] = useState<Tarea | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
-  // Ancho (arrastrable) de la columna «Actividad» para leer el nombre completo. Se recuerda.
-  const [actW, setActW] = useState(() => { const s = typeof localStorage !== 'undefined' ? localStorage.getItem('tabla-act-w') : null; const n = s ? Number(s) : NaN; return Number.isFinite(n) ? Math.max(140, Math.min(680, n)) : 280 })
-  const actResize = useRef<{ x0: number; w0: number } | null>(null)
-  function onActResize(e: React.PointerEvent) {
-    e.preventDefault(); e.stopPropagation()
-    actResize.current = { x0: e.clientX, w0: actW }
-    const move = (ev: PointerEvent) => { const d = actResize.current; if (!d) return; setActW(Math.max(140, Math.min(680, Math.round(d.w0 + (ev.clientX - d.x0))))) }
-    const up = () => { actResize.current = null; window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up) }
-    window.addEventListener('pointermove', move); window.addEventListener('pointerup', up)
-  }
-  useEffect(() => { try { localStorage.setItem('tabla-act-w', String(actW)) } catch { /* sin persistencia */ } }, [actW])
+  // Ancho (arrastrable, recordado) de la columna «Actividad» para leer el nombre completo.
+  const { w: actW, onResize: onActResize } = useColWidth('tabla-act-w')
   const fileRef = useRef<HTMLInputElement>(null)
 
   const recargar = () => id && getTareasByParada(id).then(setTareas)
@@ -168,7 +160,7 @@ export function TablaPage() {
               {['#', 'Actividad', 'WBS', 'Área', 'Disciplina', 'Grupo', 'Téc', 'Hrs', 'Comienzo', 'Fin', 'Predec.', 'Responsable', 'Estado', '%'].map((h) => (
                 h === 'Actividad' ? (
                   <th key={h} className="relative whitespace-nowrap px-2 py-2 text-left font-semibold" style={{ width: actW, minWidth: actW }}>Actividad
-                    <div onPointerDown={onActResize} title="Arrastra para ensanchar/reducir la columna y leer el nombre completo" className="absolute right-0 top-0 z-10 h-full w-2 cursor-col-resize hover:bg-amber-400/70" style={{ touchAction: 'none' }} />
+                    <ColResizeHandle onResize={onActResize} />
                   </th>
                 ) : <th key={h} className="whitespace-nowrap px-2 py-2 text-left font-semibold">{h}</th>
               ))}

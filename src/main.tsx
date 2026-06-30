@@ -13,6 +13,7 @@ import { GanttPage } from './pages/GanttPage'
 import { CuadrillasPage } from './pages/CuadrillasPage'
 import { RutaCriticaPage } from './pages/RutaCriticaPage'
 import { RecursosPage } from './pages/RecursosPage'
+import { PreparacionPage } from './pages/PreparacionPage'
 
 const router = createBrowserRouter([
   {
@@ -28,6 +29,7 @@ const router = createBrowserRouter([
           { path: 'lista', element: <TablaPage /> },
           { path: 'gantt', element: <GanttPage /> },
           { path: 'cuadrillas', element: <CuadrillasPage /> },
+          { path: 'preparacion', element: <PreparacionPage /> },
           { path: 'ruta-critica', element: <RutaCriticaPage /> },
           { path: 'recursos', element: <RecursosPage /> },
         ],

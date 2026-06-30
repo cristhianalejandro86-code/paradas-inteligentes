@@ -8,6 +8,7 @@ const TABS = [
   { to: 'lista', label: 'Lista', end: false },
   { to: 'gantt', label: 'Gantt', end: false },
   { to: 'cuadrillas', label: 'Cuadrillas', end: false },
+  { to: 'preparacion', label: '✅ Preparación', end: false },
   { to: 'ruta-critica', label: 'Ruta crítica', end: false },
   { to: 'recursos', label: 'Recursos', end: false },
 ]

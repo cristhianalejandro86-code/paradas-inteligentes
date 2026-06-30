@@ -23,6 +23,16 @@ const turnoOf = (t: Tarea): 'D' | 'N' => { const dn = (t.especificaciones_tecnic
 const lineaOf = (t: Tarea) => String(t.especificaciones_tecnicas?.linea ?? '').trim()
 const tecOf = (t: Tarea) => { const n = Number((t.especificaciones_tecnicas?.tec as number) ?? 0); return Number.isFinite(n) ? Math.max(0, n) : 0 }
 const pad = (n: number) => String(n).padStart(2, '0')
+// Dos tareas de una cuadrilla CHOCAN solo si su TRABAJO REAL se solapa. tramosTrabajo
+// excluye la espera de tareas tipo apertura/cierre (manhole): durante la espera la
+// cuadrilla está libre y puede atender otra tarea — no es un choque. Mismo criterio
+// que el histograma de técnicos/hora (antes la detección usaba el span completo y
+// marcaba choques falsos durante las esperas).
+const solapanTrabajo = (a: Tarea, b: Tarea) => {
+  const ta = tramosTrabajo(a), tb = tramosTrabajo(b)
+  for (const x of ta) for (const y of tb) if (x.s < y.e && y.s < x.e) return true
+  return false
+}
 
 interface Item { t: Tarea; s: number; e: number; lane: number; conflict: boolean }
 interface Crew { nombre: string; items: Item[]; nSub: number; util: number; hh: number; peak: number; conflictos: number }
@@ -133,10 +143,10 @@ export function CuadrillasPage() {
         laneEnd[lane] = it.e
         return { ...it, lane, conflict: false }
       })
-      // conflictos: solapamiento por pares
+      // conflictos: solapamiento de TRABAJO REAL por pares (la espera no cuenta como choque)
       for (let i = 0; i < items.length; i++)
         for (let j = i + 1; j < items.length; j++)
-          if (items[j].s < items[i].e && items[i].s < items[j].e) { items[i].conflict = true; items[j].conflict = true }
+          if (solapanTrabajo(items[i].t, items[j].t)) { items[i].conflict = true; items[j].conflict = true }
       const conflictos = items.filter((x) => x.conflict).length
       // utilización (unión de intervalos)
       const sorted = [...items].sort((a, b) => a.s - b.s)
@@ -407,7 +417,7 @@ export function CuadrillasPage() {
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 px-4 py-2 text-[11px] text-slate-400">
-        <span className="flex items-center gap-1"><span className="inline-block h-2 w-3 rounded-sm bg-red-600" /> Conflicto (cuadrilla en 2 tareas a la vez)</span>
+        <span className="flex items-center gap-1"><span className="inline-block h-2 w-3 rounded-sm bg-red-600" /> Conflicto (cuadrilla trabajando 2 tareas a la vez · la espera de apertura/cierre no cuenta)</span>
         <span>Util &lt;35% = ociosa (ámbar) · &gt;85% = saturada (rojo)</span>
       </div>
 

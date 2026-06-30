@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useOutletContext, useParams } from 'react-router-dom'
-import { getTareasByParada, updateTareaSchedule, updateTareaEspec, updateTarea, guardarLineaBase, restaurarLineaBase, getCuadrillasConfig } from '../lib/api'
+import { getTareasByParada, updateTareaSchedule, updateTareaEspec, updateTarea, createTarea, guardarLineaBase, restaurarLineaBase, getCuadrillasConfig } from '../lib/api'
 import { useRefreshOnFocus } from '../lib/useRefreshOnFocus'
 import type { Roster, Tecnico } from '../lib/resourceLeveling'
 import { colorGrupo, disciplina as discDe } from '../lib/palette'
@@ -43,6 +43,9 @@ export function GanttPage() {
   const [turnoF, setTurnoF] = useState<'Todos' | 'D' | 'N'>('Todos')
   const [turnosOn, setTurnosOn] = useState(true)
   const [gruas, setGruas] = useState(0)
+  const [hitoModal, setHitoModal] = useState(false)
+  const [hitoArea, setHitoArea] = useState('')
+  const [hitoFecha, setHitoFecha] = useState('')
   const [precSnap, setPrecSnap] = useState<Record<string, string | null> | null>(null)
   const [verDeps, setVerDeps] = useState(true)
   const [vw, setVw] = useState(typeof window !== 'undefined' ? window.innerWidth : 1600)
@@ -249,6 +252,45 @@ export function GanttPage() {
     Promise.all(Object.entries(snap).map(([tid, v]) => updateTarea(tid, { bloqueado_por: v }))).catch((e) => setError(String(e)))
     setPrecSnap(null)
   }
+  // Hito de "entrega de Operaciones": Operaciones para su equipo (celdas / bombas de agua
+  // de proceso) a cierta hora y recién ahí pueden iniciar los trabajos de ese sistema.
+  // Crea un hito (◆) y bloquea con él las tareas del sistema; las que arrancan antes se
+  // empujan a la hora del hito. La hora es editable arrastrando el ◆ o re-creando.
+  function abrirHito() {
+    const sistemas = [...new Set(tareas.map(sysOf))].filter((s) => s && s !== 'General').sort()
+    setHitoArea(sistemas[0] ?? '')
+    // por defecto: día de inicio de la parada a las 10:00
+    const minMs = Math.min(...tareas.map((t) => (t.fecha_inicio_prog ? new Date(t.fecha_inicio_prog).getTime() : Infinity)).filter((n) => isFinite(n)))
+    const d = isFinite(minMs) ? new Date(minMs) : new Date()
+    d.setUTCHours(10, 0, 0, 0)
+    setHitoFecha(d.toISOString().slice(0, 16))
+    setHitoModal(true)
+  }
+  async function crearHitoEntrega() {
+    if (!id || !hitoArea || !hitoFecha) return
+    const hMs = new Date(hitoFecha + ':00Z').getTime()
+    const iso = new Date(hMs).toISOString()
+    const delArea = tareas.filter((t) => sysOf(t) === hitoArea)
+    try {
+      const minSeq = Math.min(...delArea.map((t) => t.secuencia ?? 0))
+      // La BD exige duración > 0; un hito se modela con duración mínima y el flag
+      // hito_inicio (se dibuja como ◆, no como barra).
+      const hito = await createTarea(id, { nombre: `🛑 ENTREGA OPERACIONES — paro ${hitoArea}`, duracion_estimada_horas: 1, secuencia: minSeq - 1 })
+      await updateTareaSchedule(hito.id, iso, new Date(hMs + 3600000).toISOString(), 1)
+      await updateTareaEspec(hito.id, { sistema: hitoArea, hito_inicio: true })
+      await Promise.all(delArea.map((t) => {
+        const patch: Record<string, unknown> = {}
+        if (!t.bloqueado_por) patch.bloqueado_por = hito.id
+        if (t.fecha_inicio_prog && t.fecha_fin_prog && new Date(t.fecha_inicio_prog).getTime() < hMs) {
+          const dur = new Date(t.fecha_fin_prog).getTime() - new Date(t.fecha_inicio_prog).getTime()
+          patch.fecha_inicio_prog = iso; patch.fecha_fin_prog = new Date(hMs + dur).toISOString()
+        }
+        return Object.keys(patch).length ? updateTarea(t.id, patch) : Promise.resolve()
+      }))
+      setHitoModal(false)
+      await reloadTareas()
+    } catch (e) { setError(String(e)) }
+  }
   // Edición inline desde la grilla del Gantt (persiste y se refleja en las otras vistas).
   function editar(id: string, fields: Parameters<typeof updateTarea>[1]) {
     setTareas((ts) => ts.map((t) => (t.id === id ? { ...t, ...fields } : t)))
@@ -311,6 +353,7 @@ export function GanttPage() {
           <button onClick={() => setVerDeps((v) => !v)} className={`rounded-md border px-2 py-0.5 ${verDeps ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-slate-200 bg-white'}`}>Dependencias</button>
           <button onClick={sugerirPrec} title="Encadena en serie las tareas de cada equipo+cuadrilla (orden por fecha) para habilitar la ruta crítica. Solo a las que no tienen predecesora." className="rounded-md border border-sky-300 bg-sky-50 px-2 py-0.5 font-medium text-sky-700 hover:bg-sky-100">Sugerir precedencias</button>
           {precSnap && <button onClick={deshacerPrec} className="rounded-md border border-slate-300 bg-white px-2 py-0.5 text-slate-600 hover:bg-slate-50">Deshacer prec.</button>}
+          <button onClick={abrirHito} title="Crea un hito de entrega de Operaciones (paro de equipo) que bloquea el inicio de un sistema hasta cierta hora. Editable arrastrando el ◆." className="rounded-md border border-rose-300 bg-rose-50 px-2 py-0.5 font-medium text-rose-700 hover:bg-rose-100">🛑 Hito Operaciones</button>
           <div className="flex overflow-hidden rounded-md border border-slate-200">
             {(['grupo', 'sistema', 'estado'] as const).map((m) => <button key={m} onClick={() => setColorMode(m)} className={`px-2 py-0.5 capitalize ${colorMode === m ? 'bg-amber-500 text-white' : 'bg-white text-slate-500'}`}>{m}</button>)}
           </div>
@@ -404,7 +447,7 @@ export function GanttPage() {
               }
               const t = f.t!, fch = fechas[t.id]; if (!fch) return null
               const crit = criticas.has(t.id)
-              const hito = Number(t.duracion_estimada_horas ?? 0) <= 0
+              const hito = Number(t.duracion_estimada_horas ?? 0) <= 0 || !!t.especificaciones_tecnicas?.hito_inicio
               const dS = draft?.id === t.id ? draft.dS : 0, dD = draft?.id === t.id ? draft.dD : 0
               const left = x(fch.s) + dS * hourW
               const width = Math.max(x(fch.e) - x(fch.s) + dD * hourW, 5)
@@ -494,6 +537,27 @@ export function GanttPage() {
         <span className="flex items-center gap-1"><span className="inline-block h-3 w-3 rotate-45 bg-slate-800" /> Hito</span>
         <span className="flex items-center gap-1"><span className="inline-block h-2 w-3 rounded-sm bg-slate-100" /> Turno noche</span>
       </div>
+
+      {hitoModal && (
+        <div role="dialog" aria-modal="true" onClick={() => setHitoModal(false)} className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-xl bg-white p-5 shadow-xl">
+            <h3 className="text-sm font-semibold text-slate-900">🛑 Hito de entrega de Operaciones</h3>
+            <p className="mb-3 text-xs text-slate-500">Operaciones para su equipo (celdas / bombas) a esta hora; recién entonces pueden iniciar los trabajos del sistema. El hito bloquea esas tareas y empuja las que arrancan antes.</p>
+            <label className="mb-2 block text-xs font-medium text-slate-600">Sistema / equipo
+              <select value={hitoArea} onChange={(e) => setHitoArea(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
+                {[...new Set(tareas.map(sysOf))].filter((s) => s && s !== 'General').sort().map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </label>
+            <label className="mb-3 block text-xs font-medium text-slate-600">Hora de entrega (paro de Operaciones)
+              <input type="datetime-local" value={hitoFecha} onChange={(e) => setHitoFecha(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />
+            </label>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setHitoModal(false)} className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50">Cancelar</button>
+              <button onClick={crearHitoEntrega} className="rounded-lg bg-rose-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-rose-700">Crear hito + bloquear</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

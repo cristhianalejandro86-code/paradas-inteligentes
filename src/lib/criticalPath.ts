@@ -12,6 +12,14 @@ export function rutaCritica(tareas: Tarea[]): {
   const byId = new Map(tareas.map((t) => [t.id, t]))
   const dur = (t: Tarea) => Number(t.duracion_estimada_horas ?? 0)
   const pred = (t: Tarea) => (t.bloqueado_por && t.bloqueado_por !== t.id && byId.has(t.bloqueado_por) ? t.bloqueado_por : null)
+  // Nivel de esfuerzo / hamaca: la disponibilidad del puente grúa abarca toda la parada
+  // y NO es una actividad de la ruta crítica (no la define ni la consume). Se excluye
+  // del cálculo. También respeta una marca manual especificaciones.loe.
+  const esLOE = (t: Tarea) => {
+    if (t.especificaciones_tecnicas?.loe) return true
+    const sis = String(t.especificaciones_tecnicas?.sistema ?? '').toUpperCase()
+    return sis.includes('GRUA') && sis.includes('PUENT')
+  }
   const succ: Record<string, string[]> = {}
   for (const t of tareas) {
     const p = pred(t)
@@ -36,7 +44,8 @@ export function rutaCritica(tareas: Tarea[]): {
     return EF[id]
   }
   for (const t of tareas) fwd(t.id)
-  const fin = Math.max(0, ...tareas.map((t) => EF[t.id]))
+  // El fin de la parada lo definen las actividades reales, no las hamacas (grúa).
+  const fin = Math.max(0, ...tareas.filter((t) => !esLOE(t)).map((t) => EF[t.id]))
 
   // Backward: latest start/finish
   const LF: Record<string, number> = {}
@@ -62,7 +71,7 @@ export function rutaCritica(tareas: Tarea[]): {
   for (const t of tareas) {
     const h = Math.round((LS[t.id] - ES[t.id]) * 10) / 10
     holgura[t.id] = h
-    if (h <= 0.01) criticas.add(t.id)
+    if (h <= 0.01 && !esLOE(t)) criticas.add(t.id)   // las hamacas (grúa) nunca son críticas
   }
   return { criticas, holgura }
 }

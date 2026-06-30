@@ -5,7 +5,7 @@ import { useRefreshOnFocus } from '../lib/useRefreshOnFocus'
 import type { Roster, Tecnico } from '../lib/resourceLeveling'
 import { colorGrupo, disciplina as discDe } from '../lib/palette'
 import { rutaCritica } from '../lib/criticalPath'
-import { nivelarPersonal, nivelarSinExtender, nivelarPorCuadrilla, resolverCuadrillas, resolverPorPersona, sugerirPrecedencias, infoNivel } from '../lib/resourceLeveling'
+import { nivelarPersonal, nivelarSinExtender, nivelarPorCuadrilla, resolverCuadrillas, resolverPorPersona, sugerirPrecedencias, tramosTrabajo, tieneEspera, infoNivel } from '../lib/resourceLeveling'
 import type { Parada, Tarea, TaskStatus } from '../types'
 
 const H = 3600000
@@ -131,7 +131,11 @@ export function GanttPage() {
     const f = fechas[t.id]; if (!f) continue
     const tecRaw = Number((t.especificaciones_tecnicas?.tec as number) ?? 0)
     const tec = Number.isFinite(tecRaw) ? tecRaw : 0   // un 'tec' no numérico no debe envenenar todo el histograma
-    for (let h = Math.max(0, Math.floor((f.s - base) / H)); h < Math.min(horas, Math.ceil((f.e - base) / H)); h++) histo[h] += tec
+    // Cuenta técnicos solo durante el TRABAJO real (no la espera): para tareas con espera
+    // usa los tramos; el resto, el span de la barra recolocado al inicio/fin de la fila.
+    const tramos = tieneEspera(t) ? tramosTrabajo(t) : [{ s: f.s, e: f.e }]
+    for (const tr of tramos)
+      for (let h = Math.max(0, Math.floor((tr.s - base) / H)); h < Math.min(horas, Math.ceil((tr.e - base) / H)); h++) histo[h] += tec
   }
   const peak = Math.max(1, ...histo)
 
@@ -431,7 +435,20 @@ export function GanttPage() {
                     )}
                     {hito ? (
                       <div onPointerDown={(e) => onDown(e, t, 'move')} title={`${t.nombre} (hito)`} className="absolute top-1/2 z-10 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rotate-45 cursor-grab bg-slate-800" style={{ left }} />
-                    ) : (
+                    ) : tieneEspera(t) ? (() => {
+                      // Trabajo al inicio + ESPERA (otra área limpia) + trabajo al final
+                      const dur = Number(t.duracion_estimada_horas ?? 0)
+                      const iniW = Math.max(Math.ceil(dur / 2) * hourW, 4)
+                      const finW = Math.max((dur - Math.ceil(dur / 2)) * hourW, 4)
+                      return (
+                        <div onPointerDown={(e) => onDown(e, t, 'move')} title={`${t.nombre}\n${fmt(fch.s)} → ${fmt(fch.e)} · trabajo ${dur}h CON ESPERA (otra área)\n${t.porcentaje_completado}%`}
+                          className="absolute top-1/2 z-10 h-[18px] -translate-y-1/2 cursor-grab active:cursor-grabbing" style={{ left, width }}>
+                          <div className="absolute top-1/2 h-[3px] w-full -translate-y-1/2 rounded bg-slate-300" title="Espera (otra área)" />
+                          <div className="absolute left-0 top-0 h-full rounded shadow-sm" style={{ width: iniW, background: colBar(t), boxShadow: crit ? '0 0 0 2px #dc2626' : undefined }} />
+                          {dur - Math.ceil(dur / 2) > 0 && <div className="absolute right-0 top-0 h-full rounded shadow-sm" style={{ width: finW, background: colBar(t) }} />}
+                        </div>
+                      )
+                    })() : (
                       <div onPointerDown={(e) => onDown(e, t, 'move')} title={`${t.nombre}\n${fmt(fch.s)} → ${fmt(fch.e)} · ${t.duracion_estimada_horas}h · ${t.porcentaje_completado}%\nHolgura: ${holgura[t.id] ?? '?'}h${crit ? ' · CRÍTICA' : ''}`}
                         className="group absolute top-1/2 z-10 flex h-[18px] -translate-y-1/2 cursor-grab items-center rounded shadow-sm active:cursor-grabbing"
                         style={{ left, width, background: colBar(t), boxShadow: crit ? '0 0 0 2px #dc2626' : undefined }}>

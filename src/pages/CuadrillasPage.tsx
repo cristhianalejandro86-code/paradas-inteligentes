@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useOutletContext, useParams } from 'react-router-dom'
 import { getTareasByParada, updateTareaEspec, updateTareaSchedule, getCuadrillasConfig, setCuadrillasConfig, getUsuarios } from '../lib/api'
-import { balancearCuadrillas, resolverCuadrillas, choquesPersona, especialidadRequerida } from '../lib/resourceLeveling'
+import { balancearCuadrillas, resolverCuadrillas, choquesPersona, especialidadRequerida, tramosTrabajo, tieneEspera } from '../lib/resourceLeveling'
 import type { Tecnico } from '../lib/resourceLeveling'
 import { colorGrupo } from '../lib/palette'
 import { useRefreshOnFocus } from '../lib/useRefreshOnFocus'
@@ -134,18 +134,22 @@ export function CuadrillasPage() {
     const totalConf = crews.reduce((s, c) => s + c.conflictos, 0)
     // Perfil de técnicos/hora en TODA la parada (suma de téc de tareas solapadas)
     const horas = totalDias * 24
+    // Cuenta técnicos solo durante el TRABAJO real (no la espera de tareas con apertura/cierre).
+    const tramosDe = (t: Tarea) => (tieneEspera(t) ? tramosTrabajo(t) : [fch(t)])
     const histo = new Array(horas).fill(0)
     for (const t of dated) {
-      const f = fch(t), tec = tecOf(t)
-      for (let h = Math.max(0, Math.floor((f.s - base) / H)); h < Math.min(horas, Math.ceil((f.e - base) / H)); h++) histo[h] += tec
+      const tec = tecOf(t)
+      for (const tr of tramosDe(t))
+        for (let h = Math.max(0, Math.floor((tr.s - base) / H)); h < Math.min(horas, Math.ceil((tr.e - base) / H)); h++) histo[h] += tec
     }
     const totalHH = dated.reduce((s, t) => s + tecOf(t) * Number(t.duracion_estimada_horas ?? 0), 0)
     // P4 — demanda PICO por especialidad (la que infiere cada tarea × nº de téc)
     const espHora: Record<string, number[]> = {}
     for (const t of dated) {
-      const esp = especialidadRequerida(t) ?? 'Mecánico', tec = tecOf(t), f = fch(t)
+      const esp = especialidadRequerida(t) ?? 'Mecánico', tec = tecOf(t)
       const arr = (espHora[esp] ??= new Array(horas).fill(0))
-      for (let h = Math.max(0, Math.floor((f.s - base) / H)); h < Math.min(horas, Math.ceil((f.e - base) / H)); h++) arr[h] += tec
+      for (const tr of tramosDe(t))
+        for (let h = Math.max(0, Math.floor((tr.s - base) / H)); h < Math.min(horas, Math.ceil((tr.e - base) / H)); h++) arr[h] += tec
     }
     const espPeak = Object.entries(espHora).map(([esp, arr]) => ({ esp, pico: Math.max(0, ...arr) })).filter((e) => e.pico > 0).sort((a, b) => b.pico - a.pico)
     // S2 — choques de PERSONA (mismo técnico nominado en dos tareas solapadas)

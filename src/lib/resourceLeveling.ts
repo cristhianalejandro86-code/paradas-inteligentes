@@ -28,6 +28,28 @@ export const especialidadRequerida = (t: Tarea): string | null => {
   if (/ALINEA/.test(s)) return 'Alineador'
   return null  // sin especialidad específica → cualquier mecánico sirve
 }
+/**
+ * Tramos de TRABAJO REAL de una tarea dentro de su ventana (inicio→fin). Cuando el
+ * span (fin−inicio) excede el trabajo (duración) por ≥2h, se asume que hay ESPERA en
+ * el medio (otra área limpia, llega un repuesto): la tarea trabaja al inicio y al
+ * final, no de corrido. Ej.: "APERTURA Y CIERRE DE TAPA MANHOLE" 3h de trabajo en un
+ * span de 93h → 2h al abrir + espera + 1h al cerrar. Se usa para que la barra y el
+ * histograma NO cuenten recursos durante la espera.
+ */
+export function tramosTrabajo(t: Tarea): { s: number; e: number }[] {
+  if (!t.fecha_inicio_prog || !t.fecha_fin_prog) return []
+  const s = new Date(t.fecha_inicio_prog).getTime(), e = new Date(t.fecha_fin_prog).getTime()
+  const work = Math.max(0, Number(t.duracion_estimada_horas ?? 0))
+  const span = (e - s) / H
+  if (work <= 0 || span - work < 2) return [{ s, e }]   // sin espera significativa
+  const ini = Math.ceil(work / 2), fin = work - ini
+  const tramos = [{ s, e: s + ini * H }]
+  if (fin > 0) tramos.push({ s: e - fin * H, e })
+  return tramos
+}
+/** ¿La tarea tiene espera (trabaja al inicio y al final, no de corrido)? */
+export const tieneEspera = (t: Tarea): boolean => tramosTrabajo(t).length > 1
+
 /** ¿La tarea necesita grúa / puente grúa? (recurso compartido por toda la planta). */
 export const requiereGrua = (t: Tarea): boolean =>
   /IZAJE|IZAR|GR[UÚ]A|RIGG|MANIOBRA|TRASLAD|MONTAJE|DESMONTAJE|RETIR|INSTALAC|COLOC/.test(`${t.nombre}`.toUpperCase())

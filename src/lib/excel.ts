@@ -44,6 +44,48 @@ export function exportarExcel(tareas: Tarea[], nombreParada: string) {
   XLSX.writeFile(wb, `Trabajos_${nombreParada.replace(/[^\w]+/g, '_')}.xlsx`)
 }
 
+type RecItem = { t: string; n: string; q: number; e: string }
+const esTrabajo = (t: Tarea) => !esp(t).hito_inicio && Number(t.duracion_estimada_horas ?? 0) > 0
+const conCuad = (t: Tarea) => { const g = esp(t).grupo as string; const a = esp(t).asignados as unknown[]; return (!!g && g !== '—') || (Array.isArray(a) && a.length > 0) }
+const itemsDe = (t: Tarea): RecItem[] => (Array.isArray(esp(t).recursos) ? (esp(t).recursos as RecItem[]) : [])
+const matListo = (t: Tarea) => { const it = itemsDe(t); return !!esp(t).matNA || (it.length > 0 && it.every((i) => i.e === 'listo')) }
+
+/**
+ * Exporta la PREPARACIÓN de la parada a Excel (para Compras/Logística): hoja "Recursos"
+ * = consolidado de herramientas/equipos/materiales con cantidad y cuántos faltan; hoja
+ * "Alistamiento" = estado por actividad (cuadrilla/recursos/permiso/listo). Opcional:
+ * filtra por línea.
+ */
+export function exportarPreparacion(tareas: Tarea[], nombreParada: string, linea?: string) {
+  const work = tareas.filter(esTrabajo).filter((t) => !linea || linea === 'Todas' || String(esp(t).linea ?? '') === linea)
+  // Hoja 1 — consolidado de recursos por tipo+nombre
+  const agg: Record<string, { Tipo: string; Recurso: string; Cantidad: number; Listos: number; En_ruta: number; Faltan: number }> = {}
+  for (const t of work) for (const it of itemsDe(t)) {
+    const k = `${it.t}|${String(it.n).trim().toLowerCase()}`
+    const r = (agg[k] ??= { Tipo: it.t, Recurso: String(it.n).trim(), Cantidad: 0, Listos: 0, En_ruta: 0, Faltan: 0 })
+    const q = Number(it.q) || 0
+    r.Cantidad += q
+    if (it.e === 'listo') r.Listos += q; else if (it.e === 'en_ruta') r.En_ruta += q; else r.Faltan += q
+  }
+  const recursos = Object.values(agg).sort((a, b) => a.Tipo.localeCompare(b.Tipo) || a.Recurso.localeCompare(b.Recurso))
+  // Hoja 2 — alistamiento por actividad
+  const alist = [...work].sort((a, b) => (a.secuencia ?? 0) - (b.secuencia ?? 0)).map((t) => ({
+    Secuencia: t.secuencia ?? '',
+    Actividad: t.nombre,
+    Sistema: esp(t).sistema ?? '',
+    Linea: esp(t).linea ?? '',
+    Cuadrilla: conCuad(t) ? (esp(t).grupo || 'asignada') : 'FALTA',
+    Recursos: esp(t).matNA ? 'N/A' : matListo(t) ? 'Listo' : (itemsDe(t).length ? 'Pendiente' : 'Sin definir'),
+    Permiso: esp(t).permiso ? 'OK' : 'FALTA',
+    Listo: conCuad(t) && matListo(t) && !!esp(t).permiso ? 'SÍ' : 'no',
+  }))
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(recursos.length ? recursos : [{ Tipo: '', Recurso: '(sin recursos listados aún)', Cantidad: '', Listos: '', En_ruta: '', Faltan: '' }]), 'Recursos')
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(alist), 'Alistamiento')
+  const suf = linea && linea !== 'Todas' ? `_${linea.replace(/[^\w]+/g, '_')}` : ''
+  XLSX.writeFile(wb, `Preparacion_${nombreParada.replace(/[^\w]+/g, '_')}${suf}.xlsx`)
+}
+
 /** Descarga una plantilla en blanco con las columnas y un ejemplo. */
 export function descargarPlantilla() {
   const ejemplo = {

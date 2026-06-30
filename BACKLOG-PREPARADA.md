@@ -1,0 +1,35 @@
+# BACKLOG — Mejoras operativas PRE-PARADA (priorizado valor×esfuerzo)
+
+> Loop multi-agente. Solo lo operativo/planificación. NADA de seguridad (se ve al final).
+> Estado: ⬜ pendiente · 🔄 en curso · ✅ hecho (con evidencia + commit). ⭐ = coincidencia entre ≥2 auditores (señal fuerte).
+
+## ✅ Hecho
+- ✅ **R1 — Exportar consolidado de recursos + alistamiento a Excel** (hoja Recursos para Compras + hoja Alistamiento). Inc 39. (valida auditor Recursos #4)
+- ✅ **R1 — Blindaje: ítem de recurso malformado ya NO revienta el tablero de Preparación** (itemsDe saneado). Inc 39. (auditor Robustez #2)
+- ✅ Verificado falso positivo: `diasParaInicio` NaN ya está guardado por `isFinite` (Robustez #3) — no requería cambio.
+
+## Alta prioridad (próximas rondas, por valor×esfuerzo)
+- ⬜ **Plan vs ventana comprometida** — KPI global "plan = X h vs ventana = Y h → +Z h" visible en todas las vistas (hoy el marcador fucsia solo sale al filtrar 1 línea). A/S. (Operativo #3)
+- ⬜ **Holgura LIBRE** además de la total en CPM/Gantt/Ruta crítica. A/S. (Operativo #2)
+- ⬜⭐ **Lead-time por ítem de recurso** (campo lead/ETA; rojo si lead > días al inicio) → "qué pedir YA". A/M. (Recursos #1, alineado con el dueño)
+- ⬜⭐ **Edición MASIVA**: seleccionar varias tareas y aplicar permiso/recursos/cuadrilla de una vez (hoy 1×1 = cuello de botella con 158 tareas). A/M→L. (Usabilidad #1 y #2)
+- ⬜ **Demanda (consolidado) vs inventario real** (`tabla recurso`/getRecursos): déficit = requerido − disponible. A/M. (Recursos #2)
+- ⬜ **Capacidad de equipos compartidos en Preparación** (pico de grúas/soldadoras vs disponible, no solo en el nivelador del Gantt). A/M. (Recursos #3)
+- ⬜ **Ruta crítica que considere recursos (critical chain)**: tras nivelar, marcar como crítica la cadena por recurso, no solo por dependencia. A/M. (Operativo #1)
+
+## Media
+- ⬜ **% completado en Lista: onChange→onBlur** (hoy floodea updates por tecla + race). M/S. (Robustez #1)
+- ⬜ **Multi-filtro** (disciplina/sistema/grupo/estado, combinables) en Lista y Preparación. M/M. (Usabilidad #4)
+- ⬜ **Targets táctiles ≥40px para tablet** en grillas densas. M/S. (Usabilidad #5)
+- ⬜ **Deshacer** en edición fila-a-fila (Lista y Preparación). M/M. (Usabilidad #3)
+- ⬜ **Rollback** en updates optimistas masivos (nivelación) si falla el guardado. M/M. (Robustez #4)
+- ⬜ **Preparación ponderada por criticidad** (faltante en ruta crítica pesa más que con holgura). M/M. (Operativo #5)
+- ⬜ **Import Excel: colisión de secuencia** rompe precedencias en silencio. M/M. (Robustez #5)
+- ⬜ **Alquiler vs compra cuantificado** ($/día × días de parada). M/S. (Recursos #5)
+- ⬜ **Multi-predecesora** (hoy bloqueado_por es FK único; un montaje que espera mecánica Y eléctrica no se expresa). M/L. (Operativo #4)
+- ⬜ Filtro de línea en Ruta crítica y Recursos (consistencia entre vistas). S.
+- ⬜ Especialidad por línea (desglose soldadores/mecánicos). M.
+
+## Por confirmar
+- ⬜ Timezone: grid muestra hora local (-5) vs UTC almacenado. Confirmar si confunde al planificar.
+- ⬜ Calendario de no-laborables/paros intermedios por línea (¿se trabaja 24/7? probablemente sí → no urgente).

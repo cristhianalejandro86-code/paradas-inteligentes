@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useOutletContext, useParams } from 'react-router-dom'
 import { getTareasByParada, updateTareaEspec } from '../lib/api'
+import { exportarPreparacion } from '../lib/excel'
 import { useRefreshOnFocus } from '../lib/useRefreshOnFocus'
 import type { Parada, Tarea } from '../types'
 
@@ -13,7 +14,18 @@ const esp = (t: Tarea) => t.especificaciones_tecnicas ?? {}
 const sysOf = (t: Tarea) => (esp(t).sistema as string) || 'General'
 const lineaOf = (t: Tarea) => String(esp(t).linea ?? '').trim()
 const grpOf = (t: Tarea) => (esp(t).grupo as string) || ''
-const itemsDe = (t: Tarea): Item[] => (Array.isArray(esp(t).recursos) ? (esp(t).recursos as Item[]) : [])
+// Sanea cada ítem: un registro malformado (n/q/e ausentes o de otro tipo) NO debe
+// reventar el tablero (it.n.trim() sobre undefined tiraba TypeError dentro del useMemo).
+const itemsDe = (t: Tarea): Item[] => {
+  const raw = esp(t).recursos
+  if (!Array.isArray(raw)) return []
+  return raw.map((i: Partial<Item> | null) => ({
+    t: String(i?.t ?? 'Otro'),
+    n: String(i?.n ?? '').trim(),
+    q: Number.isFinite(Number(i?.q)) ? Number(i?.q) : 0,
+    e: (i?.e === 'listo' || i?.e === 'en_ruta' ? i.e : 'falta') as Estado,
+  }))
+}
 const matNA = (t: Tarea) => !!esp(t).matNA
 const permisoDe = (t: Tarea) => !!esp(t).permiso
 const conCuadrilla = (t: Tarea) => { const g = grpOf(t); const a = esp(t).asignados as unknown[]; return (!!g && g !== '—') || (Array.isArray(a) && a.length > 0) }
@@ -117,7 +129,10 @@ export function PreparacionPage() {
 
       {/* CONSOLIDADO de recursos necesarios */}
       <div className="rounded-xl border border-slate-200 bg-white p-4">
-        <h3 className="mb-2 text-sm font-semibold text-slate-700">🧰 Recursos necesarios para la parada {lineaF !== 'Todas' && <span className="text-xs font-normal text-fuchsia-600">({lineaF})</span>}</h3>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold text-slate-700">🧰 Recursos necesarios para la parada {lineaF !== 'Todas' && <span className="text-xs font-normal text-fuchsia-600">({lineaF})</span>}</h3>
+          <button onClick={() => exportarPreparacion(tareas, parada?.nombre ?? 'parada', lineaF)} title="Descarga un Excel para Compras/Logística: hoja Recursos (qué comprar/alquilar, cuánto, cuánto falta) + hoja Alistamiento (estado por actividad)" className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100">⬇ Exportar a Excel (Compras)</button>
+        </div>
         {consolidado.length === 0 ? (
           <p className="text-xs text-slate-400">Aún no se han listado recursos por tarea. Abre una tarea abajo y agrega sus herramientas, equipos, máquinas, pernos, etc.</p>
         ) : (

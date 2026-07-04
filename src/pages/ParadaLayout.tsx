@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useParams, Link } from 'react-router-dom'
-import { getParadaById } from '../lib/api'
+import { getParadaById, getHistorialParada, deshacerParada, restaurarBaseline } from '../lib/api'
+import type { SnapshotInfo } from '../lib/api'
 import type { Parada, ParadaStatus } from '../types'
 
 const TABS = [
@@ -18,6 +19,8 @@ export function ParadaLayout() {
   const [parada, setParada] = useState<Parada | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [historial, setHistorial] = useState<SnapshotInfo[]>([])
+  const [ocupado, setOcupado] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -26,7 +29,29 @@ export function ParadaLayout() {
       .then(setParada)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
+    getHistorialParada(id).then(setHistorial).catch(() => {})
   }, [id])
+
+  const cambios = historial.filter((h) => h.tipo === 'cambio')
+  const baseline = historial.find((h) => h.tipo === 'baseline')
+
+  async function onDeshacer() {
+    if (!id || ocupado || !cambios.length) return
+    setOcupado(true)
+    try {
+      await deshacerParada(id)
+      window.location.reload() // recarga la vista con el estado restaurado
+    } catch (e) { setError(String(e)); setOcupado(false) }
+  }
+  async function onRestablecer() {
+    if (!id || ocupado || !baseline) return
+    if (!window.confirm(`¿Restablecer TODA la parada a "${baseline.etiqueta}"?\nSe descartan todos los cambios hechos después de esa carga.`)) return
+    setOcupado(true)
+    try {
+      await restaurarBaseline(id)
+      window.location.reload()
+    } catch (e) { setError(String(e)); setOcupado(false) }
+  }
 
   if (loading) return <p className="text-sm text-slate-400">Cargando parada…</p>
   if (error)
@@ -56,7 +81,27 @@ export function ParadaLayout() {
             </span>
           </p>
         </div>
-        <ParadaBadge status={parada.status} />
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={onDeshacer}
+            disabled={ocupado || cambios.length === 0}
+            title={cambios.length ? `Deshacer el último cambio (${cambios[0].etiqueta}). Quedan ${cambios.length} nivel(es) de deshacer.` : 'Sin cambios que deshacer'}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            ↶ Deshacer{cambios.length > 0 && <span className="ml-1 rounded bg-slate-200 px-1.5 text-xs font-semibold text-slate-600">{cambios.length}</span>}
+          </button>
+          {baseline && (
+            <button
+              onClick={onRestablecer}
+              disabled={ocupado}
+              title={`Vuelve al estado exacto de "${baseline.etiqueta}" y descarta todos los cambios posteriores`}
+              className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              ⟲ Restablecer a {baseline.etiqueta.replace('Carga ', '')}
+            </button>
+          )}
+          <ParadaBadge status={parada.status} />
+        </div>
       </div>
 
       <nav className="mb-6 flex gap-1 overflow-x-auto border-b border-slate-200 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

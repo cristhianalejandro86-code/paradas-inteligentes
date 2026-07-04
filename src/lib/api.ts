@@ -27,6 +27,7 @@ export async function updateTareaEspec(
   id: string,
   espec: Record<string, unknown>,
 ): Promise<void> {
+  await regCambioTarea(id)
   const { error } = await supabase
     .from('tarea')
     .update({ especificaciones_tecnicas: espec, fecha_actualizacion: new Date().toISOString() })
@@ -128,6 +129,7 @@ export async function createTarea(
     secuencia?: number | null
   },
 ): Promise<Tarea> {
+  await regCambioParada(paradaId, 'nueva tarea')
   const { data, error } = await supabase
     .from('tarea')
     .insert({
@@ -183,11 +185,47 @@ export async function getRecursos(): Promise<Recurso[]> {
   return (data as unknown as Recurso[]) ?? []
 }
 
+// ——— HISTORIAL DE CAMBIOS (deshacer / restablecer) ———
+// Antes de cada mutación se guarda un snapshot COMPLETO de las tareas de la parada
+// (fn_snapshot_cambio agrupa ráfagas de 8 s en un solo nivel y poda a 10 niveles).
+// Deshacer restaura el último snapshot; Restablecer vuelve al baseline (la carga).
+
+/** Registra un punto de deshacer a partir de una tarea (best-effort, no bloquea si falla). */
+export async function regCambioTarea(tareaId: string, etiqueta = 'edición'): Promise<void> {
+  try { await supabase.rpc('fn_snapshot_cambio_tarea', { p_tarea: tareaId, p_etiqueta: etiqueta }) } catch { /* no bloquear la edición */ }
+}
+/** Registra un punto de deshacer a partir de la parada. */
+export async function regCambioParada(paradaId: string, etiqueta = 'edición'): Promise<void> {
+  try { await supabase.rpc('fn_snapshot_cambio', { p_parada: paradaId, p_etiqueta: etiqueta }) } catch { /* idem */ }
+}
+export type SnapshotInfo = { id: string; etiqueta: string; tipo: 'baseline' | 'cambio'; creado_en: string }
+/** Lista los snapshots de la parada (baseline + pila de cambios, más reciente primero). */
+export async function getHistorialParada(paradaId: string): Promise<SnapshotInfo[]> {
+  const { data, error } = await supabase.from('parada_snapshot')
+    .select('id, etiqueta, tipo, creado_en').eq('parada_id', paradaId)
+    .order('creado_en', { ascending: false })
+  if (error) throw new Error(error.message)
+  return (data as SnapshotInfo[]) ?? []
+}
+/** Deshace el último cambio (restaura y consume el snapshot). Devuelve nº de tareas o -1 si no hay. */
+export async function deshacerParada(paradaId: string): Promise<number> {
+  const { data, error } = await supabase.rpc('fn_deshacer_parada', { p_parada: paradaId })
+  if (error) throw new Error(error.message)
+  return data as number
+}
+/** Restablece la parada al baseline (la carga) y limpia la pila de cambios. */
+export async function restaurarBaseline(paradaId: string): Promise<number> {
+  const { data, error } = await supabase.rpc('fn_restaurar_baseline', { p_parada: paradaId })
+  if (error) throw new Error(error.message)
+  return data as number
+}
+
 /** Actualiza el estado de una tarea (mover tarjeta en el Kanban). */
 export async function updateTareaStatus(
   id: string,
   status: TaskStatus,
 ): Promise<void> {
+  await regCambioTarea(id, 'estado')
   const { error } = await supabase
     .from('tarea')
     .update({ status, fecha_actualizacion: new Date().toISOString() })
@@ -203,6 +241,7 @@ export async function updateTareaSchedule(
   endISO: string,
   durHoras: number,
 ): Promise<void> {
+  await regCambioTarea(id, 'programación')
   const { error } = await supabase
     .from('tarea')
     .update({
@@ -230,6 +269,7 @@ export async function updateTarea(
     secuencia: number
   }>,
 ): Promise<void> {
+  await regCambioTarea(id)
   const { error } = await supabase
     .from('tarea')
     .update({ ...fields, fecha_actualizacion: new Date().toISOString() })
@@ -241,6 +281,8 @@ export async function updateTarea(
 export async function createTareasBulk(
   rows: Record<string, unknown>[],
 ): Promise<{ id: string; secuencia: number }[]> {
+  const pid = rows[0]?.parada_id as string | undefined
+  if (pid) await regCambioParada(pid, 'importación')
   const { data, error } = await supabase.from('tarea').insert(rows).select('id, secuencia')
   if (error) throw new Error(error.message)
   return (data as { id: string; secuencia: number }[]) ?? []
@@ -266,6 +308,7 @@ export async function registrarAvance(
   tareaId: string,
   input: { porcentaje: number; status: TaskStatus; comentario?: string },
 ): Promise<{ porcentaje_completado: number; status: TaskStatus }> {
+  await regCambioTarea(tareaId, 'avance')
   const { error: insErr } = await supabase.from('progreso').insert({
     tarea_id: tareaId,
     porcentaje_completado: input.porcentaje,

@@ -50,6 +50,8 @@ export function TablaPage() {
   useRefreshOnFocus(recargar)
 
   const grupos = useMemo(() => [...new Set(tareas.map(grpOf).filter(Boolean))].sort(), [tareas])
+  // Supervisores asignables (por rol/cargo/especialidad). Se guarda el nombre en espec.supervisor.
+  const supervisores = useMemo(() => usuarios.filter((u) => /superv|residente|jefe/i.test(`${u.rol} ${u.cargo ?? ''} ${u.especialidad ?? ''}`)).sort((a, b) => a.nombre.localeCompare(b.nombre)), [usuarios])
 
   function save(idt: string, fields: Partial<Tarea>) {
     setTareas((ts) => ts.map((t) => (t.id === idt ? { ...t, ...fields } : t)))
@@ -157,7 +159,7 @@ export function TablaPage() {
         <table className="text-sm" style={{ minWidth: 1500 }}>
           <thead className="sticky top-0 z-10 bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500">
             <tr>
-              {['#', 'Actividad', 'WBS', 'Área', 'Disciplina', 'Grupo', 'Téc', 'Hrs', 'Comienzo', 'Fin', 'Predec.', 'Responsable', 'Estado', '%'].map((h) => (
+              {['#', 'Actividad', 'WBS', 'Área', 'Disciplina', 'Grupo', 'Supervisor', 'Línea', 'Téc', 'Hrs', 'Comienzo', 'Fin', 'Predec.', 'Responsable', 'Estado', '%'].map((h) => (
                 h === 'Actividad' ? (
                   <th key={h} className="relative whitespace-nowrap px-2 py-2 text-left font-semibold" style={{ width: actW, minWidth: actW }}>Actividad
                     <ColResizeHandle onResize={onActResize} />
@@ -176,6 +178,20 @@ export function TablaPage() {
                 <td className="px-1 py-1"><select value={discOf(t)} onChange={(e) => saveEspec(t, { disciplina: e.target.value })} className="w-full rounded border border-transparent bg-transparent py-0.5 text-xs hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none">{DISCS.map((d) => <option key={d} value={d}>{d}</option>)}</select></td>
                 <td className="px-1 py-1" style={{ width: 70 }}>
                   <input list="grupos-dl" defaultValue={grpOf(t)} onBlur={(e) => saveEspec(t, { grupo: e.target.value })} className={`${inp} text-center font-medium focus:!bg-white focus:!text-slate-900`} style={{ color: grpOf(t) ? '#fff' : '#0f172a', background: grpOf(t) ? colorGrupo(grpOf(t)) : undefined, borderRadius: 4 }} />
+                </td>
+                <td className="px-1 py-1" style={{ width: 140 }}>
+                  <select value={String(esp(t).supervisor ?? '')} onChange={(e) => saveEspec(t, { supervisor: e.target.value })} title="Supervisor responsable de la actividad" className={`w-full rounded border border-transparent bg-transparent py-0.5 text-xs hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none ${esp(t).supervisor ? 'text-slate-700' : 'text-slate-400'}`}>
+                    <option value="">— sup.</option>
+                    {String(esp(t).supervisor ?? '') !== '' && !supervisores.some((u) => u.nombre === esp(t).supervisor) && <option value={String(esp(t).supervisor)}>{String(esp(t).supervisor)}</option>}
+                    {supervisores.map((u) => <option key={u.id} value={u.nombre}>{u.nombre}</option>)}
+                  </select>
+                </td>
+                <td className="px-1 py-1" style={{ width: 88 }}>
+                  <select value={String(esp(t).linea ?? '')} onChange={(e) => saveEspec(t, { linea: e.target.value })} title="Línea a la que pertenece (separa duraciones, ruta crítica y personal por línea)" className={`w-full rounded border py-0.5 text-center text-xs focus:border-amber-400 focus:bg-white focus:outline-none ${esp(t).linea ? 'border-transparent bg-fuchsia-50 font-medium text-fuchsia-700 hover:border-fuchsia-200' : 'border-transparent bg-transparent text-slate-400 hover:border-slate-200'}`}>
+                    <option value="">— línea</option>
+                    <option value="LINEA 1">LINEA 1</option>
+                    <option value="LINEA 2">LINEA 2</option>
+                  </select>
                 </td>
                 <td className="px-1 py-1" style={{ width: 48 }}><input key={`tec-${Number(esp(t).tec ?? 0)}`} type="number" min={0} defaultValue={Number(esp(t).tec ?? 0)} onBlur={(e) => { const v = Number(e.target.value); if (Number.isFinite(v) && v >= 0) saveEspec(t, { tec: v }) }} className={`${inp} text-center`} /></td>
                 <td className="px-1 py-1" style={{ width: 56 }}><input key={`dur-${Number(t.duracion_estimada_horas ?? 0)}`} type="number" min={0} step={0.5} defaultValue={Number(t.duracion_estimada_horas ?? 0)} onBlur={(e) => { const v = Number(e.target.value); if (Number.isFinite(v) && v > 0 && v !== Number(t.duracion_estimada_horas)) save(t.id, { duracion_estimada_horas: v }) }} className={`${inp} text-center`} /></td>

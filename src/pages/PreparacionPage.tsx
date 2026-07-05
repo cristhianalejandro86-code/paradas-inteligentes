@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useOutletContext, useParams } from 'react-router-dom'
-import { getTareasByParada, updateTareaEspec, getCuadrillasConfig } from '../lib/api'
+import { getTareasByParada, updateTareaEspec, getCuadrillasConfig, getUsuarios } from '../lib/api'
 import type { Previo } from '../lib/api'
 import { useColWidth, ColResizeHandle } from '../components/ColResize'
 import { exportarPreparacion } from '../lib/excel'
@@ -94,12 +94,16 @@ export function PreparacionPage() {
   const [faltaF, setFaltaF] = useState<'Todas' | 'cuadrilla' | 'recursos' | 'permiso'>('Todas')
   const [config, setConfig] = useState<Record<string, { tecnicos?: Tecnico[] }>>({})
   const [editPrev, setEditPrev] = useState<Tarea | null>(null)
+  const [usuarios, setUsuarios] = useState<Tecnico[]>([])
   const { w: actW, onResize: onActResize } = useColWidth('prep-act-w')
 
   const reload = () => id && getTareasByParada(id).then(setTareas).catch((e) => setError(e.message))
   useEffect(() => { if (!id) return; setLoading(true); getTareasByParada(id).then(setTareas).catch((e) => setError(e.message)).finally(() => setLoading(false)) }, [id])
   useEffect(() => { if (id) getCuadrillasConfig(id).then(setConfig).catch(() => {}) }, [id])
+  useEffect(() => { getUsuarios().then(setUsuarios).catch(() => {}) }, [])
   useRefreshOnFocus(reload)
+  // Supervisores asignables (mismo criterio que la Lista); se guarda el nombre en espec.supervisor.
+  const supervisores = useMemo(() => usuarios.filter((u) => /superv|residente|jefe/i.test(`${u.rol} ${u.cargo ?? ''} ${u.especialidad ?? ''}`)).sort((a, b) => a.nombre.localeCompare(b.nombre)), [usuarios])
   // Técnicos de una actividad: los nominados en la tarea (asignados) o, si no, el
   // roster de su cuadrilla (definido en la vista Cuadrillas). Trae su especialidad.
   const tecnicosDe = (t: Tarea): Tecnico[] => {
@@ -275,7 +279,7 @@ export function PreparacionPage() {
             <thead className="sticky top-0 bg-slate-50 text-[10px] uppercase tracking-wide text-slate-400">
               <tr>
                 <th className="px-2 py-2"><input type="checkbox" title="Seleccionar todas (visibles)" checked={d.lista.length > 0 && d.lista.every((t) => sel.has(t.id))} onChange={(e) => setSel((s) => { const n = new Set(s); if (e.target.checked) d.lista.forEach((t) => n.add(t.id)); else d.lista.forEach((t) => n.delete(t.id)); return n })} className="accent-amber-500" /></th>
-                <th className="px-2 py-2 text-left">#</th><th className="relative px-2 py-2 text-left" style={{ width: actW, minWidth: actW }}>Actividad<ColResizeHandle onResize={onActResize} /></th><th className="px-2 py-2 text-center">Cuadrilla / Técnicos</th><th className="px-2 py-2 text-center">Recursos (herram./equipo/material)</th><th className="px-2 py-2 text-center">Previos (separar pernos, medidas…)</th><th className="px-2 py-2 text-center">Permiso</th><th className="px-2 py-2 text-center">Estado</th>
+                <th className="px-2 py-2 text-left">#</th><th className="relative px-2 py-2 text-left" style={{ width: actW, minWidth: actW }}>Actividad<ColResizeHandle onResize={onActResize} /></th><th className="px-2 py-2 text-center">Cuadrilla / Técnicos</th><th className="px-2 py-2 text-center">Supervisor</th><th className="px-2 py-2 text-center">Recursos (herram./equipo/material)</th><th className="px-2 py-2 text-center">Previos (separar pernos, medidas…)</th><th className="px-2 py-2 text-center">Permiso</th><th className="px-2 py-2 text-center">Estado</th>
               </tr>
             </thead>
             <tbody>
@@ -307,6 +311,13 @@ export function PreparacionPage() {
                         })()}
                       </div>
                     </td>
+                    <td className="px-2 py-1.5 text-center" style={{ maxWidth: 150 }}>
+                      <select value={String(esp(t).supervisor ?? '')} onChange={(e) => guardar(t, { supervisor: e.target.value })} title="Supervisor responsable de la actividad" className={`w-full max-w-[9rem] rounded border border-transparent bg-transparent py-0.5 text-[11px] hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none ${esp(t).supervisor ? 'font-medium text-slate-700' : 'text-slate-400'}`}>
+                        <option value="">— sup.</option>
+                        {String(esp(t).supervisor ?? '') !== '' && !supervisores.some((u) => u.nombre === esp(t).supervisor) && <option value={String(esp(t).supervisor)}>{String(esp(t).supervisor)}</option>}
+                        {supervisores.map((u) => <option key={u.id} value={u.nombre}>{u.nombre}</option>)}
+                      </select>
+                    </td>
                     <td className="px-2 py-1.5 text-center">
                       <button onClick={() => setEditRec(t)} className={`rounded px-2 py-0.5 text-[11px] font-medium ${badge(me)}`} title="Listar herramientas, equipos, materiales…">
                         {matNA(t) ? '— no requiere' : n ? `🧰 ${n} ítem(s) · ${txt(me)}` : '➕ listar recursos'}
@@ -324,7 +335,7 @@ export function PreparacionPage() {
                   </tr>
                 )
               })}
-              {d.lista.length === 0 && <tr><td colSpan={8} className="px-4 py-10 text-center text-sm text-emerald-600">🎉 Todo listo para arrancar en este filtro.</td></tr>}
+              {d.lista.length === 0 && <tr><td colSpan={9} className="px-4 py-10 text-center text-sm text-emerald-600">🎉 Todo listo para arrancar en este filtro.</td></tr>}
             </tbody>
           </table>
         </div>

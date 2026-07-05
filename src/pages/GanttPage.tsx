@@ -114,6 +114,9 @@ export function GanttPage() {
     // (duración 0, fin = inicio) NO se marca.
     return fin < ini || (fin === ini && Number(t.duracion_estimada_horas ?? 0) > 0)
   }), [tareas])
+  // Tareas SIN PROGRAMAR (sin fecha): no se dibujan en el timeline y es fácil olvidarlas
+  // (en REV029 son las "PERE CONF" pendientes de confirmación). Se avisan en el header.
+  const sinProgramar = useMemo(() => tareas.filter((t) => !t.fecha_inicio_prog || !t.fecha_fin_prog), [tareas])
   const nivel = useMemo(() => infoNivel(tareas), [tareas])
   const topeC = targetC ?? nivel?.recC ?? 20
   const lineas = useMemo(() => [...new Set(tareas.map(lineaOf).filter(Boolean))].sort(), [tareas])
@@ -405,6 +408,12 @@ export function GanttPage() {
             <span className="rounded bg-red-600 px-2 py-0.5 text-xs font-semibold text-white"
               title={`Fecha fin ≤ inicio (duración inválida). Corrígelas en la Lista o el Gantt:\n${fechasInval.map((t) => `· #${t.secuencia} ${t.nombre}`).join('\n')}`}>
               ⛔ {fechasInval.length} con fecha inválida
+            </span>
+          )}
+          {sinProgramar.length > 0 && (
+            <span className="rounded bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-700 ring-1 ring-violet-300"
+              title={`Sin fecha programada (no aparecen en el cronograma — pendientes de confirmación). Ponles Comienzo/Fin en la Lista:\n${sinProgramar.map((t) => `· #${t.secuencia} ${t.nombre}`).join('\n')}`}>
+              📋 {sinProgramar.length} sin programar
             </span>
           )}
         </h3>

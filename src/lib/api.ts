@@ -13,6 +13,7 @@ export async function getCuadrillasConfig(paradaId: string): Promise<Record<stri
 
 /** Guarda la configuración de cuadrillas de una parada. */
 export async function setCuadrillasConfig(paradaId: string, config: Record<string, { cap?: number; turno?: string; dias?: number; tecnicos?: { id: string; nombre: string; rol: string }[] }>): Promise<void> {
+  await regCambioParada(paradaId, 'cuadrillas/config')
   const { error } = await supabase.from('parada').update({ cuadrillas_config: config }).eq('id', paradaId)
   if (error) throw new Error(error.message)
 }
@@ -213,9 +214,11 @@ export async function deshacerParada(paradaId: string): Promise<number> {
   if (error) throw new Error(error.message)
   return data as number
 }
-/** Restablece la parada al baseline (la carga) y limpia la pila de cambios. */
-export async function restaurarBaseline(paradaId: string): Promise<number> {
-  const { data, error } = await supabase.rpc('fn_restaurar_baseline', { p_parada: paradaId })
+/** Restablece la parada al baseline (la carga) y limpia la pila de cambios.
+ *  `todo=true` restablece TAMBIÉN la configuración de cuadrillas (rosters, capacidades,
+ *  operadores de grúa, días por línea); `false` solo las actividades. */
+export async function restaurarBaseline(paradaId: string, todo = false): Promise<number> {
+  const { data, error } = await supabase.rpc('fn_restaurar_baseline', { p_parada: paradaId, p_todo: todo })
   if (error) throw new Error(error.message)
   return data as number
 }

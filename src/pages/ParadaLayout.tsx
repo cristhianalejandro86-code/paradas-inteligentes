@@ -43,12 +43,13 @@ export function ParadaLayout() {
       window.location.reload() // recarga la vista con el estado restaurado
     } catch (e) { setError(String(e)); setOcupado(false) }
   }
-  async function onRestablecer() {
+  const [eligiendoRestablecer, setEligiendoRestablecer] = useState(false)
+  async function onRestablecer(todo: boolean) {
     if (!id || ocupado || !baseline) return
-    if (!window.confirm(`¿Restablecer TODA la parada a "${baseline.etiqueta}"?\nSe descartan todos los cambios hechos después de esa carga.`)) return
+    setEligiendoRestablecer(false)
     setOcupado(true)
     try {
-      await restaurarBaseline(id)
+      await restaurarBaseline(id, todo)
       window.location.reload()
     } catch (e) { setError(String(e)); setOcupado(false) }
   }
@@ -92,13 +93,32 @@ export function ParadaLayout() {
           </button>
           {baseline && (
             <button
-              onClick={onRestablecer}
+              onClick={() => setEligiendoRestablecer(true)}
               disabled={ocupado}
-              title={`Vuelve al estado exacto de "${baseline.etiqueta}" y descarta todos los cambios posteriores`}
+              title={`Vuelve al estado exacto de "${baseline.etiqueta}" y descarta los cambios posteriores (eliges el alcance)`}
               className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-40"
             >
               ⟲ Restablecer a {baseline.etiqueta.replace('Carga ', '')}
             </button>
+          )}
+          {eligiendoRestablecer && baseline && (
+            <div role="dialog" aria-modal="true" onClick={() => setEligiendoRestablecer(false)} className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+              <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
+                <h3 className="text-sm font-semibold text-slate-900">⟲ Restablecer a {baseline.etiqueta}</h3>
+                <p className="mb-4 mt-1 text-xs text-slate-500">Elige el alcance. En ambos casos se descartan los cambios posteriores a la carga y se vacía la pila de Deshacer.</p>
+                <div className="grid gap-2">
+                  <button onClick={() => onRestablecer(false)} className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 text-left hover:bg-amber-100">
+                    <span className="block text-sm font-semibold text-amber-800">Solo actividades</span>
+                    <span className="block text-xs text-amber-700">Las 164 tareas vuelven al plan REV029. Se CONSERVAN rosters de cuadrillas, capacidades, operadores de grúa y días por línea.</span>
+                  </button>
+                  <button onClick={() => onRestablecer(true)} className="rounded-lg border border-red-300 bg-red-50 px-4 py-2.5 text-left hover:bg-red-100">
+                    <span className="block text-sm font-semibold text-red-800">TODO (actividades + cuadrillas)</span>
+                    <span className="block text-xs text-red-700">Además de las tareas, también vuelven al estado de la carga los rosters, capacidades, operadores de grúa y días por línea.</span>
+                  </button>
+                </div>
+                <button onClick={() => setEligiendoRestablecer(false)} className="mt-3 w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50">Cancelar</button>
+              </div>
+            </div>
           )}
           <ParadaBadge status={parada.status} />
         </div>

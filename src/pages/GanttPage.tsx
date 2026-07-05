@@ -549,15 +549,17 @@ export function GanttPage() {
                   </div>
                 )
               }
-              const t = f.t!, fch = fechas[t.id]; if (!fch) return null
+              // SIN fecha ≠ invisible: la fila se pinta igual (con sus celdas editables)
+              // para poder programarla desde aquí; solo el timeline queda vacío.
+              const t = f.t!, fch = fechas[t.id]
               const crit = criticas.has(t.id)
               // Tarea que se PASA de la ventana de parada de su línea (deadline)
-              const overrun = lineaF !== 'Todas' && lineaDias[lineaF] > 0 && fch.e > base + lineaDias[lineaF] * DAY
+              const overrun = !!fch && lineaF !== 'Todas' && lineaDias[lineaF] > 0 && fch.e > base + lineaDias[lineaF] * DAY
               const ringBar = crit ? '0 0 0 2px #dc2626' : overrun ? '0 0 0 2px #c026d3' : undefined
               const hito = Number(t.duracion_estimada_horas ?? 0) <= 0 || !!t.especificaciones_tecnicas?.hito_inicio
               const dS = draft?.id === t.id ? draft.dS : 0, dD = draft?.id === t.id ? draft.dD : 0
-              const left = x(fch.s) + dS * hourW
-              const width = Math.max(x(fch.e) - x(fch.s) + dD * hourW, 5)
+              const left = fch ? x(fch.s) + dS * hourW : 0
+              const width = fch ? Math.max(x(fch.e) - x(fch.s) + dD * hourW, 5) : 0
               return (
                 <div key={t.id} className={`absolute flex w-full border-b border-slate-50 ${idx % 2 ? 'bg-white' : 'bg-slate-50'}`} style={{ top, height: ROW }}>
                   <div className={`sticky left-0 z-30 flex shrink-0 items-stretch border-r border-slate-200 ${idx % 2 ? 'bg-white' : 'bg-slate-50'} text-[11px] text-slate-600`} style={{ width: LEFT }}>
@@ -580,10 +582,15 @@ export function GanttPage() {
                     <Cell w={gw.pct}><input key={`p-${t.porcentaje_completado}`} type="number" min={0} max={100} step={5} defaultValue={t.porcentaje_completado} onBlur={(e) => { const v = Math.min(100, Math.max(0, Number(e.target.value))); if (Number.isFinite(v) && v !== t.porcentaje_completado) editar(t.id, { porcentaje_completado: v }) }} className="w-full min-w-0 rounded border border-transparent bg-transparent text-center [appearance:textfield] hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" /></Cell>
                   </div>
                   <div className="relative shrink-0" style={{ width: timelineW }}>
-                    {t.fecha_inicio_base && t.fecha_fin_base && Math.abs(new Date(t.fecha_inicio_base).getTime() - fch.s) > 36e5 && (
+                    {!fch && (
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 whitespace-nowrap rounded bg-violet-50 px-2 py-0.5 text-[10px] font-medium text-violet-600 ring-1 ring-violet-200" title="Pendiente de confirmación: escribe Comienzo y Fin en las columnas de la izquierda para programarla">
+                        📋 sin programar — pon Comienzo/Fin ←
+                      </span>
+                    )}
+                    {fch && t.fecha_inicio_base && t.fecha_fin_base && Math.abs(new Date(t.fecha_inicio_base).getTime() - fch.s) > 36e5 && (
                       <div className="absolute bottom-0.5 h-1 rounded bg-slate-400/60" title="Línea base (plan original)" style={{ left: x(new Date(t.fecha_inicio_base).getTime()), width: Math.max(x(new Date(t.fecha_fin_base).getTime()) - x(new Date(t.fecha_inicio_base).getTime()), 3) }} />
                     )}
-                    {hito ? (
+                    {!fch ? null : hito ? (
                       <div onPointerDown={(e) => onDown(e, t, 'move')} title={`${t.nombre} (hito)`} className="absolute top-1/2 z-10 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rotate-45 cursor-grab bg-slate-800" style={{ left }} />
                     ) : tieneEspera(t) ? (() => {
                       // Trabajo al inicio + ESPERA (otra área limpia) + trabajo al final
@@ -606,7 +613,7 @@ export function GanttPage() {
                         <div onPointerDown={(e) => onDown(e, t, 'resize')} className="absolute right-0 top-0 h-full w-2 cursor-ew-resize rounded-r bg-black/0 group-hover:bg-white/40" />
                       </div>
                     )}
-                    {(() => {
+                    {fch && (() => {
                       const asg = (t.especificaciones_tecnicas?.asignados as { nombre: string; rol?: string }[]) ?? []
                       const ini = asg.map((a) => a.nombre.split(' ').filter(Boolean).map((w) => w[0]).slice(0, 2).join('')).join(' ')
                       return (

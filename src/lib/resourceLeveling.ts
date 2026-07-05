@@ -515,6 +515,10 @@ export function balancearCuadrillas(tareas: Tarea[]): Record<string, string> {
   const load: Record<string, number> = {}
   const res: Record<string, string> = {}
   for (const t of [...dated].sort((a, b) => s(a) - s(b))) {
+    // Sin cuadrilla asignada → el balanceador NO la toca (antes escribía el
+    // placeholder '—' como si fuera una cuadrilla real). Asignarla es decisión
+    // de planeamiento, no del balanceo.
+    if (grpDe(t) === '—') continue
     const opts = crewsDisc[discDe(t)] || [grpDe(t)]
     const ts = s(t), te = e(t)
     const free = opts.filter((c) => !(busy[c] || []).some(([bs, be]) => bs < te && ts < be))

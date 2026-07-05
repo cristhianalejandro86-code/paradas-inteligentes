@@ -8,7 +8,7 @@ import { colorGrupo, disciplina as discDe } from '../lib/palette'
 import { exportarExcel, descargarPlantilla, leerExcel } from '../lib/excel'
 import { NuevaTareaModal } from '../components/NuevaTareaModal'
 import { AsignarTecnicosModal } from '../components/AsignarTecnicosModal'
-import { useColWidth, ColResizeHandle } from '../components/ColResize'
+import { useColWidth, useColWidths, ColResizeHandle } from '../components/ColResize'
 import type { Parada, Tarea, TaskStatus } from '../types'
 
 const ESTADOS: TaskStatus[] = ['Por_Hacer', 'En_Progreso', 'En_Revision', 'Completada', 'Bloqueada', 'Cancelada']
@@ -39,6 +39,14 @@ export function TablaPage() {
   const [msg, setMsg] = useState<string | null>(null)
   // Ancho (arrastrable, recordado) de la columna «Actividad» para leer el nombre completo.
   const { w: actW, onResize: onActResize } = useColWidth('tabla-act-w')
+  // Anchos arrastrables del resto de columnas (misma manija en cada encabezado).
+  const { w: cw, resizeFor } = useColWidths('tabla-cols-w', {
+    wbs: 70, area: 160, disc: 110, grupo: 70, sup: 140, linea: 88, tec: 48, hrs: 56,
+    fi: 190, ff: 190, pred: 130, resp: 200, estado: 110, pct: 56,
+  })
+  // Filtros por columna (estilo Excel): se combinan entre sí y con Buscar/Línea.
+  const [colF, setColF] = useState<Record<string, string>>({})
+  const setF = (k: string, v: string) => setColF((p) => ({ ...p, [k]: v }))
   const fileRef = useRef<HTMLInputElement>(null)
 
   const recargar = () => id && getTareasByParada(id).then(setTareas)
@@ -122,12 +130,22 @@ export function TablaPage() {
   }
 
   const lineas = useMemo(() => [...new Set(tareas.map(lineaOf).filter(Boolean))].sort(), [tareas])
+  const areas = useMemo(() => [...new Set(tareas.map(sysOf).filter(Boolean))].sort(), [tareas])
+  const supsEnUso = useMemo(() => [...new Set(tareas.map((t) => String(esp(t).supervisor ?? '')).filter(Boolean))].sort(), [tareas])
   const filas = useMemo(() => {
+    const f = (k: string) => colF[k] ?? ''
     const r = tareas.filter((t) =>
       (!q || t.nombre.toLowerCase().includes(q.toLowerCase()) || sysOf(t).toLowerCase().includes(q.toLowerCase())) &&
-      (lineaF === 'Todas' || lineaOf(t) === lineaF))
+      (lineaF === 'Todas' || lineaOf(t) === lineaF) &&
+      (!f('wbs') || String(esp(t).wbs ?? '').toLowerCase().includes(f('wbs').toLowerCase())) &&
+      (!f('area') || sysOf(t) === f('area')) &&
+      (!f('disc') || discOf(t) === f('disc')) &&
+      (!f('grupo') || (f('grupo') === '(sin)' ? !grpOf(t) || grpOf(t) === '—' : grpOf(t) === f('grupo'))) &&
+      (!f('sup') || (f('sup') === '(sin)' ? !esp(t).supervisor : String(esp(t).supervisor ?? '') === f('sup'))) &&
+      (!f('linea') || (f('linea') === '(sin)' ? !lineaOf(t) : lineaOf(t) === f('linea'))) &&
+      (!f('estado') || t.status === f('estado')))
     return [...r].sort((a, b) => (a.secuencia ?? 0) - (b.secuencia ?? 0))
-  }, [tareas, q, lineaF])
+  }, [tareas, q, lineaF, colF])
 
   if (loading) return <p className="text-sm text-slate-400">Cargando…</p>
   if (error) return <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">Error: {error}<button onClick={() => setError(null)} className="ml-2 underline">cerrar</button></div>
@@ -159,13 +177,25 @@ export function TablaPage() {
         <table className="text-sm" style={{ minWidth: 1500 }}>
           <thead className="sticky top-0 z-10 bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500">
             <tr>
-              {['#', 'Actividad', 'WBS', 'Área', 'Disciplina', 'Grupo', 'Supervisor', 'Línea', 'Téc', 'Hrs', 'Comienzo', 'Fin', 'Predec.', 'Responsable', 'Estado', '%'].map((h) => (
-                h === 'Actividad' ? (
-                  <th key={h} className="relative whitespace-nowrap px-2 py-2 text-left font-semibold" style={{ width: actW, minWidth: actW }}>Actividad
-                    <ColResizeHandle onResize={onActResize} />
-                  </th>
-                ) : <th key={h} className="whitespace-nowrap px-2 py-2 text-left font-semibold">{h}</th>
+              <th className="whitespace-nowrap px-2 py-2 text-left font-semibold">#</th>
+              <th className="relative whitespace-nowrap px-2 py-2 text-left font-semibold" style={{ width: actW, minWidth: actW }}>Actividad<ColResizeHandle onResize={onActResize} /></th>
+              {([['wbs', 'WBS'], ['area', 'Área'], ['disc', 'Disciplina'], ['grupo', 'Grupo'], ['sup', 'Supervisor'], ['linea', 'Línea'], ['tec', 'Téc'], ['hrs', 'Hrs'], ['fi', 'Comienzo'], ['ff', 'Fin'], ['pred', 'Predec.'], ['resp', 'Responsable'], ['estado', 'Estado'], ['pct', '%']] as const).map(([k, h]) => (
+                <th key={k} className="relative whitespace-nowrap px-2 py-2 text-left font-semibold" style={{ width: cw[k], minWidth: cw[k] }}>{h}<ColResizeHandle onResize={resizeFor(k)} /></th>
               ))}
+            </tr>
+            {/* fila de FILTROS por columna (estilo Excel) */}
+            <tr className="bg-slate-100/80 normal-case tracking-normal">
+              <td className="px-1 py-1 text-center">{Object.values(colF).some(Boolean) && <button onClick={() => setColF({})} title="Limpiar todos los filtros" className="rounded bg-slate-200 px-1 text-[10px] text-slate-600 hover:bg-slate-300">✕</button>}</td>
+              <td />
+              <td className="px-1 py-1"><input value={colF.wbs ?? ''} onChange={(e) => setF('wbs', e.target.value)} placeholder="🔍" className="w-full rounded border border-slate-200 bg-white px-1 py-0.5 text-[10px]" /></td>
+              <td className="px-1 py-1"><FSel v={colF.area ?? ''} set={(v) => setF('area', v)} ops={areas} /></td>
+              <td className="px-1 py-1"><FSel v={colF.disc ?? ''} set={(v) => setF('disc', v)} ops={[...DISCS]} /></td>
+              <td className="px-1 py-1"><FSel v={colF.grupo ?? ''} set={(v) => setF('grupo', v)} ops={grupos} sinOp /></td>
+              <td className="px-1 py-1"><FSel v={colF.sup ?? ''} set={(v) => setF('sup', v)} ops={supsEnUso} sinOp /></td>
+              <td className="px-1 py-1"><FSel v={colF.linea ?? ''} set={(v) => setF('linea', v)} ops={lineas} sinOp /></td>
+              <td /><td /><td /><td /><td /><td />
+              <td className="px-1 py-1"><FSel v={colF.estado ?? ''} set={(v) => setF('estado', v)} ops={[...ESTADOS]} /></td>
+              <td />
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -173,37 +203,37 @@ export function TablaPage() {
               <tr key={t.id} className={i % 2 ? 'bg-white' : 'bg-slate-50/40'}>
                 <td className="px-2 py-1 text-slate-400">{t.secuencia}</td>
                 <td className="px-1 py-1" style={{ width: actW, minWidth: actW, maxWidth: actW }}><input key={`n-${t.nombre}`} defaultValue={t.nombre} title={t.nombre} onBlur={(e) => e.target.value !== t.nombre && save(t.id, { nombre: e.target.value })} className={inp} /></td>
-                <td className="px-1 py-1" style={{ width: 70 }}><input defaultValue={String(esp(t).wbs ?? '')} onBlur={(e) => saveEspec(t, { wbs: e.target.value })} className={inp} /></td>
-                <td className="px-1 py-1" style={{ minWidth: 150 }}><input defaultValue={sysOf(t)} onBlur={(e) => saveEspec(t, { sistema: e.target.value })} className={inp} /></td>
-                <td className="px-1 py-1"><select value={discOf(t)} onChange={(e) => saveEspec(t, { disciplina: e.target.value })} className="w-full rounded border border-transparent bg-transparent py-0.5 text-xs hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none">{DISCS.map((d) => <option key={d} value={d}>{d}</option>)}</select></td>
-                <td className="px-1 py-1" style={{ width: 70 }}>
+                <td className="px-1 py-1" style={{ width: cw.wbs, minWidth: cw.wbs, maxWidth: cw.wbs }}><input defaultValue={String(esp(t).wbs ?? '')} onBlur={(e) => saveEspec(t, { wbs: e.target.value })} className={inp} /></td>
+                <td className="px-1 py-1" style={{ width: cw.area, minWidth: cw.area, maxWidth: cw.area }}><input defaultValue={sysOf(t)} onBlur={(e) => saveEspec(t, { sistema: e.target.value })} className={inp} /></td>
+                <td className="px-1 py-1" style={{ width: cw.disc, minWidth: cw.disc, maxWidth: cw.disc }}><select value={discOf(t)} onChange={(e) => saveEspec(t, { disciplina: e.target.value })} className="w-full rounded border border-transparent bg-transparent py-0.5 text-xs hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none">{DISCS.map((d) => <option key={d} value={d}>{d}</option>)}</select></td>
+                <td className="px-1 py-1" style={{ width: cw.grupo, minWidth: cw.grupo, maxWidth: cw.grupo }}>
                   <input list="grupos-dl" defaultValue={grpOf(t)} onBlur={(e) => saveEspec(t, { grupo: e.target.value })} className={`${inp} text-center font-medium focus:!bg-white focus:!text-slate-900`} style={{ color: grpOf(t) ? '#fff' : '#0f172a', background: grpOf(t) ? colorGrupo(grpOf(t)) : undefined, borderRadius: 4 }} />
                 </td>
-                <td className="px-1 py-1" style={{ width: 140 }}>
+                <td className="px-1 py-1" style={{ width: cw.sup, minWidth: cw.sup, maxWidth: cw.sup }}>
                   <select value={String(esp(t).supervisor ?? '')} onChange={(e) => saveEspec(t, { supervisor: e.target.value })} title="Supervisor responsable de la actividad" className={`w-full rounded border border-transparent bg-transparent py-0.5 text-xs hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none ${esp(t).supervisor ? 'text-slate-700' : 'text-slate-400'}`}>
                     <option value="">— sup.</option>
                     {String(esp(t).supervisor ?? '') !== '' && !supervisores.some((u) => u.nombre === esp(t).supervisor) && <option value={String(esp(t).supervisor)}>{String(esp(t).supervisor)}</option>}
                     {supervisores.map((u) => <option key={u.id} value={u.nombre}>{u.nombre}</option>)}
                   </select>
                 </td>
-                <td className="px-1 py-1" style={{ width: 88 }}>
+                <td className="px-1 py-1" style={{ width: cw.linea, minWidth: cw.linea, maxWidth: cw.linea }}>
                   <select value={String(esp(t).linea ?? '')} onChange={(e) => saveEspec(t, { linea: e.target.value })} title="Línea a la que pertenece (separa duraciones, ruta crítica y personal por línea)" className={`w-full rounded border py-0.5 text-center text-xs focus:border-amber-400 focus:bg-white focus:outline-none ${esp(t).linea ? 'border-transparent bg-fuchsia-50 font-medium text-fuchsia-700 hover:border-fuchsia-200' : 'border-transparent bg-transparent text-slate-400 hover:border-slate-200'}`}>
                     <option value="">— línea</option>
                     <option value="LINEA 1">LINEA 1</option>
                     <option value="LINEA 2">LINEA 2</option>
                   </select>
                 </td>
-                <td className="px-1 py-1" style={{ width: 48 }}><input key={`tec-${Number(esp(t).tec ?? 0)}`} type="number" min={0} defaultValue={Number(esp(t).tec ?? 0)} onBlur={(e) => { const v = Number(e.target.value); if (Number.isFinite(v) && v >= 0) saveEspec(t, { tec: v }) }} className={`${inp} text-center`} /></td>
-                <td className="px-1 py-1" style={{ width: 56 }}><input key={`dur-${Number(t.duracion_estimada_horas ?? 0)}`} type="number" min={0} step={0.5} defaultValue={Number(t.duracion_estimada_horas ?? 0)} onBlur={(e) => { const v = Number(e.target.value); if (Number.isFinite(v) && v > 0 && v !== Number(t.duracion_estimada_horas)) save(t.id, { duracion_estimada_horas: v }) }} className={`${inp} text-center`} /></td>
-                <td className="px-1 py-1" style={{ width: 190 }}><input key={`fi-${t.fecha_inicio_prog ?? ''}`} type="datetime-local" defaultValue={toInput(t.fecha_inicio_prog)} onBlur={(e) => editarFecha(t, 'inicio', e.target.value)} className={`${inp} text-xs`} /></td>
-                <td className="px-1 py-1" style={{ width: 190 }}><input key={`ff-${t.fecha_fin_prog ?? ''}`} type="datetime-local" defaultValue={toInput(t.fecha_fin_prog)} onBlur={(e) => editarFecha(t, 'fin', e.target.value)} className={`${inp} text-xs`} /></td>
-                <td className="px-1 py-1" style={{ width: 130 }}>
+                <td className="px-1 py-1" style={{ width: cw.tec, minWidth: cw.tec, maxWidth: cw.tec }}><input key={`tec-${Number(esp(t).tec ?? 0)}`} type="number" min={0} defaultValue={Number(esp(t).tec ?? 0)} onBlur={(e) => { const v = Number(e.target.value); if (Number.isFinite(v) && v >= 0) saveEspec(t, { tec: v }) }} className={`${inp} text-center`} /></td>
+                <td className="px-1 py-1" style={{ width: cw.hrs, minWidth: cw.hrs, maxWidth: cw.hrs }}><input key={`dur-${Number(t.duracion_estimada_horas ?? 0)}`} type="number" min={0} step={0.5} defaultValue={Number(t.duracion_estimada_horas ?? 0)} onBlur={(e) => { const v = Number(e.target.value); if (Number.isFinite(v) && v > 0 && v !== Number(t.duracion_estimada_horas)) save(t.id, { duracion_estimada_horas: v }) }} className={`${inp} text-center`} /></td>
+                <td className="px-1 py-1" style={{ width: cw.fi, minWidth: cw.fi, maxWidth: cw.fi }}><input key={`fi-${t.fecha_inicio_prog ?? ''}`} type="datetime-local" defaultValue={toInput(t.fecha_inicio_prog)} onBlur={(e) => editarFecha(t, 'inicio', e.target.value)} className={`${inp} text-xs`} /></td>
+                <td className="px-1 py-1" style={{ width: cw.ff, minWidth: cw.ff, maxWidth: cw.ff }}><input key={`ff-${t.fecha_fin_prog ?? ''}`} type="datetime-local" defaultValue={toInput(t.fecha_fin_prog)} onBlur={(e) => editarFecha(t, 'fin', e.target.value)} className={`${inp} text-xs`} /></td>
+                <td className="px-1 py-1" style={{ width: cw.pred, minWidth: cw.pred, maxWidth: cw.pred }}>
                   <select value={t.bloqueado_por ?? ''} onChange={(e) => save(t.id, { bloqueado_por: e.target.value || null })} className="w-full rounded border border-transparent bg-transparent py-0.5 text-xs hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none">
                     <option value="">—</option>
                     {tareas.filter((o) => o.id !== t.id && !descMap[t.id]?.has(o.id)).map((o) => <option key={o.id} value={o.id}>#{o.secuencia} {o.nombre.slice(0, 22)}</option>)}
                   </select>
                 </td>
-                <td className="px-1 py-1" style={{ width: 200 }}>
+                <td className="px-1 py-1" style={{ width: cw.resp, minWidth: cw.resp, maxWidth: cw.resp }}>
                   <button onClick={() => setAsignando(t)} title="Asignar técnicos con su cargo" className="w-full rounded border border-transparent px-1 py-1 text-left hover:border-slate-200">
                     {(() => {
                       const a = (esp(t).asignados as { nombre: string; rol: string }[]) ?? []
@@ -216,8 +246,8 @@ export function TablaPage() {
                     })()}
                   </button>
                 </td>
-                <td className="px-1 py-1"><select value={t.status} onChange={(e) => save(t.id, { status: e.target.value as TaskStatus })} className="w-full rounded border border-transparent bg-transparent py-0.5 text-xs hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none">{ESTADOS.map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}</select></td>
-                <td className="px-1 py-1" style={{ width: 56 }}><input key={`p-${t.porcentaje_completado}`} type="number" min={0} max={100} step={5} defaultValue={t.porcentaje_completado} onBlur={(e) => { if (e.target.value === '') return; const v = Math.min(100, Math.max(0, Number(e.target.value))); if (Number.isFinite(v) && v !== t.porcentaje_completado) save(t.id, { porcentaje_completado: v }) }} className={`${inp} text-center`} /></td>
+                <td className="px-1 py-1" style={{ width: cw.estado, minWidth: cw.estado, maxWidth: cw.estado }}><select value={t.status} onChange={(e) => save(t.id, { status: e.target.value as TaskStatus })} className="w-full rounded border border-transparent bg-transparent py-0.5 text-xs hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none">{ESTADOS.map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}</select></td>
+                <td className="px-1 py-1" style={{ width: cw.pct, minWidth: cw.pct, maxWidth: cw.pct }}><input key={`p-${t.porcentaje_completado}`} type="number" min={0} max={100} step={5} defaultValue={t.porcentaje_completado} onBlur={(e) => { if (e.target.value === '') return; const v = Math.min(100, Math.max(0, Number(e.target.value))); if (Number.isFinite(v) && v !== t.porcentaje_completado) save(t.id, { porcentaje_completado: v }) }} className={`${inp} text-center`} /></td>
               </tr>
             ))}
           </tbody>
@@ -229,5 +259,16 @@ export function TablaPage() {
       {creando && id && <NuevaTareaModal paradaId={id} onClose={() => setCreando(false)} onCreated={recargar} />}
       {asignando && <AsignarTecnicosModal tarea={asignando} usuarios={usuarios} area={parada?.area ?? null} onClose={() => setAsignando(null)} onSaved={(espec) => setTareas((ts) => ts.map((t) => (t.id === asignando.id ? { ...t, especificaciones_tecnicas: espec } : t)))} />}
     </div>
+  )
+}
+
+/** Select compacto de la fila de filtros ("" = todos; "(sin)" = sin valor asignado). */
+function FSel({ v, set, ops, sinOp }: { v: string; set: (v: string) => void; ops: string[]; sinOp?: boolean }) {
+  return (
+    <select value={v} onChange={(e) => set(e.target.value)} className={`w-full rounded border px-0.5 py-0.5 text-[10px] ${v ? 'border-amber-400 bg-amber-50 font-medium text-amber-800' : 'border-slate-200 bg-white text-slate-500'}`}>
+      <option value="">todos</option>
+      {sinOp && <option value="(sin)">— sin asignar</option>}
+      {ops.map((o) => <option key={o} value={o}>{o.replace('_', ' ')}</option>)}
+    </select>
   )
 }

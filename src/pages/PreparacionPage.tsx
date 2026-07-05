@@ -59,6 +59,13 @@ const avancePrevioDe = (t: Tarea) => {
   return { has: true, pct: Math.round(((hechos + proceso * 0.5) / ps.length) * 100), hechos, total: ps.length }
 }
 const esTrabajo = (t: Tarea) => !esp(t).hito_inicio && Number(t.duracion_estimada_horas ?? 0) > 0
+// ANDAMIOS por actividad: nº de cuerpos + detallado (dónde arma, tipo, dimensiones,
+// fecha en que debe estar armado…). Saneado para no romper con datos malformados.
+const andamiosDe = (t: Tarea): { c: number; det: string } => {
+  const raw = esp(t).andamios as { c?: unknown; det?: unknown } | undefined
+  const c = Number(raw?.c)
+  return { c: Number.isFinite(c) && c > 0 ? Math.round(c) : 0, det: String(raw?.det ?? '') }
+}
 // materiales listo = marcado "no requiere" o todos los ítems en estado listo
 const matListo = (t: Tarea) => { const it = itemsDe(t); return matNA(t) || (it.length > 0 && it.every((i) => i.e === 'listo')) }
 const matEstado = (t: Tarea): 'listo' | 'falta' | 'en_ruta' | 'sin_definir' => {
@@ -94,6 +101,7 @@ export function PreparacionPage() {
   const [faltaF, setFaltaF] = useState<'Todas' | 'cuadrilla' | 'recursos' | 'permiso'>('Todas')
   const [config, setConfig] = useState<Record<string, { tecnicos?: Tecnico[] }>>({})
   const [editPrev, setEditPrev] = useState<Tarea | null>(null)
+  const [editAnd, setEditAnd] = useState<Tarea | null>(null)
   const [usuarios, setUsuarios] = useState<Tecnico[]>([])
   const { w: actW, onResize: onActResize } = useColWidth('prep-act-w')
 
@@ -183,6 +191,12 @@ export function PreparacionPage() {
     return Object.values(m).sort((a, b) => Number(b.urgente) - Number(a.urgente) || a.t.localeCompare(b.t) || a.n.localeCompare(b.n))
   }, [scope, diasParaInicio])
   const porPedirYa = consolidado.filter((r) => r.urgente).length
+  // Total de cuerpos de andamio de la parada (para dimensionar el contrato/armadores).
+  const andamiosTotal = useMemo(() => {
+    let cuerpos = 0, acts = 0
+    for (const t of scope) { const a = andamiosDe(t); if (a.c > 0) { cuerpos += a.c; acts++ } }
+    return { cuerpos, acts }
+  }, [scope])
 
   if (loading) return <p className="text-sm text-slate-400">Cargando preparación…</p>
   if (error) return <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">Error: {error}</div>
@@ -223,7 +237,9 @@ export function PreparacionPage() {
       {/* CONSOLIDADO de recursos necesarios */}
       <div className="rounded-xl border border-slate-200 bg-white p-4">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold text-slate-700">🧰 Recursos necesarios para la parada {lineaF !== 'Todas' && <span className="text-xs font-normal text-fuchsia-600">({lineaF})</span>}</h3>
+          <h3 className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-700">🧰 Recursos necesarios para la parada {lineaF !== 'Todas' && <span className="text-xs font-normal text-fuchsia-600">({lineaF})</span>}
+            {andamiosTotal.cuerpos > 0 && <span className="rounded bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-700 ring-1 ring-orange-300" title={`${andamiosTotal.acts} actividad(es) requieren andamio — dimensiona el contrato de armadores`}>🏗 {andamiosTotal.cuerpos} cuerpos de andamio · {andamiosTotal.acts} act</span>}
+          </h3>
           <button onClick={() => exportarPreparacion(tareas, parada?.nombre ?? 'parada', lineaF)} title="Descarga un Excel para Compras/Logística: hoja Recursos (qué comprar/alquilar, cuánto, cuánto falta) + hoja Alistamiento (estado por actividad)" className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100">⬇ Exportar a Excel (Compras)</button>
         </div>
         {consolidado.length === 0 ? (
@@ -279,7 +295,7 @@ export function PreparacionPage() {
             <thead className="sticky top-0 bg-slate-50 text-[10px] uppercase tracking-wide text-slate-400">
               <tr>
                 <th className="px-2 py-2"><input type="checkbox" title="Seleccionar todas (visibles)" checked={d.lista.length > 0 && d.lista.every((t) => sel.has(t.id))} onChange={(e) => setSel((s) => { const n = new Set(s); if (e.target.checked) d.lista.forEach((t) => n.add(t.id)); else d.lista.forEach((t) => n.delete(t.id)); return n })} className="accent-amber-500" /></th>
-                <th className="px-2 py-2 text-left">#</th><th className="relative px-2 py-2 text-left" style={{ width: actW, minWidth: actW }}>Actividad<ColResizeHandle onResize={onActResize} /></th><th className="px-2 py-2 text-center">Cuadrilla / Técnicos</th><th className="px-2 py-2 text-center">Supervisor</th><th className="px-2 py-2 text-center">Recursos (herram./equipo/material)</th><th className="px-2 py-2 text-center">Previos (separar pernos, medidas…)</th><th className="px-2 py-2 text-center">Permiso</th><th className="px-2 py-2 text-center">Estado</th>
+                <th className="px-2 py-2 text-left">#</th><th className="relative px-2 py-2 text-left" style={{ width: actW, minWidth: actW }}>Actividad<ColResizeHandle onResize={onActResize} /></th><th className="px-2 py-2 text-center">Cuadrilla / Técnicos</th><th className="px-2 py-2 text-center">Supervisor</th><th className="px-2 py-2 text-center">Recursos (herram./equipo/material)</th><th className="px-2 py-2 text-center">Andamios (cuerpos)</th><th className="px-2 py-2 text-center">Previos (separar pernos, medidas…)</th><th className="px-2 py-2 text-center">Permiso</th><th className="px-2 py-2 text-center">Estado</th>
               </tr>
             </thead>
             <tbody>
@@ -325,6 +341,17 @@ export function PreparacionPage() {
                     </td>
                     <td className="px-2 py-1.5 text-center">
                       {(() => {
+                        const a = andamiosDe(t)
+                        return (
+                          <button onClick={() => setEditAnd(t)} title={a.det ? `${a.c} cuerpo(s)\n${a.det}` : 'Cuerpos de andamio que necesita esta actividad + detallado (dónde, tipo, dimensiones)'}
+                            className={`rounded px-2 py-0.5 text-[11px] font-medium ${a.c > 0 ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-400'}`}>
+                            {a.c > 0 ? `🏗 ${a.c} cuerpo${a.c === 1 ? '' : 's'}${a.det ? ' 📝' : ''}` : '➕ andamio'}
+                          </button>
+                        )
+                      })()}
+                    </td>
+                    <td className="px-2 py-1.5 text-center">
+                      {(() => {
                         const a = avancePrevioDe(t)
                         const cls = !a.has ? 'bg-slate-100 text-slate-400' : a.pct >= 100 ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
                         return <button onClick={() => setEditPrev(t)} className={`rounded px-2 py-0.5 text-[11px] font-medium ${cls}`} title="Previos de esta actividad: separar sus pernos, verificar sus medidas, llevar su aceite…">{a.has ? `✅ ${a.hechos}/${a.total} · ${a.pct}%` : '➕ previos'}</button>
@@ -335,7 +362,7 @@ export function PreparacionPage() {
                   </tr>
                 )
               })}
-              {d.lista.length === 0 && <tr><td colSpan={9} className="px-4 py-10 text-center text-sm text-emerald-600">🎉 Todo listo para arrancar en este filtro.</td></tr>}
+              {d.lista.length === 0 && <tr><td colSpan={10} className="px-4 py-10 text-center text-sm text-emerald-600">🎉 Todo listo para arrancar en este filtro.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -343,6 +370,31 @@ export function PreparacionPage() {
 
       {editRec && <RecursosModal tarea={editRec} onClose={() => setEditRec(null)} onSave={(items, na) => { guardar(editRec, { recursos: items, matNA: na }); setEditRec(null) }} />}
       {editPrev && <PreviosModal tarea={editPrev} onClose={() => setEditPrev(null)} onSave={(prev) => { guardar(editPrev, { previos: prev }); setEditPrev(null) }} />}
+      {editAnd && <AndamiosModal tarea={editAnd} onClose={() => setEditAnd(null)} onSave={(c, det) => { guardar(editAnd, { andamios: c > 0 || det ? { c, det } : null }); setEditAnd(null) }} />}
+    </div>
+  )
+}
+
+function AndamiosModal({ tarea, onClose, onSave }: { tarea: Tarea; onClose: () => void; onSave: (c: number, det: string) => void }) {
+  const a = andamiosDe(tarea)
+  const [c, setC] = useState(a.c)
+  const [det, setDet] = useState(a.det)
+  return (
+    <div role="dialog" aria-modal="true" onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div onClick={(e) => e.stopPropagation()} className="w-full max-w-lg rounded-xl bg-white p-5 shadow-xl">
+        <h3 className="text-sm font-semibold text-slate-900">🏗 Andamios de la actividad</h3>
+        <p className="mb-3 truncate text-xs text-slate-500" title={tarea.nombre}>{tarea.nombre}</p>
+        <label className="mb-3 flex items-center gap-2 text-sm text-slate-700">
+          Cuerpos de andamio:
+          <input type="number" min={0} value={c} onChange={(e) => setC(Math.max(0, Math.round(Number(e.target.value) || 0)))} className="w-20 rounded-lg border border-slate-300 px-2 py-1 text-center" />
+        </label>
+        <label className="block text-xs font-medium text-slate-500">Detallado (dónde se arma, tipo, dimensiones, cuándo debe estar listo…)</label>
+        <textarea value={det} onChange={(e) => setDet(e.target.value)} rows={4} placeholder={'Ej.: 2 cuerpos en plataforma del acondicionador 1002, tipo torre 1.5×1.5 m, altura 4 m.\nArmado el 19/07 antes de la entrega del equipo. Con rodapiés y barandas.'} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+        <div className="mt-4 flex justify-end gap-2 border-t border-slate-100 pt-3">
+          <button onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-1.5 text-sm text-slate-600 hover:bg-slate-50">Cancelar</button>
+          <button onClick={() => onSave(c, det.trim())} className="rounded-lg bg-amber-500 px-4 py-1.5 text-sm font-semibold text-white hover:bg-amber-600">Guardar</button>
+        </div>
+      </div>
     </div>
   )
 }

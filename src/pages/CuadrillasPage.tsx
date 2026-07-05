@@ -6,6 +6,7 @@ import type { Tecnico } from '../lib/resourceLeveling'
 import { colorGrupo } from '../lib/palette'
 import { useRefreshOnFocus } from '../lib/useRefreshOnFocus'
 import { PuenteGruaPanel } from '../components/PuenteGruaPanel'
+import { useColWidth, ColResizeHandle } from '../components/ColResize'
 import type { Parada, Tarea } from '../types'
 
 type CrewCfg = { cap?: number; turno?: string; tecnicos?: Tecnico[] }
@@ -13,7 +14,6 @@ type CrewCfg = { cap?: number; turno?: string; tecnicos?: Tecnico[] }
 const H = 3600000
 const DAY = 86400000
 const SUB = 22
-const LEFT = 230
 const DIAS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 const MES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
@@ -44,6 +44,8 @@ export function CuadrillasPage() {
   const [draft, setDraft] = useState<{ id: string; dH: number } | null>(null)
   const [turnoF, setTurnoF] = useState<'Todos' | 'D' | 'N'>('Todos')
   const [lineaF, setLineaF] = useState('Todas')
+  // Ancho (arrastrable, recordado) del panel izquierdo de cuadrillas.
+  const { w: LEFT, onResize: onLeftResize } = useColWidth('cuad-left-w', 230, 140, 520)
 
   const reloadTareas = () => {
     if (!id) return Promise.resolve()
@@ -195,7 +197,7 @@ export function CuadrillasPage() {
     // S2 — choques de PERSONA (mismo técnico nominado en dos tareas solapadas)
     const choquePers = choquesPersona(dated).ids
     return { crews, base, totalDias, hourW, totalConf, histo, peakHisto: Math.max(1, ...histo), totalHH, choquePers, espPeak }
-  }, [tareas, vw, turnoF, lineaF])
+  }, [tareas, vw, turnoF, lineaF, LEFT])
 
   const timelineW = totalDias * 24 * hourW
   const x = (ms: number) => ((ms - base) / H) * hourW
@@ -346,7 +348,7 @@ export function CuadrillasPage() {
         <div className="relative" style={{ width: LEFT + timelineW, minWidth: '100%' }}>
           {/* header eje */}
           <div className="sticky top-0 z-20 flex bg-white" style={{ height: 34 }}>
-            <div className="sticky left-0 z-30 shrink-0 border-b border-r border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-semibold uppercase text-slate-400" style={{ width: LEFT }}>Cuadrilla</div>
+            <div className="sticky left-0 z-30 relative shrink-0 border-b border-r border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-semibold uppercase text-slate-400" style={{ width: LEFT }}>Cuadrilla<ColResizeHandle onResize={onLeftResize} /></div>
             <div className="relative shrink-0 border-b border-slate-200" style={{ width: timelineW }}>
               {dias.map(({ i, d }) => (
                 <div key={i} className="absolute top-0 border-l border-slate-200" style={{ left: i * 24 * hourW, width: 24 * hourW, height: 34 }}>

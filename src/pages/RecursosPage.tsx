@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { getRecursos } from '../lib/api'
 import { useRefreshOnFocus } from '../lib/useRefreshOnFocus'
 import type { Recurso, ResourceStatus } from '../types'
+import { useColWidths, ColResizeHandle } from '../components/ColResize'
 
 type Urgencia = 'CRÍTICA' | 'MEDIA' | 'OK'
 
@@ -13,6 +14,8 @@ function urgenciaDe(r: Recurso): Urgencia {
 }
 
 export function RecursosPage() {
+  // Anchos arrastrables de las columnas (recordados).
+  const { w: rw, resizeFor } = useColWidths('rec-cols-w', { rec: 220, tipo: 110, stock: 90, est: 110, urg: 100, acc: 140 }, 60)
   const [recursos, setRecursos] = useState<Recurso[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -102,12 +105,12 @@ export function RecursosPage() {
         <table className="w-full text-left text-sm">
           <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
             <tr>
-              <th className="px-4 py-3 font-medium">Recurso</th>
-              <th className="px-4 py-3 font-medium">Tipo</th>
-              <th className="px-4 py-3 font-medium">Stock</th>
-              <th className="px-4 py-3 font-medium">Estado</th>
-              <th className="px-4 py-3 font-medium">Urgencia</th>
-              <th className="px-4 py-3 font-medium">Acción</th>
+              <th className="relative px-4 py-3 font-medium" style={{ width: rw.rec, minWidth: rw.rec }}>Recurso<ColResizeHandle onResize={resizeFor('rec')} /></th>
+              <th className="relative px-4 py-3 font-medium" style={{ width: rw.tipo, minWidth: rw.tipo }}>Tipo<ColResizeHandle onResize={resizeFor('tipo')} /></th>
+              <th className="relative px-4 py-3 font-medium" style={{ width: rw.stock, minWidth: rw.stock }}>Stock<ColResizeHandle onResize={resizeFor('stock')} /></th>
+              <th className="relative px-4 py-3 font-medium" style={{ width: rw.est, minWidth: rw.est }}>Estado<ColResizeHandle onResize={resizeFor('est')} /></th>
+              <th className="relative px-4 py-3 font-medium" style={{ width: rw.urg, minWidth: rw.urg }}>Urgencia<ColResizeHandle onResize={resizeFor('urg')} /></th>
+              <th className="relative px-4 py-3 font-medium" style={{ width: rw.acc, minWidth: rw.acc }}>Acción<ColResizeHandle onResize={resizeFor('acc')} /></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useOutletContext, useParams } from 'react-router-dom'
 import { getTareasByParada, updateTareaEspec, getCuadrillasConfig, getUsuarios } from '../lib/api'
 import type { Previo } from '../lib/api'
-import { useColWidth, ColResizeHandle } from '../components/ColResize'
+import { useColWidth, useColWidths, ColResizeHandle } from '../components/ColResize'
 import { exportarPreparacion } from '../lib/excel'
 import { rutaCritica } from '../lib/criticalPath'
 import { useRefreshOnFocus } from '../lib/useRefreshOnFocus'
@@ -104,6 +104,8 @@ export function PreparacionPage() {
   const [editAnd, setEditAnd] = useState<Tarea | null>(null)
   const [usuarios, setUsuarios] = useState<Tecnico[]>([])
   const { w: actW, onResize: onActResize } = useColWidth('prep-act-w')
+  // Anchos arrastrables del resto de columnas del alistamiento.
+  const { w: pw, resizeFor } = useColWidths('prep-cols-w', { cuad: 150, sup: 150, rec: 190, and: 120, prev: 160, perm: 80, est: 90 }, 56)
 
   const reload = () => id && getTareasByParada(id).then(setTareas).catch((e) => setError(e.message))
   useEffect(() => { if (!id) return; setLoading(true); getTareasByParada(id).then(setTareas).catch((e) => setError(e.message)).finally(() => setLoading(false)) }, [id])
@@ -295,7 +297,7 @@ export function PreparacionPage() {
             <thead className="sticky top-0 bg-slate-50 text-[10px] uppercase tracking-wide text-slate-400">
               <tr>
                 <th className="px-2 py-2"><input type="checkbox" title="Seleccionar todas (visibles)" checked={d.lista.length > 0 && d.lista.every((t) => sel.has(t.id))} onChange={(e) => setSel((s) => { const n = new Set(s); if (e.target.checked) d.lista.forEach((t) => n.add(t.id)); else d.lista.forEach((t) => n.delete(t.id)); return n })} className="accent-amber-500" /></th>
-                <th className="px-2 py-2 text-left">#</th><th className="relative px-2 py-2 text-left" style={{ width: actW, minWidth: actW }}>Actividad<ColResizeHandle onResize={onActResize} /></th><th className="px-2 py-2 text-center">Cuadrilla / Técnicos</th><th className="px-2 py-2 text-center">Supervisor</th><th className="px-2 py-2 text-center">Recursos (herram./equipo/material)</th><th className="px-2 py-2 text-center">Andamios (cuerpos)</th><th className="px-2 py-2 text-center">Previos (separar pernos, medidas…)</th><th className="px-2 py-2 text-center">Permiso</th><th className="px-2 py-2 text-center">Estado</th>
+                <th className="px-2 py-2 text-left">#</th><th className="relative px-2 py-2 text-left" style={{ width: actW, minWidth: actW }}>Actividad<ColResizeHandle onResize={onActResize} /></th><th className="relative px-2 py-2 text-center" style={{ width: pw.cuad, minWidth: pw.cuad }}>Cuadrilla / Técnicos<ColResizeHandle onResize={resizeFor('cuad')} /></th><th className="relative px-2 py-2 text-center" style={{ width: pw.sup, minWidth: pw.sup }}>Supervisor<ColResizeHandle onResize={resizeFor('sup')} /></th><th className="relative px-2 py-2 text-center" style={{ width: pw.rec, minWidth: pw.rec }}>Recursos (herram./equipo/material)<ColResizeHandle onResize={resizeFor('rec')} /></th><th className="relative px-2 py-2 text-center" style={{ width: pw.and, minWidth: pw.and }}>Andamios (cuerpos)<ColResizeHandle onResize={resizeFor('and')} /></th><th className="relative px-2 py-2 text-center" style={{ width: pw.prev, minWidth: pw.prev }}>Previos (separar pernos, medidas…)<ColResizeHandle onResize={resizeFor('prev')} /></th><th className="relative px-2 py-2 text-center" style={{ width: pw.perm, minWidth: pw.perm }}>Permiso<ColResizeHandle onResize={resizeFor('perm')} /></th><th className="relative px-2 py-2 text-center" style={{ width: pw.est, minWidth: pw.est }}>Estado<ColResizeHandle onResize={resizeFor('est')} /></th>
               </tr>
             </thead>
             <tbody>

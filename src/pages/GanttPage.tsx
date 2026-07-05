@@ -5,7 +5,7 @@ import { useRefreshOnFocus } from '../lib/useRefreshOnFocus'
 import type { Roster, Tecnico } from '../lib/resourceLeveling'
 import { colorGrupo, disciplina as discDe } from '../lib/palette'
 import { rutaCritica } from '../lib/criticalPath'
-import { useColWidth, ColResizeHandle } from '../components/ColResize'
+import { useColWidth, useColWidths, ColResizeHandle } from '../components/ColResize'
 import { nivelarPersonal, nivelarSinExtender, nivelarPorCuadrilla, resolverCuadrillas, resolverPorPersona, sugerirPrecedencias, tramosTrabajo, tieneEspera, infoNivel } from '../lib/resourceLeveling'
 import type { Parada, Tarea, TaskStatus } from '../types'
 
@@ -13,9 +13,8 @@ const H = 3600000
 const DAY = 86400000
 const ROW = 32
 const HEAD = 46
-// Ancho de las columnas fijas del panel izquierdo (todo menos «Actividad»):
-// # 32 · WBS 52 · Disciplina 86 · Grp 42 · Téc 30 · Hrs 32 · Comienzo 116 · Fin 116 · Pred 44 · % 34
-const COLS_NO_ACT = 584
+// Anchos por defecto de las columnas del panel izquierdo (todas arrastrables).
+const GANTT_COLS = { num: 32, wbs: 52, disc: 86, grp: 42, tec: 30, hrs: 32, fi: 116, ff: 116, pred: 44, pct: 34 }
 
 const COLOR: Record<TaskStatus, string> = {
   Por_Hacer: '#64748b', En_Progreso: '#2563eb', En_Revision: '#7c3aed',
@@ -59,7 +58,9 @@ export function GanttPage() {
   const [vw, setVw] = useState(typeof window !== 'undefined' ? window.innerWidth : 1600)
   // Ancho (arrastrable, recordado) de la columna «Actividad» para leer el nombre completo.
   const { w: actW, onResize: onActResize } = useColWidth('gantt-act-w')
-  const LEFT = COLS_NO_ACT + actW
+  // Anchos arrastrables del resto de columnas de la grilla (mín. 24 px: hay columnas angostas).
+  const { w: gw, resizeFor } = useColWidths('gantt-cols-w', GANTT_COLS, 24)
+  const LEFT = actW + gw.num + gw.wbs + gw.disc + gw.grp + gw.tec + gw.hrs + gw.fi + gw.ff + gw.pred + gw.pct
   const [targetC, setTargetC] = useState<number | null>(null)
   const [caps, setCaps] = useState<Record<string, number>>({})
   const [roster, setRoster] = useState<Roster>({})
@@ -478,12 +479,12 @@ export function GanttPage() {
           {/* HEADER */}
           <div className="sticky top-0 z-30 flex bg-white" style={{ height: HEAD }}>
             <div className="sticky left-0 z-40 flex shrink-0 items-stretch border-b border-r border-slate-200 bg-slate-50 text-[10px] font-semibold uppercase tracking-wide text-slate-400" style={{ width: LEFT }}>
-              <Cell w={32}>#</Cell>
+              <Cell w={gw.num} resize={resizeFor('num')}>#</Cell>
               <div className="relative flex items-center overflow-hidden px-1.5" style={{ width: actW }}>
                 Actividad
                 <ColResizeHandle onResize={onActResize} />
               </div>
-              <Cell w={52}>WBS</Cell><Cell w={86}>Disciplina</Cell><Cell w={42}>Grp</Cell><Cell w={30}>Téc</Cell><Cell w={32}>Hrs</Cell><Cell w={116}>Comienzo</Cell><Cell w={116}>Fin</Cell><Cell w={44}>Pred</Cell><Cell w={34}>%</Cell>
+              <Cell w={gw.wbs} resize={resizeFor('wbs')}>WBS</Cell><Cell w={gw.disc} resize={resizeFor('disc')}>Disciplina</Cell><Cell w={gw.grp} resize={resizeFor('grp')}>Grp</Cell><Cell w={gw.tec} resize={resizeFor('tec')}>Téc</Cell><Cell w={gw.hrs} resize={resizeFor('hrs')}>Hrs</Cell><Cell w={gw.fi} resize={resizeFor('fi')}>Comienzo</Cell><Cell w={gw.ff} resize={resizeFor('ff')}>Fin</Cell><Cell w={gw.pred} resize={resizeFor('pred')}>Pred</Cell><Cell w={gw.pct} resize={resizeFor('pct')}>%</Cell>
             </div>
             <div className="relative shrink-0 border-b border-slate-200" style={{ width: timelineW }}>
               {dias.map(({ i, d }) => (
@@ -560,7 +561,7 @@ export function GanttPage() {
               return (
                 <div key={t.id} className={`absolute flex w-full border-b border-slate-50 ${idx % 2 ? 'bg-white' : 'bg-slate-50'}`} style={{ top, height: ROW }}>
                   <div className={`sticky left-0 z-30 flex shrink-0 items-stretch border-r border-slate-200 ${idx % 2 ? 'bg-white' : 'bg-slate-50'} text-[11px] text-slate-600`} style={{ width: LEFT }}>
-                    <Cell w={32}><span className="text-slate-400">{t.secuencia}</span></Cell>
+                    <Cell w={gw.num}><span className="text-slate-400">{t.secuencia}</span></Cell>
                     <Cell w={actW} l>
                       {crit && <span className="mr-1 text-[10px] font-bold text-red-600" title="Ruta crítica">◆</span>}
                       <span className="mr-1 inline-block h-2 w-2 shrink-0 rounded-full align-middle" style={{ background: COLOR[t.status] }} />
@@ -568,15 +569,15 @@ export function GanttPage() {
                         onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== t.nombre) editar(t.id, { nombre: v }) }}
                         className="w-full min-w-0 truncate rounded border border-transparent bg-transparent px-0.5 align-middle hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none" />
                     </Cell>
-                    <Cell w={52}>{wbsOf(t)}</Cell>
-                    <Cell w={86}><span className="text-[10px]">{discOf(t)}</span></Cell>
-                    <Cell w={42}><span className="rounded px-1 text-white" style={{ background: colorGrupo(sysOf(t)) }}>{grpOf(t)}</span></Cell>
-                    <Cell w={30}><input key={`tec-${tecOf(t)}`} type="number" min={0} defaultValue={tecOf(t)} onBlur={(e) => { const v = Number(e.target.value); if (Number.isFinite(v) && v >= 0 && v !== tecOf(t)) editarTec(t, v) }} className="w-full min-w-0 rounded border border-transparent bg-transparent text-center [appearance:textfield] hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" /></Cell>
-                    <Cell w={32}><input key={`h-${t.duracion_estimada_horas}`} type="number" min={0} step={0.5} defaultValue={Number(t.duracion_estimada_horas ?? 0)} onBlur={(e) => { const v = Number(e.target.value); if (Number.isFinite(v) && v > 0 && v !== Number(t.duracion_estimada_horas)) editarHrs(t, v) }} className="w-full min-w-0 rounded border border-transparent bg-transparent text-center [appearance:textfield] hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" /></Cell>
-                    <Cell w={116}><input key={`fi-${t.fecha_inicio_prog ?? ''}`} type="datetime-local" defaultValue={toInput(t.fecha_inicio_prog)} onBlur={(e) => editarFechaG(t, 'inicio', e.target.value)} className="w-full min-w-0 rounded border border-transparent bg-transparent text-[10px] hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none" /></Cell>
-                    <Cell w={116}><input key={`ff-${t.fecha_fin_prog ?? ''}`} type="datetime-local" defaultValue={toInput(t.fecha_fin_prog)} onBlur={(e) => editarFechaG(t, 'fin', e.target.value)} className="w-full min-w-0 rounded border border-transparent bg-transparent text-[10px] hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none" /></Cell>
-                    <Cell w={44}>{t.bloqueado_por ? `#${secById[t.bloqueado_por]}` : ''}</Cell>
-                    <Cell w={34}><input key={`p-${t.porcentaje_completado}`} type="number" min={0} max={100} step={5} defaultValue={t.porcentaje_completado} onBlur={(e) => { const v = Math.min(100, Math.max(0, Number(e.target.value))); if (Number.isFinite(v) && v !== t.porcentaje_completado) editar(t.id, { porcentaje_completado: v }) }} className="w-full min-w-0 rounded border border-transparent bg-transparent text-center [appearance:textfield] hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" /></Cell>
+                    <Cell w={gw.wbs}>{wbsOf(t)}</Cell>
+                    <Cell w={gw.disc}><span className="text-[10px]">{discOf(t)}</span></Cell>
+                    <Cell w={gw.grp}><span className="rounded px-1 text-white" style={{ background: colorGrupo(sysOf(t)) }}>{grpOf(t)}</span></Cell>
+                    <Cell w={gw.tec}><input key={`tec-${tecOf(t)}`} type="number" min={0} defaultValue={tecOf(t)} onBlur={(e) => { const v = Number(e.target.value); if (Number.isFinite(v) && v >= 0 && v !== tecOf(t)) editarTec(t, v) }} className="w-full min-w-0 rounded border border-transparent bg-transparent text-center [appearance:textfield] hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" /></Cell>
+                    <Cell w={gw.hrs}><input key={`h-${t.duracion_estimada_horas}`} type="number" min={0} step={0.5} defaultValue={Number(t.duracion_estimada_horas ?? 0)} onBlur={(e) => { const v = Number(e.target.value); if (Number.isFinite(v) && v > 0 && v !== Number(t.duracion_estimada_horas)) editarHrs(t, v) }} className="w-full min-w-0 rounded border border-transparent bg-transparent text-center [appearance:textfield] hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" /></Cell>
+                    <Cell w={gw.fi}><input key={`fi-${t.fecha_inicio_prog ?? ''}`} type="datetime-local" defaultValue={toInput(t.fecha_inicio_prog)} onBlur={(e) => editarFechaG(t, 'inicio', e.target.value)} className="w-full min-w-0 rounded border border-transparent bg-transparent text-[10px] hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none" /></Cell>
+                    <Cell w={gw.ff}><input key={`ff-${t.fecha_fin_prog ?? ''}`} type="datetime-local" defaultValue={toInput(t.fecha_fin_prog)} onBlur={(e) => editarFechaG(t, 'fin', e.target.value)} className="w-full min-w-0 rounded border border-transparent bg-transparent text-[10px] hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none" /></Cell>
+                    <Cell w={gw.pred}>{t.bloqueado_por ? `#${secById[t.bloqueado_por]}` : ''}</Cell>
+                    <Cell w={gw.pct}><input key={`p-${t.porcentaje_completado}`} type="number" min={0} max={100} step={5} defaultValue={t.porcentaje_completado} onBlur={(e) => { const v = Math.min(100, Math.max(0, Number(e.target.value))); if (Number.isFinite(v) && v !== t.porcentaje_completado) editar(t.id, { porcentaje_completado: v }) }} className="w-full min-w-0 rounded border border-transparent bg-transparent text-center [appearance:textfield] hover:border-slate-200 focus:border-amber-400 focus:bg-white focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" /></Cell>
                   </div>
                   <div className="relative shrink-0" style={{ width: timelineW }}>
                     {t.fecha_inicio_base && t.fecha_fin_base && Math.abs(new Date(t.fecha_inicio_base).getTime() - fch.s) > 36e5 && (
@@ -668,6 +669,11 @@ export function GanttPage() {
   )
 }
 
-function Cell({ w, l, children }: { w: number; l?: boolean; children?: React.ReactNode }) {
-  return <div className={`flex items-center overflow-hidden border-slate-100 px-1.5 ${l ? '' : 'justify-center border-l'}`} style={{ width: w }}>{children}</div>
+function Cell({ w, l, resize, children }: { w: number; l?: boolean; resize?: (e: React.PointerEvent) => void; children?: React.ReactNode }) {
+  return (
+    <div className={`relative flex items-center overflow-hidden border-slate-100 px-1.5 ${l ? '' : 'justify-center border-l'}`} style={{ width: w }}>
+      {children}
+      {resize && <ColResizeHandle onResize={resize} />}
+    </div>
+  )
 }

@@ -14,6 +14,7 @@ import { CuadrillasPage } from './pages/CuadrillasPage'
 import { RutaCriticaPage } from './pages/RutaCriticaPage'
 import { RecursosPage } from './pages/RecursosPage'
 import { PreparacionPage } from './pages/PreparacionPage'
+import { AndamiosPage } from './pages/AndamiosPage'
 
 const router = createBrowserRouter([
   {
@@ -30,6 +31,7 @@ const router = createBrowserRouter([
           { path: 'gantt', element: <GanttPage /> },
           { path: 'cuadrillas', element: <CuadrillasPage /> },
           { path: 'preparacion', element: <PreparacionPage /> },
+          { path: 'andamios', element: <AndamiosPage /> },
           { path: 'ruta-critica', element: <RutaCriticaPage /> },
           { path: 'recursos', element: <RecursosPage /> },
         ],

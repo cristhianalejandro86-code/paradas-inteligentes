@@ -3,6 +3,7 @@ import { useOutletContext, useParams } from 'react-router-dom'
 import { getTareasByParada, updateTareaEspec, getCuadrillasConfig, getUsuarios } from '../lib/api'
 import type { Previo } from '../lib/api'
 import { useColWidth, useColWidths, ColResizeHandle } from '../components/ColResize'
+import { andamiosDe } from '../lib/andamios'
 import { exportarPreparacion } from '../lib/excel'
 import { rutaCritica } from '../lib/criticalPath'
 import { useRefreshOnFocus } from '../lib/useRefreshOnFocus'
@@ -59,13 +60,7 @@ const avancePrevioDe = (t: Tarea) => {
   return { has: true, pct: Math.round(((hechos + proceso * 0.5) / ps.length) * 100), hechos, total: ps.length }
 }
 const esTrabajo = (t: Tarea) => !esp(t).hito_inicio && Number(t.duracion_estimada_horas ?? 0) > 0
-// ANDAMIOS por actividad: nº de cuerpos + detallado (dónde arma, tipo, dimensiones,
-// fecha en que debe estar armado…). Saneado para no romper con datos malformados.
-const andamiosDe = (t: Tarea): { c: number; det: string } => {
-  const raw = esp(t).andamios as { c?: unknown; det?: unknown } | undefined
-  const c = Number(raw?.c)
-  return { c: Number.isFinite(c) && c > 0 ? Math.round(c) : 0, det: String(raw?.det ?? '') }
-}
+
 // materiales listo = marcado "no requiere" o todos los ítems en estado listo
 const matListo = (t: Tarea) => { const it = itemsDe(t); return matNA(t) || (it.length > 0 && it.every((i) => i.e === 'listo')) }
 const matEstado = (t: Tarea): 'listo' | 'falta' | 'en_ruta' | 'sin_definir' => {

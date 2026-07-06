@@ -3,7 +3,8 @@ import { useOutletContext, useParams } from 'react-router-dom'
 import { getTareasByParada, updateTareaEspec, getCuadrillasConfig, getUsuarios } from '../lib/api'
 import type { Previo } from '../lib/api'
 import { useColWidth, useColWidths, ColResizeHandle } from '../components/ColResize'
-import { andamiosDe } from '../lib/andamios'
+import { equipoDe } from '../lib/andamios'
+import type { EquipoKey } from '../lib/andamios'
 import { exportarPreparacion } from '../lib/excel'
 import { rutaCritica } from '../lib/criticalPath'
 import { useRefreshOnFocus } from '../lib/useRefreshOnFocus'
@@ -101,7 +102,7 @@ export function PreparacionPage() {
   const [estF, setEstF] = useState<'' | 'lista' | 'pend'>('')
   const [config, setConfig] = useState<Record<string, { tecnicos?: Tecnico[] }>>({})
   const [editPrev, setEditPrev] = useState<Tarea | null>(null)
-  const [editAnd, setEditAnd] = useState<Tarea | null>(null)
+  const [editEq, setEditEq] = useState<{ t: Tarea; k: EquipoKey } | null>(null)
   const [usuarios, setUsuarios] = useState<Tecnico[]>([])
   const { w: actW, onResize: onActResize } = useColWidth('prep-act-w')
   // Anchos arrastrables del resto de columnas del alistamiento.
@@ -198,11 +199,13 @@ export function PreparacionPage() {
     return Object.values(m).sort((a, b) => Number(b.urgente) - Number(a.urgente) || a.t.localeCompare(b.t) || a.n.localeCompare(b.n))
   }, [scope, diasParaInicio])
   const porPedirYa = consolidado.filter((r) => r.urgente).length
-  // Total de cuerpos de andamio de la parada (para dimensionar el contrato/armadores).
-  const andamiosTotal = useMemo(() => {
-    let cuerpos = 0, acts = 0
-    for (const t of scope) { const a = andamiosDe(t); if (a.c > 0) { cuerpos += a.c; acts++ } }
-    return { cuerpos, acts }
+  // Totales de EQUIPOS COMPARTIDOS (andamios/soldadoras/grúa) para dimensionar contratos.
+  const totEq = useMemo(() => {
+    const acc: Record<EquipoKey, { c: number; acts: number }> = { andamios: { c: 0, acts: 0 }, soldadoras: { c: 0, acts: 0 }, grua: { c: 0, acts: 0 } }
+    for (const t of scope) for (const k of ['andamios', 'soldadoras', 'grua'] as EquipoKey[]) {
+      const a = equipoDe(t, k); if (a.c > 0) { acc[k].c += a.c; acc[k].acts++ }
+    }
+    return acc
   }, [scope])
 
   if (loading) return <p className="text-sm text-slate-400">Cargando preparación…</p>
@@ -245,7 +248,9 @@ export function PreparacionPage() {
       <div className="rounded-xl border border-slate-200 bg-white p-4">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <h3 className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-700">🧰 Recursos necesarios para la parada {lineaF !== 'Todas' && <span className="text-xs font-normal text-fuchsia-600">({lineaF})</span>}
-            {andamiosTotal.cuerpos > 0 && <span className="rounded bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-700 ring-1 ring-orange-300" title={`${andamiosTotal.acts} actividad(es) requieren andamio — dimensiona el contrato de armadores`}>🏗 {andamiosTotal.cuerpos} cuerpos de andamio · {andamiosTotal.acts} act</span>}
+            {totEq.andamios.c > 0 && <span className="rounded bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-700 ring-1 ring-orange-300" title={`${totEq.andamios.acts} actividad(es) requieren andamio`}>🏗 {totEq.andamios.c} cuerpos · {totEq.andamios.acts} act</span>}
+            {totEq.soldadoras.c > 0 && <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700 ring-1 ring-red-300" title={`${totEq.soldadoras.acts} actividad(es) requieren máquina de soldar`}>🔥 {totEq.soldadoras.c} soldadoras · {totEq.soldadoras.acts} act</span>}
+            {totEq.grua.c > 0 && <span className="rounded bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-700 ring-1 ring-sky-300" title={`${totEq.grua.acts} actividad(es) requieren grúa móvil`}>🚛 {totEq.grua.c} grúas · {totEq.grua.acts} act</span>}
           </h3>
           <button onClick={() => exportarPreparacion(tareas, parada?.nombre ?? 'parada', lineaF)} title="Descarga un Excel para Compras/Logística: hoja Recursos (qué comprar/alquilar, cuánto, cuánto falta) + hoja Alistamiento (estado por actividad)" className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100">⬇ Exportar a Excel (Compras)</button>
         </div>
@@ -302,7 +307,7 @@ export function PreparacionPage() {
             <thead className="sticky top-0 bg-slate-50 text-[10px] uppercase tracking-wide text-slate-400">
               <tr>
                 <th className="px-2 py-2" style={{ width: 36, minWidth: 36, maxWidth: 36 }}><input type="checkbox" title="Seleccionar todas (visibles)" checked={d.lista.length > 0 && d.lista.every((t) => sel.has(t.id))} onChange={(e) => setSel((s) => { const n = new Set(s); if (e.target.checked) d.lista.forEach((t) => n.add(t.id)); else d.lista.forEach((t) => n.delete(t.id)); return n })} className="accent-amber-500" /></th>
-                <th className="px-2 py-2 text-left" style={{ width: 48, minWidth: 48, maxWidth: 48 }}>#</th><th className="relative px-2 py-2 text-left" style={{ width: actW, minWidth: actW }}>Actividad<ColResizeHandle onResize={onActResize} /></th><th className="relative px-2 py-2 text-center" style={{ width: pw.cuad, minWidth: pw.cuad }}>Cuadrilla / Técnicos<ColResizeHandle onResize={resizeFor('cuad')} /></th><th className="relative px-2 py-2 text-center" style={{ width: pw.sup, minWidth: pw.sup }}>Supervisor<ColResizeHandle onResize={resizeFor('sup')} /></th><th className="relative px-2 py-2 text-center" style={{ width: pw.rec, minWidth: pw.rec }}>Recursos (herram./equipo/material)<ColResizeHandle onResize={resizeFor('rec')} /></th><th className="relative px-2 py-2 text-center" style={{ width: pw.and, minWidth: pw.and }}>Andamios (cuerpos)<ColResizeHandle onResize={resizeFor('and')} /></th><th className="relative px-2 py-2 text-center" style={{ width: pw.prev, minWidth: pw.prev }}>Previos (separar pernos, medidas…)<ColResizeHandle onResize={resizeFor('prev')} /></th><th className="relative px-2 py-2 text-center" style={{ width: pw.perm, minWidth: pw.perm }}>Permiso<ColResizeHandle onResize={resizeFor('perm')} /></th><th className="relative px-2 py-2 text-center" style={{ width: pw.est, minWidth: pw.est }}>Estado<ColResizeHandle onResize={resizeFor('est')} /></th>
+                <th className="px-2 py-2 text-left" style={{ width: 48, minWidth: 48, maxWidth: 48 }}>#</th><th className="relative px-2 py-2 text-left" style={{ width: actW, minWidth: actW }}>Actividad<ColResizeHandle onResize={onActResize} /></th><th className="relative px-2 py-2 text-center" style={{ width: pw.cuad, minWidth: pw.cuad }}>Cuadrilla / Técnicos<ColResizeHandle onResize={resizeFor('cuad')} /></th><th className="relative px-2 py-2 text-center" style={{ width: pw.sup, minWidth: pw.sup }}>Supervisor<ColResizeHandle onResize={resizeFor('sup')} /></th><th className="relative px-2 py-2 text-center" style={{ width: pw.rec, minWidth: pw.rec }}>Recursos (herram./equipo/material)<ColResizeHandle onResize={resizeFor('rec')} /></th><th className="relative px-2 py-2 text-center" style={{ width: pw.and, minWidth: pw.and }}>Equipos (🏗/🔥/🚛)<ColResizeHandle onResize={resizeFor('and')} /></th><th className="relative px-2 py-2 text-center" style={{ width: pw.prev, minWidth: pw.prev }}>Previos (separar pernos, medidas…)<ColResizeHandle onResize={resizeFor('prev')} /></th><th className="relative px-2 py-2 text-center" style={{ width: pw.perm, minWidth: pw.perm }}>Permiso<ColResizeHandle onResize={resizeFor('perm')} /></th><th className="relative px-2 py-2 text-center" style={{ width: pw.est, minWidth: pw.est }}>Estado<ColResizeHandle onResize={resizeFor('est')} /></th>
               </tr>
               {/* fila de FILTROS por columna (estilo Excel), combinables con los de arriba */}
               <tr className="bg-slate-100/80 normal-case tracking-normal">
@@ -368,15 +373,18 @@ export function PreparacionPage() {
                       </button>
                     </td>
                     <td className="px-2 py-1.5 text-center">
-                      {(() => {
-                        const a = andamiosDe(t)
-                        return (
-                          <button onClick={() => setEditAnd(t)} title={a.det ? `${a.c} cuerpo(s)\n${a.det}` : 'Cuerpos de andamio que necesita esta actividad + detallado (dónde, tipo, dimensiones)'}
-                            className={`rounded px-2 py-0.5 text-[11px] font-medium ${a.c > 0 ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-400'}`}>
-                            {a.c > 0 ? `🏗 ${a.c} cuerpo${a.c === 1 ? '' : 's'}${a.det ? ' 📝' : ''}` : '➕ andamio'}
-                          </button>
-                        )
-                      })()}
+                      <div className="flex flex-wrap items-center justify-center gap-0.5">
+                        {(([['andamios', '🏗', 'bg-orange-100 text-orange-700'], ['soldadoras', '🔥', 'bg-red-100 text-red-700'], ['grua', '🚛', 'bg-sky-100 text-sky-700']]) as [EquipoKey, string, string][]).map(([k, ic, on]) => {
+                          const a = equipoDe(t, k)
+                          return (
+                            <button key={k} onClick={() => setEditEq({ t, k })}
+                              title={`${k === 'andamios' ? 'Cuerpos de andamio' : k === 'soldadoras' ? 'Máquinas de soldar' : 'Grúas móviles'}${a.det ? `\n${a.det}` : ''}`}
+                              className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${a.c > 0 ? on : 'bg-slate-100 text-slate-400'}`}>
+                              {ic}{a.c > 0 ? ` ${a.c}${a.det ? '📝' : ''}` : '+'}
+                            </button>
+                          )
+                        })}
+                      </div>
                     </td>
                     <td className="px-2 py-1.5 text-center">
                       {(() => {
@@ -398,26 +406,33 @@ export function PreparacionPage() {
 
       {editRec && <RecursosModal tarea={editRec} onClose={() => setEditRec(null)} onSave={(items, na) => { guardar(editRec, { recursos: items, matNA: na }); setEditRec(null) }} />}
       {editPrev && <PreviosModal tarea={editPrev} onClose={() => setEditPrev(null)} onSave={(prev) => { guardar(editPrev, { previos: prev }); setEditPrev(null) }} />}
-      {editAnd && <AndamiosModal tarea={editAnd} onClose={() => setEditAnd(null)} onSave={(c, det) => { guardar(editAnd, { andamios: c > 0 || det ? { c, det } : null }); setEditAnd(null) }} />}
+      {editEq && <EquipoModal tarea={editEq.t} k={editEq.k} onClose={() => setEditEq(null)} onSave={(c, det) => { guardar(editEq.t, { [editEq.k]: c > 0 || det ? { c, det } : null }); setEditEq(null) }} />}
     </div>
   )
 }
 
-function AndamiosModal({ tarea, onClose, onSave }: { tarea: Tarea; onClose: () => void; onSave: (c: number, det: string) => void }) {
-  const a = andamiosDe(tarea)
+const EQ_CFG: Record<EquipoKey, { titulo: string; unidad: string; icono: string; ph: string }> = {
+  andamios: { titulo: 'Andamios de la actividad', unidad: 'Cuerpos de andamio', icono: '🏗', ph: 'Ej.: 2 cuerpos en plataforma del acondicionador 1002, tipo torre 1.5×1.5 m, altura 4 m.\nArmado el 19/07 antes de la entrega. Con rodapiés y barandas.' },
+  soldadoras: { titulo: 'Máquinas de soldar de la actividad', unidad: 'Máquinas de soldar', icono: '🔥', ph: 'Ej.: 1 máquina 350 A para soldadura 3G en la brida norte; cable de 30 m; llega con el contratista X.' },
+  grua: { titulo: 'Grúas móviles de la actividad', unidad: 'Grúas / camión grúa', icono: '🚛', ph: 'Ej.: 1 camión grúa de 20 t para izaje del carrete; posicionar en plataforma sur; maniobra de 2 h.' },
+}
+
+function EquipoModal({ tarea, k, onClose, onSave }: { tarea: Tarea; k: EquipoKey; onClose: () => void; onSave: (c: number, det: string) => void }) {
+  const cfg = EQ_CFG[k]
+  const a = equipoDe(tarea, k)
   const [c, setC] = useState(a.c)
   const [det, setDet] = useState(a.det)
   return (
     <div role="dialog" aria-modal="true" onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div onClick={(e) => e.stopPropagation()} className="w-full max-w-lg rounded-xl bg-white p-5 shadow-xl">
-        <h3 className="text-sm font-semibold text-slate-900">🏗 Andamios de la actividad</h3>
+        <h3 className="text-sm font-semibold text-slate-900">{cfg.icono} {cfg.titulo}</h3>
         <p className="mb-3 truncate text-xs text-slate-500" title={tarea.nombre}>{tarea.nombre}</p>
         <label className="mb-3 flex items-center gap-2 text-sm text-slate-700">
-          Cuerpos de andamio:
+          {cfg.unidad}:
           <input type="number" min={0} value={c} onChange={(e) => setC(Math.max(0, Math.round(Number(e.target.value) || 0)))} className="w-20 rounded-lg border border-slate-300 px-2 py-1 text-center" />
         </label>
-        <label className="block text-xs font-medium text-slate-500">Detallado (dónde se arma, tipo, dimensiones, cuándo debe estar listo…)</label>
-        <textarea value={det} onChange={(e) => setDet(e.target.value)} rows={4} placeholder={'Ej.: 2 cuerpos en plataforma del acondicionador 1002, tipo torre 1.5×1.5 m, altura 4 m.\nArmado el 19/07 antes de la entrega del equipo. Con rodapiés y barandas.'} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+        <label className="block text-xs font-medium text-slate-500">Detallado (dónde, tipo, capacidad, cuándo debe estar listo…)</label>
+        <textarea value={det} onChange={(e) => setDet(e.target.value)} rows={4} placeholder={cfg.ph} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
         <div className="mt-4 flex justify-end gap-2 border-t border-slate-100 pt-3">
           <button onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-1.5 text-sm text-slate-600 hover:bg-slate-50">Cancelar</button>
           <button onClick={() => onSave(c, det.trim())} className="rounded-lg bg-amber-500 px-4 py-1.5 text-sm font-semibold text-white hover:bg-amber-600">Guardar</button>

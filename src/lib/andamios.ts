@@ -2,12 +2,16 @@ import type { Tarea } from '../types'
 
 const H = 3600000
 
-/** Andamios de una actividad: nº de cuerpos + detallado. Saneado (no rompe con datos malos). */
-export const andamiosDe = (t: Tarea): { c: number; det: string } => {
-  const raw = (t.especificaciones_tecnicas ?? {}).andamios as { c?: unknown; det?: unknown } | undefined
+/** Claves de EQUIPOS COMPARTIDOS por actividad (mismo motor: andamios, soldadoras, grúa). */
+export type EquipoKey = 'andamios' | 'soldadoras' | 'grua'
+
+/** Equipos de una actividad: nº de unidades + detallado. Saneado (no rompe con datos malos). */
+export const equipoDe = (t: Tarea, key: EquipoKey): { c: number; det: string } => {
+  const raw = (t.especificaciones_tecnicas ?? {})[key] as { c?: unknown; det?: unknown } | undefined
   const c = Number(raw?.c)
   return { c: Number.isFinite(c) && c > 0 ? Math.round(c) : 0, det: String(raw?.det ?? '') }
 }
+export const andamiosDe = (t: Tarea) => equipoDe(t, 'andamios')
 
 export type ActAndamio = { t: Tarea; c: number; det: string; s: number; e: number }
 export type CuerpoPlan = { etiqueta: string; cadena: { t: Tarea; s: number; e: number }[] }
@@ -22,7 +26,7 @@ export type CuerpoPlan = { etiqueta: string; cadena: { t: Tarea; s: number; e: n
  * necesario y la CADENA de actividades de cada cuerpo físico (la "serie"). Actividades
  * solapadas caen en cuerpos distintos (el "paralelo").
  */
-export function planAndamios(tareas: Tarea[], mudanzaH: number): {
+export function planEquipos(tareas: Tarea[], key: EquipoKey, mudanzaH: number, etiquetaUnidad = 'Cuerpo'): {
   acts: ActAndamio[]
   sinFecha: { t: Tarea; c: number; det: string }[]
   cuerpos: CuerpoPlan[]
@@ -33,7 +37,7 @@ export function planAndamios(tareas: Tarea[], mudanzaH: number): {
   base: number
   horas: number
 } {
-  const conAndamio = tareas.map((t) => ({ t, ...andamiosDe(t) })).filter((a) => a.c > 0)
+  const conAndamio = tareas.map((t) => ({ t, ...equipoDe(t, key) })).filter((a) => a.c > 0)
   const sinFecha = conAndamio.filter((a) => !a.t.fecha_inicio_prog || !a.t.fecha_fin_prog)
   const acts: ActAndamio[] = conAndamio
     .filter((a) => a.t.fecha_inicio_prog && a.t.fecha_fin_prog)
@@ -57,7 +61,7 @@ export function planAndamios(tareas: Tarea[], mudanzaH: number): {
       faltan--
     }
     while (faltan-- > 0) {
-      cuerpos.push({ etiqueta: `Cuerpo ${cuerpos.length + 1}`, cadena: [{ t: a.t, s: a.s, e: a.e }], libreEn: a.e + mudanzaH * H })
+      cuerpos.push({ etiqueta: `${etiquetaUnidad} ${cuerpos.length + 1}`, cadena: [{ t: a.t, s: a.s, e: a.e }], libreEn: a.e + mudanzaH * H })
     }
   }
 
@@ -77,3 +81,5 @@ export function planAndamios(tareas: Tarea[], mudanzaH: number): {
 
   return { acts, sinFecha, cuerpos, necesarios: cuerpos.length, totalSinReusar, pico, histo, base, horas }
 }
+
+export const planAndamios = (tareas: Tarea[], mudanzaH: number) => planEquipos(tareas, 'andamios', mudanzaH)

@@ -128,6 +128,35 @@ export function CuadrillasPage() {
     return { D: acc.D, N: acc.N, total: Math.round(total), pctN }
   }, [tareas, lineaF])
 
+  // VALLE NOCTURNO 10 pm–7 am: la ÚNICA franja con un solo turno en planta.
+  // Turnos de la parada (12 h + 3 h de extensión): Día 07:00–22:00 · Noche 19:00–10:00.
+  // Traslapes 07–10 y 19–22 (ambos turnos). Ignora el filtro de turno; respeta línea.
+  const valle = useMemo(() => {
+    const dated = tareas.filter((t) => t.fecha_inicio_prog && t.fecha_fin_prog && (lineaF === 'Todas' || lineaOf(t) === lineaF))
+    if (!dated.length) return [] as { fecha: Date; pico: number; prom: number; acts: number }[]
+    const fch = (t: Tarea) => ({ s: new Date(t.fecha_inicio_prog!).getTime(), e: new Date(t.fecha_fin_prog!).getTime() })
+    const minS = Math.min(...dated.map((t) => fch(t).s)), maxE = Math.max(...dated.map((t) => fch(t).e))
+    const baseV = new Date(minS).setHours(0, 0, 0, 0)
+    const horas = Math.max(1, Math.ceil((maxE - baseV) / H))
+    const arr = new Array(horas).fill(0)
+    const tramosDe = (t: Tarea) => (tieneEspera(t) ? tramosTrabajo(t) : [fch(t)])
+    for (const t of dated)
+      for (const tr of tramosDe(t))
+        for (let h = Math.max(0, Math.floor((tr.s - baseV) / H)); h < Math.min(horas, Math.ceil((tr.e - baseV) / H)); h++) arr[h] += tecOf(t)
+    const noches: { fecha: Date; pico: number; prom: number; acts: number }[] = []
+    for (let d = 0; d * 24 + 22 < horas; d++) {
+      const from = d * 24 + 22, to = (d + 1) * 24 + 7
+      const wS = baseV + from * H, wE = baseV + to * H
+      if (wS >= maxE) break
+      const hs = arr.slice(from, Math.min(to, horas))
+      const pico = Math.max(0, ...hs)
+      const prom = hs.length ? Math.round((hs.reduce((a, b) => a + b, 0) / hs.length) * 10) / 10 : 0
+      const acts = dated.filter((t) => tramosDe(t).some((tr) => tr.s < wE && wS < tr.e)).length
+      noches.push({ fecha: new Date(baseV + d * DAY), pico, prom, acts })
+    }
+    return noches
+  }, [tareas, lineaF])
+
   const { crews, base, totalDias, hourW, totalConf, histo, peakHisto, totalHH, choquePers, espPeak } = useMemo(() => {
     const dated = tareas.filter((t) => t.fecha_inicio_prog && t.fecha_fin_prog && (turnoF === 'Todos' || turnoOf(t) === turnoF) && (lineaF === 'Todas' || lineaOf(t) === lineaF))
     const fch = (t: Tarea) => ({ s: new Date(t.fecha_inicio_prog!).getTime(), e: new Date(t.fecha_fin_prog!).getTime() })
@@ -319,6 +348,22 @@ export function CuadrillasPage() {
           )}
         </div>
       )}
+      {valle.length > 0 && (
+        <div className="rounded-xl border border-indigo-200 bg-white p-4">
+          <h3 className="mb-1 text-sm font-semibold text-slate-700">🌙 Personal en el VALLE (10 pm – 7 am) {lineaF !== 'Todas' && <span className="text-xs font-normal text-indigo-600">({lineaF})</span>}</h3>
+          <p className="mb-2 text-[11px] text-slate-400">☀ Día 7 am–7 pm <b>+3 h → sale 10 pm</b> · 🌙 Noche 7 pm–7 am <b>+3 h → sale 10 am</b> · traslapes 7–10 am/pm con ambos turnos. El valle (10 pm–7 am) queda SOLO con el turno noche: la franja con menos gente de la planta.</p>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            {valle.map((n, i) => (
+              <div key={i} className={`rounded-lg border px-3 py-2 ${n.pico > 0 ? 'border-indigo-200 bg-indigo-50/60' : 'border-slate-200 bg-slate-50'}`}>
+                <p className="text-xs font-semibold text-slate-600">{DIAS[n.fecha.getDay()]} {n.fecha.getDate()} {MES[n.fecha.getMonth()]} 10 pm → {DIAS[new Date(n.fecha.getTime() + DAY).getDay()]} 7 am</p>
+                <p className="mt-0.5 text-lg font-bold text-indigo-700">{n.pico} <span className="text-xs font-medium text-slate-500">téc pico</span></p>
+                <p className="text-[11px] text-slate-500">promedio {n.prom} · {n.acts} actividad(es)</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-[10px] text-slate-400">«Téc pico» = máximo de técnicos trabajando a la vez dentro del valle según el cronograma — la dotación mínima que el turno noche debe tener esa noche.</p>
+        </div>
+      )}
       <div className="rounded-xl border border-slate-200 bg-white">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
         <h3 className="text-sm font-semibold text-slate-700">Distribución por cuadrilla · {crews.length} grupos</h3>
@@ -397,8 +442,12 @@ export function CuadrillasPage() {
                 <div className="relative shrink-0" style={{ width: timelineW, height: laneH }}>
                   {dias.map(({ i }) => (
                     <div key={i}>
-                      <div className="absolute top-0 bg-slate-100/60" style={{ left: i * 24 * hourW, width: 7 * hourW, height: laneH }} />
-                      <div className="absolute top-0 bg-slate-100/60" style={{ left: (i * 24 + 19) * hourW, width: 5 * hourW, height: laneH }} />
+                      {/* VALLE 10 pm–7 am (solo turno noche) */}
+                      <div className="absolute top-0 bg-indigo-100/50" style={{ left: i * 24 * hourW, width: 7 * hourW, height: laneH }} />
+                      <div className="absolute top-0 bg-indigo-100/50" style={{ left: (i * 24 + 22) * hourW, width: 2 * hourW, height: laneH }} />
+                      {/* traslapes 7–10 am/pm (ambos turnos presentes) */}
+                      <div className="absolute top-0 bg-emerald-50/80" style={{ left: (i * 24 + 7) * hourW, width: 3 * hourW, height: laneH }} />
+                      <div className="absolute top-0 bg-emerald-50/80" style={{ left: (i * 24 + 19) * hourW, width: 3 * hourW, height: laneH }} />
                       <div className="absolute top-0 border-l border-slate-100" style={{ left: i * 24 * hourW, height: laneH }} />
                     </div>
                   ))}
@@ -448,6 +497,8 @@ export function CuadrillasPage() {
       <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 px-4 py-2 text-[11px] text-slate-400">
         <span className="flex items-center gap-1"><span className="inline-block h-2 w-3 rounded-sm bg-red-600" /> Conflicto (cuadrilla trabajando 2 tareas a la vez · la espera de apertura/cierre no cuenta)</span>
         <span>Util &lt;35% = ociosa (ámbar) · &gt;85% = saturada (rojo)</span>
+        <span className="flex items-center gap-1"><span className="inline-block h-2 w-3 rounded-sm bg-indigo-100" /> valle 10 pm–7 am (solo noche)</span>
+        <span className="flex items-center gap-1"><span className="inline-block h-2 w-3 rounded-sm bg-emerald-100" /> traslape 7–10 (ambos turnos)</span>
       </div>
 
       {mover && (

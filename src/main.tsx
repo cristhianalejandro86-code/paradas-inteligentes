@@ -15,6 +15,8 @@ import { RutaCriticaPage } from './pages/RutaCriticaPage'
 import { RecursosPage } from './pages/RecursosPage'
 import { PreparacionPage } from './pages/PreparacionPage'
 import { AndamiosPage } from './pages/AndamiosPage'
+import { SoldadorasPage } from './pages/SoldadorasPage'
+import { GruaPage } from './pages/GruaPage'
 
 const router = createBrowserRouter([
   {
@@ -32,6 +34,8 @@ const router = createBrowserRouter([
           { path: 'cuadrillas', element: <CuadrillasPage /> },
           { path: 'preparacion', element: <PreparacionPage /> },
           { path: 'andamios', element: <AndamiosPage /> },
+          { path: 'soldadoras', element: <SoldadorasPage /> },
+          { path: 'grua', element: <GruaPage /> },
           { path: 'ruta-critica', element: <RutaCriticaPage /> },
           { path: 'recursos', element: <RecursosPage /> },
         ],

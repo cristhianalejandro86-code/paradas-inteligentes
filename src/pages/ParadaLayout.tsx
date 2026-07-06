@@ -11,6 +11,8 @@ const TABS = [
   { to: 'cuadrillas', label: 'Cuadrillas', end: false },
   { to: 'preparacion', label: '✅ Preparación', end: false },
   { to: 'andamios', label: '🏗 Andamios', end: false },
+  { to: 'soldadoras', label: '🔥 Soldadoras', end: false },
+  { to: 'grua', label: '🚛 Grúa', end: false },
   { to: 'ruta-critica', label: 'Ruta crítica', end: false },
   { to: 'recursos', label: 'Recursos', end: false },
 ]

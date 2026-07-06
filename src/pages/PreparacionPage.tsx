@@ -99,6 +99,11 @@ export function PreparacionPage() {
   const [sysF, setSysF] = useState('Todos')
   const [grpF, setGrpF] = useState('Todos')
   const [faltaF, setFaltaF] = useState<'Todas' | 'cuadrilla' | 'recursos' | 'permiso'>('Todas')
+  // Filtros de la fila bajo los encabezados (estilo Excel), combinables con los de arriba.
+  const [qF, setQF] = useState('')
+  const [supF, setSupF] = useState('')
+  const [permF, setPermF] = useState<'' | 'si' | 'no'>('')
+  const [estF, setEstF] = useState<'' | 'lista' | 'pend'>('')
   const [config, setConfig] = useState<Record<string, { tecnicos?: Tecnico[] }>>({})
   const [editPrev, setEditPrev] = useState<Tarea | null>(null)
   const [editAnd, setEditAnd] = useState<Tarea | null>(null)
@@ -125,6 +130,7 @@ export function PreparacionPage() {
 
   const lineas = useMemo(() => [...new Set(tareas.map(lineaOf).filter(Boolean))].sort(), [tareas])
   const gruposExist = useMemo(() => [...new Set(tareas.map(grpOf).filter((g) => g && g !== '—'))].sort((a, b) => (parseInt(a.replace(/\D/g, '')) || 0) - (parseInt(b.replace(/\D/g, '')) || 0)), [tareas])
+  const supsEnUso = useMemo(() => [...new Set(tareas.map((t) => String(esp(t).supervisor ?? '')).filter(Boolean))].sort(), [tareas])
   const sistemas = useMemo(() => [...new Set(tareas.filter(esTrabajo).map(sysOf).filter(Boolean))].sort(), [tareas])
 
   function guardar(t: Tarea, patch: Record<string, unknown>) {
@@ -173,9 +179,13 @@ export function PreparacionPage() {
     const critListas = crit.filter(listaParaArrancar).length
     const faltaOK = (t: Tarea) => faltaF === 'Todas' || (faltaF === 'cuadrilla' ? !conCuadrilla(t) : faltaF === 'recursos' ? !matListo(t) : !permisoDe(t))
     const lista = [...scope].sort((a, b) => (a.secuencia ?? 0) - (b.secuencia ?? 0))
-      .filter((t) => (!soloPend || !listaParaArrancar(t)) && (sysF === 'Todos' || sysOf(t) === sysF) && (grpF === 'Todos' || grpOf(t) === grpF) && faltaOK(t))
+      .filter((t) => (!soloPend || !listaParaArrancar(t)) && (sysF === 'Todos' || sysOf(t) === sysF) && (grpF === 'Todos' || grpOf(t) === grpF) && faltaOK(t)
+        && (!qF || t.nombre.toLowerCase().includes(qF.toLowerCase()))
+        && (!supF || (supF === '(sin)' ? !esp(t).supervisor : String(esp(t).supervisor ?? '') === supF))
+        && (!permF || (permF === 'si' ? permisoDe(t) : !permisoDe(t)))
+        && (!estF || (estF === 'lista' ? listaParaArrancar(t) : !listaParaArrancar(t))))
     return { total, listas, sinCuad, sinMat, sinPerm, pct, lista, critTotal: crit.length, critListas }
-  }, [scope, soloPend, sysF, grpF, faltaF, criticas])
+  }, [scope, soloPend, sysF, grpF, faltaF, criticas, qF, supF, permF, estF])
 
   // Consolidado: suma de todos los ítems del scope por tipo+nombre + flag "pedir YA"
   // (algún ítem con lead > días al inicio y sin estar listo).
@@ -296,8 +306,29 @@ export function PreparacionPage() {
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-slate-50 text-[10px] uppercase tracking-wide text-slate-400">
               <tr>
-                <th className="px-2 py-2"><input type="checkbox" title="Seleccionar todas (visibles)" checked={d.lista.length > 0 && d.lista.every((t) => sel.has(t.id))} onChange={(e) => setSel((s) => { const n = new Set(s); if (e.target.checked) d.lista.forEach((t) => n.add(t.id)); else d.lista.forEach((t) => n.delete(t.id)); return n })} className="accent-amber-500" /></th>
-                <th className="px-2 py-2 text-left">#</th><th className="relative px-2 py-2 text-left" style={{ width: actW, minWidth: actW }}>Actividad<ColResizeHandle onResize={onActResize} /></th><th className="relative px-2 py-2 text-center" style={{ width: pw.cuad, minWidth: pw.cuad }}>Cuadrilla / Técnicos<ColResizeHandle onResize={resizeFor('cuad')} /></th><th className="relative px-2 py-2 text-center" style={{ width: pw.sup, minWidth: pw.sup }}>Supervisor<ColResizeHandle onResize={resizeFor('sup')} /></th><th className="relative px-2 py-2 text-center" style={{ width: pw.rec, minWidth: pw.rec }}>Recursos (herram./equipo/material)<ColResizeHandle onResize={resizeFor('rec')} /></th><th className="relative px-2 py-2 text-center" style={{ width: pw.and, minWidth: pw.and }}>Andamios (cuerpos)<ColResizeHandle onResize={resizeFor('and')} /></th><th className="relative px-2 py-2 text-center" style={{ width: pw.prev, minWidth: pw.prev }}>Previos (separar pernos, medidas…)<ColResizeHandle onResize={resizeFor('prev')} /></th><th className="relative px-2 py-2 text-center" style={{ width: pw.perm, minWidth: pw.perm }}>Permiso<ColResizeHandle onResize={resizeFor('perm')} /></th><th className="relative px-2 py-2 text-center" style={{ width: pw.est, minWidth: pw.est }}>Estado<ColResizeHandle onResize={resizeFor('est')} /></th>
+                <th className="px-2 py-2" style={{ width: 36, minWidth: 36, maxWidth: 36 }}><input type="checkbox" title="Seleccionar todas (visibles)" checked={d.lista.length > 0 && d.lista.every((t) => sel.has(t.id))} onChange={(e) => setSel((s) => { const n = new Set(s); if (e.target.checked) d.lista.forEach((t) => n.add(t.id)); else d.lista.forEach((t) => n.delete(t.id)); return n })} className="accent-amber-500" /></th>
+                <th className="px-2 py-2 text-left" style={{ width: 48, minWidth: 48, maxWidth: 48 }}>#</th><th className="relative px-2 py-2 text-left" style={{ width: actW, minWidth: actW }}>Actividad<ColResizeHandle onResize={onActResize} /></th><th className="relative px-2 py-2 text-center" style={{ width: pw.cuad, minWidth: pw.cuad }}>Cuadrilla / Técnicos<ColResizeHandle onResize={resizeFor('cuad')} /></th><th className="relative px-2 py-2 text-center" style={{ width: pw.sup, minWidth: pw.sup }}>Supervisor<ColResizeHandle onResize={resizeFor('sup')} /></th><th className="relative px-2 py-2 text-center" style={{ width: pw.rec, minWidth: pw.rec }}>Recursos (herram./equipo/material)<ColResizeHandle onResize={resizeFor('rec')} /></th><th className="relative px-2 py-2 text-center" style={{ width: pw.and, minWidth: pw.and }}>Andamios (cuerpos)<ColResizeHandle onResize={resizeFor('and')} /></th><th className="relative px-2 py-2 text-center" style={{ width: pw.prev, minWidth: pw.prev }}>Previos (separar pernos, medidas…)<ColResizeHandle onResize={resizeFor('prev')} /></th><th className="relative px-2 py-2 text-center" style={{ width: pw.perm, minWidth: pw.perm }}>Permiso<ColResizeHandle onResize={resizeFor('perm')} /></th><th className="relative px-2 py-2 text-center" style={{ width: pw.est, minWidth: pw.est }}>Estado<ColResizeHandle onResize={resizeFor('est')} /></th>
+              </tr>
+              {/* fila de FILTROS por columna (estilo Excel), combinables con los de arriba */}
+              <tr className="bg-slate-100/80 normal-case tracking-normal">
+                <td className="px-1 py-1 text-center">{(qF || supF || permF || estF || grpF !== 'Todos' || lineaF !== 'Todas') && <button onClick={() => { setQF(''); setSupF(''); setPermF(''); setEstF(''); setGrpF('Todos'); setLineaF('Todas') }} title="Limpiar todos los filtros" className="rounded bg-slate-200 px-1 text-[10px] text-slate-600 hover:bg-slate-300">✕</button>}</td>
+                <td />
+                <td className="px-1 py-1">
+                  <div className="flex items-center gap-1">
+                    <input value={qF} onChange={(e) => setQF(e.target.value)} placeholder="🔍 buscar actividad…" className="min-w-0 flex-1 rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px]" />
+                    {lineas.length > 0 && (
+                      <select value={lineaF} onChange={(e) => setLineaF(e.target.value)} title="Filtrar por línea" className={`rounded border px-0.5 py-0.5 text-[10px] ${lineaF !== 'Todas' ? 'border-fuchsia-400 bg-fuchsia-50 font-medium text-fuchsia-700' : 'border-slate-200 bg-white text-slate-500'}`}>
+                        <option value="Todas">línea: todas</option>
+                        {lineas.map((l) => <option key={l} value={l}>{l}</option>)}
+                      </select>
+                    )}
+                  </div>
+                </td>
+                <td className="px-1 py-1"><select value={grpF} onChange={(e) => setGrpF(e.target.value)} className={`w-full rounded border px-0.5 py-0.5 text-[10px] ${grpF !== 'Todos' ? 'border-amber-400 bg-amber-50 font-medium text-amber-800' : 'border-slate-200 bg-white text-slate-500'}`}><option value="Todos">todas</option>{gruposExist.map((g) => <option key={g} value={g}>{g}</option>)}</select></td>
+                <td className="px-1 py-1"><select value={supF} onChange={(e) => setSupF(e.target.value)} className={`w-full rounded border px-0.5 py-0.5 text-[10px] ${supF ? 'border-amber-400 bg-amber-50 font-medium text-amber-800' : 'border-slate-200 bg-white text-slate-500'}`}><option value="">todos</option><option value="(sin)">— sin asignar</option>{supsEnUso.map((s) => <option key={s} value={s}>{s}</option>)}</select></td>
+                <td /><td /><td />
+                <td className="px-1 py-1"><select value={permF} onChange={(e) => setPermF(e.target.value as typeof permF)} className={`w-full rounded border px-0.5 py-0.5 text-[10px] ${permF ? 'border-amber-400 bg-amber-50 font-medium text-amber-800' : 'border-slate-200 bg-white text-slate-500'}`}><option value="">todos</option><option value="si">✓ OK</option><option value="no">✗ falta</option></select></td>
+                <td className="px-1 py-1"><select value={estF} onChange={(e) => setEstF(e.target.value as typeof estF)} className={`w-full rounded border px-0.5 py-0.5 text-[10px] ${estF ? 'border-amber-400 bg-amber-50 font-medium text-amber-800' : 'border-slate-200 bg-white text-slate-500'}`}><option value="">todos</option><option value="lista">LISTA</option><option value="pend">pendiente</option></select></td>
               </tr>
             </thead>
             <tbody>

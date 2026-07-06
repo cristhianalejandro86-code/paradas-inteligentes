@@ -8,7 +8,7 @@ import type { Tarea } from '../types'
 
 const H = 3600000
 const DAY = 86400000
-const ROW = 30
+const ROW = 38
 const DIAS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 const MES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 const lineaOf = (t: Tarea) => String(t.especificaciones_tecnicas?.linea ?? '').trim()
@@ -110,11 +110,14 @@ export function AndamiosPage() {
                       </div>
                       <div className="relative shrink-0" style={{ width: timelineW }}>
                         {dias.map(({ i }) => <div key={i} className="absolute top-0 h-full border-l border-slate-100" style={{ left: i * 24 * hourW }} />)}
-                        <div className="absolute top-1/2 flex h-[18px] -translate-y-1/2 items-center gap-1 overflow-visible rounded px-1 text-[10px] font-semibold text-white shadow-sm"
+                        <div className="absolute top-[5px] h-[15px] rounded shadow-sm"
                           style={{ left: x(a.s), width: Math.max(x(a.e) - x(a.s), 8), background: color }}
-                          title={`${a.t.nombre}\n${fmt(a.s)} → ${fmt(a.e)} · ${a.c} cuerpo(s) · usa: ${cuerpos.join(', ')}${a.det ? `\n${a.det}` : ''}`}>
-                          <span className="truncate">{a.c}× {cuerpos.join(',')}</span>
-                        </div>
+                          title={`${a.t.nombre}\n${fmt(a.s)} → ${fmt(a.e)} · ${a.c} cuerpo(s) · usa: ${cuerpos.join(', ')}${a.det ? `\n${a.det}` : ''}`} />
+                        {/* cantidad SIEMPRE visible debajo de la barra (no se corta en barras chicas) */}
+                        <span className="pointer-events-none absolute top-[21px] whitespace-nowrap text-[10px] font-bold leading-none text-slate-700"
+                          style={{ left: x(a.s) + 1 }}>
+                          🏗 {a.c} cuerpo{a.c === 1 ? '' : 's'} <span className="font-medium text-slate-400">· usa {cuerpos.join(', ')}</span>
+                        </span>
                       </div>
                     </div>
                   )

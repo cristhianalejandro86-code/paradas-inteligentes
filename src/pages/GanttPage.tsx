@@ -355,12 +355,19 @@ export function GanttPage() {
   function editarFechaG(t: Tarea, which: 'inicio' | 'fin', v: string) {
     if (!v) return
     const iso = new Date(v).toISOString()
-    const s = which === 'inicio' ? new Date(v).getTime() : t.fecha_inicio_prog ? new Date(t.fecha_inicio_prog).getTime() : NaN
-    const e = which === 'fin' ? new Date(v).getTime() : t.fecha_fin_prog ? new Date(t.fecha_fin_prog).getTime() : NaN
-    if (!Number.isFinite(s) || !Number.isFinite(e)) return
-    if (e <= s) { setError('La fecha de fin debe ser posterior al inicio.'); return }
-    const dur = Math.round(((e - s) / H) * 10) / 10
-    editar(t.id, which === 'inicio' ? { fecha_inicio_prog: iso, duracion_estimada_horas: dur } : { fecha_fin_prog: iso, duracion_estimada_horas: dur })
+    if (which === 'inicio') {
+      // Editar COMIENZO mueve la ventana conservando la duración: fin = inicio + horas.
+      const dur = Number(t.duracion_estimada_horas ?? 0)
+      const fin = dur > 0 ? new Date(new Date(v).getTime() + dur * H).toISOString() : t.fecha_fin_prog
+      editar(t.id, { fecha_inicio_prog: iso, fecha_fin_prog: fin })
+      return
+    }
+    // Editar FIN es intencional (p. ej. envolvente manhole): se respeta y recalcula la duración
+    // solo si el fin queda antes que inicio + horas no tendría sentido → valida contra inicio.
+    const s = t.fecha_inicio_prog ? new Date(t.fecha_inicio_prog).getTime() : NaN
+    const e = new Date(v).getTime()
+    if (Number.isFinite(s) && e <= s) { setError('La fecha de fin debe ser posterior al inicio.'); return }
+    editar(t.id, { fecha_fin_prog: iso })
   }
   function editarHrs(t: Tarea, v: number) {
     // En un Gantt, cambiar las horas debe redimensionar la barra (fin = inicio + horas).

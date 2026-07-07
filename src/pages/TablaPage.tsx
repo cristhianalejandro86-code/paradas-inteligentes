@@ -83,19 +83,22 @@ export function TablaPage() {
     }
     return m
   }, [tareas])
-  // Editar fecha: revalida fin>inicio y recalcula la duración.
+  // Reglas de coherencia horas↔fechas:
+  //  · editar COMIENZO mueve la ventana conservando la duración (fin = inicio + horas)
+  //  · editar FIN es intencional (p. ej. envolvente manhole) → se respeta tal cual
+  //  · editar HORAS recalcula el fin (fin = inicio + horas) — ver celda Hrs
   function editarFecha(t: Tarea, which: 'inicio' | 'fin', v: string) {
     if (!v) return
     const iso = new Date(v).toISOString()
-    const s = which === 'inicio' ? new Date(v).getTime() : t.fecha_inicio_prog ? new Date(t.fecha_inicio_prog).getTime() : NaN
-    const e = which === 'fin' ? new Date(v).getTime() : t.fecha_fin_prog ? new Date(t.fecha_fin_prog).getTime() : NaN
-    if (Number.isFinite(s) && Number.isFinite(e)) {
-      if (e <= s) { setError('La fecha de fin debe ser posterior al inicio.'); return }
-      const dur = Math.round(((e - s) / 3600000) * 10) / 10
-      save(t.id, which === 'inicio' ? { fecha_inicio_prog: iso, duracion_estimada_horas: dur } : { fecha_fin_prog: iso, duracion_estimada_horas: dur })
-    } else {
-      save(t.id, which === 'inicio' ? { fecha_inicio_prog: iso } : { fecha_fin_prog: iso })
+    if (which === 'inicio') {
+      const dur = Number(t.duracion_estimada_horas ?? 0)
+      const fin = dur > 0 ? new Date(new Date(v).getTime() + dur * 3600000).toISOString() : t.fecha_fin_prog
+      save(t.id, { fecha_inicio_prog: iso, fecha_fin_prog: fin })
+      return
     }
+    const s = t.fecha_inicio_prog ? new Date(t.fecha_inicio_prog).getTime() : NaN
+    if (Number.isFinite(s) && new Date(v).getTime() <= s) { setError('La fecha de fin debe ser posterior al inicio.'); return }
+    save(t.id, { fecha_fin_prog: iso })
   }
 
   async function importar(file: File) {
@@ -224,7 +227,7 @@ export function TablaPage() {
                   </select>
                 </td>
                 <td className="px-1 py-1" style={{ width: cw.tec, minWidth: cw.tec, maxWidth: cw.tec }}><input key={`tec-${Number(esp(t).tec ?? 0)}`} type="number" min={0} defaultValue={Number(esp(t).tec ?? 0)} onBlur={(e) => { const v = Number(e.target.value); if (Number.isFinite(v) && v >= 0) saveEspec(t, { tec: v }) }} className={`${inp} text-center`} /></td>
-                <td className="px-1 py-1" style={{ width: cw.hrs, minWidth: cw.hrs, maxWidth: cw.hrs }}><input key={`dur-${Number(t.duracion_estimada_horas ?? 0)}`} type="number" min={0} step={0.5} defaultValue={Number(t.duracion_estimada_horas ?? 0)} onBlur={(e) => { const v = Number(e.target.value); if (Number.isFinite(v) && v > 0 && v !== Number(t.duracion_estimada_horas)) save(t.id, { duracion_estimada_horas: v }) }} className={`${inp} text-center`} /></td>
+                <td className="px-1 py-1" style={{ width: cw.hrs, minWidth: cw.hrs, maxWidth: cw.hrs }}><input key={`dur-${Number(t.duracion_estimada_horas ?? 0)}`} type="number" min={0} step={0.5} defaultValue={Number(t.duracion_estimada_horas ?? 0)} onBlur={(e) => { const v = Number(e.target.value); if (Number.isFinite(v) && v > 0 && v !== Number(t.duracion_estimada_horas)) { const ini = t.fecha_inicio_prog ? new Date(t.fecha_inicio_prog).getTime() : null; save(t.id, { duracion_estimada_horas: v, ...(ini != null ? { fecha_fin_prog: new Date(ini + v * 3600000).toISOString() } : {}) }) } }} className={`${inp} text-center`} /></td>
                 <td className="px-1 py-1" style={{ width: cw.fi, minWidth: cw.fi, maxWidth: cw.fi }}><input key={`fi-${t.fecha_inicio_prog ?? ''}`} type="datetime-local" defaultValue={toInput(t.fecha_inicio_prog)} onBlur={(e) => editarFecha(t, 'inicio', e.target.value)} className={`${inp} text-xs`} /></td>
                 <td className="px-1 py-1" style={{ width: cw.ff, minWidth: cw.ff, maxWidth: cw.ff }}><input key={`ff-${t.fecha_fin_prog ?? ''}`} type="datetime-local" defaultValue={toInput(t.fecha_fin_prog)} onBlur={(e) => editarFecha(t, 'fin', e.target.value)} className={`${inp} text-xs`} /></td>
                 <td className="px-1 py-1" style={{ width: cw.pred, minWidth: cw.pred, maxWidth: cw.pred }}>

@@ -9,7 +9,7 @@
 :root { --azul:#0f3d6e; --gris:#5b6675; --borde:#cfd8e3; --fondo:#f4f7fb; --ok:#1b7f3b; --warn:#a15c00; --err:#b00020; }
 * { box-sizing:border-box; }
 html,body { margin:0; }
-body { font-family: Arial, Helvetica, sans-serif; color:#1a1a1a; background:#fff; padding:14px; max-width:1200px; margin:0 auto; font-size:15px; overflow-wrap:anywhere; }
+body { font-family: Arial, Helvetica, "PingFang SC", "Microsoft YaHei", sans-serif; color:#1a1a1a; background:#fff; padding:14px; max-width:1200px; margin:0 auto; font-size:15px; overflow-wrap:anywhere; }
 *, *::before, *::after { min-width:0; }
 [hidden] { display:none !important; }
 h1 { font-size:21px; color:var(--azul); margin:0 0 4px; line-height:1.2; }
@@ -155,57 +155,72 @@ textarea { min-height:64px; resize:vertical; }
 .p111{background-image:url(fotos/111.jpg)}
 .p112{background-image:url(fotos/112.jpg)}
 .p113{background-image:url(fotos/113.jpg)}
+.chg { color:#6a1b9a; font-weight:700; }
+.lbl { font-size:14px; font-weight:600; color:#1a1a1a; }
+.herr-fila { display:grid; grid-template-columns:minmax(0,1fr) 84px auto; gap:6px; align-items:center; }
+.herr-fila input { font:inherit; font-size:15px; border:1px solid #aab6c6; border-radius:8px; padding:8px; min-height:44px; min-width:0; width:100%; }
+.herr-fila .x { border:1px solid var(--err); background:#fff; color:var(--err); border-radius:8px; min-height:44px; min-width:44px; font-size:18px; cursor:pointer; }
+.chips { display:flex; flex-wrap:wrap; gap:6px; }
+.chip { background:#e8f0f8; color:var(--azul); border-radius:999px; padding:6px 10px; font-size:14px; display:inline-flex; align-items:center; gap:6px; }
+.chip button { border:0; background:none; color:var(--err); font-size:16px; cursor:pointer; padding:0 2px; min-height:28px; }
+.sug { border:1px solid #aab6c6; border-radius:8px; background:#fff; max-height:220px; overflow:auto; }
+.sug button { display:block; width:100%; text-align:left; border:0; border-bottom:1px solid var(--borde); background:#fff; padding:10px; min-height:44px; font-size:14px; cursor:pointer; }
+.sug button:disabled { color:var(--gris); cursor:default; }
+.sug small { color:var(--gris); }
+#btn-idioma { position:fixed; right:10px; bottom:10px; z-index:30; border:1px solid var(--azul); background:#fff; color:var(--azul); border-radius:999px; padding:10px 16px; min-height:44px; font-size:14px; font-weight:600; cursor:pointer; box-shadow:0 1px 4px rgba(0,0,0,.15); }
 </style>
 </head>
 <body>
+<button type="button" id="btn-idioma" aria-label="Idioma / 语言">中文</button>
 
 <section class="login" id="login" hidden>
-  <h1>Parada de planta · Beijing</h1>
-  <p>Ingresa con tu DNI y tu PIN del sistema SGMC.</p>
+  <h1 data-i18n="login_h1">Parada de planta · Beijing</h1>
+  <p data-i18n="login_p">Ingresa con tu DNI y tu PIN del sistema SGMC.</p>
   <form id="login-form" style="display:flex;flex-direction:column;gap:10px">
-    <label>DNI <input id="l-dni" type="text" inputmode="numeric" autocomplete="username" maxlength="8" placeholder="8 dígitos"></label>
-    <label>PIN <input id="l-pin" type="password" autocomplete="current-password" maxlength="8"></label>
+    <label><span data-i18n="dni">DNI</span> <input id="l-dni" type="text" inputmode="numeric" autocomplete="username" maxlength="8" data-i18n-ph="ph_8dig" placeholder="8 dígitos"></label>
+    <label><span data-i18n="pin">PIN</span> <input id="l-pin" type="password" autocomplete="current-password" maxlength="8"></label>
     <div class="err" id="l-err"></div>
-    <button class="btn" type="submit" id="l-btn">Entrar</button>
+    <button class="btn" type="submit" id="l-btn" data-i18n="entrar">Entrar</button>
   </form>
 </section>
 
 <div id="app" hidden>
-  <h1>Parada de planta · Planta Magnética Beijing</h1>
-  <div class="sub">Programación preliminar Octubre 2026 (REV. 21) · Los cambios los revisa el residente antes de publicarse</div>
+  <h1 data-i18n="app_h1">Parada de planta · Planta Magnética Beijing</h1>
+  <div class="sub"><span data-i18n="sub">Programación preliminar Octubre 2026 (REV. 21) · Los cambios los revisa el residente antes de publicarse</span> · <span class="chg" data-i18n="morado">Morado</span> = <span data-i18n="sub_leyenda">horas o personal corregidos y aprobados</span></div>
   <div class="barra">
     <span id="usuario"></span>
-    <span><button id="btn-refrescar" type="button">Actualizar</button> <button id="btn-salir" type="button">Salir</button></span>
+    <span><button id="btn-refrescar" type="button" data-i18n="refrescar">Actualizar</button> <button id="btn-salir" type="button" data-i18n="salir">Salir</button></span>
   </div>
 
   <div class="kpis">
-    <div class="kpi"><div class="v" id="k-act">–</div><div class="l">Actividades</div></div>
-    <div class="kpi"><div class="v" id="k-hor">–</div><div class="l">Horas</div></div>
-    <div class="kpi"><div class="v" id="k-hh">–</div><div class="l">HH totales</div></div>
-    <div class="kpi"><div class="v" id="k-cor">0</div><div class="l">Con cambios aprobados</div></div>
-    <div class="kpi"><div class="v" id="k-pen">0</div><div class="l">Propuestas pendientes</div></div>
+    <div class="kpi"><div class="v" id="k-act">–</div><div class="l" data-i18n="k_act">Actividades</div></div>
+    <div class="kpi"><div class="v" id="k-hor">–</div><div class="l" data-i18n="k_hor">Horas</div></div>
+    <div class="kpi"><div class="v" id="k-hh">–</div><div class="l" data-i18n="k_hh">HH totales</div></div>
+    <div class="kpi"><div class="v" id="k-cor">0</div><div class="l" data-i18n="k_cor">Con cambios aprobados</div></div>
+    <div class="kpi"><div class="v" id="k-pen">0</div><div class="l" data-i18n="k_pen">Propuestas pendientes</div></div>
   </div>
 
   <section class="panel" id="panel-res" hidden>
-    <h2>Propuestas pendientes de aprobación</h2>
+    <h2 data-i18n="panel_res">Propuestas pendientes de aprobación</h2>
     <div id="lista-pend"></div>
   </section>
 
   <section class="panel" id="panel-mias" style="border-color:var(--borde);background:#fff" hidden>
-    <h2>Mis propuestas</h2>
+    <h2 data-i18n="panel_mias">Mis propuestas</h2>
     <div id="lista-mias"></div>
   </section>
 
-  <input id="buscar" type="search" placeholder="Buscar por N°, OT, equipo o texto" aria-label="Buscar actividades" style="margin-bottom:10px">
+  <input id="buscar" type="search" data-i18n-ph="ph_buscar" placeholder="Buscar por N°, OT, equipo o texto" data-i18n-aria="aria_buscar" aria-label="Buscar actividades" style="margin-bottom:10px">
 
   <nav class="filtros" id="filtros" aria-label="Filtrar por línea">
-    <button data-f="todas" aria-pressed="true">Todas <small id="c-todas"></small></button>
-    <button data-f="l1" aria-pressed="false">Línea 1 <small id="c-l1"></small></button>
-    <button data-f="l2" aria-pressed="false">Línea 2 <small id="c-l2"></small></button>
-    <button data-f="ambas" aria-pressed="false">Ambas líneas (1-2) <small id="c-ambas"></small></button>
-    <button data-f="pend" aria-pressed="false">Con pendientes <small id="c-pend"></small></button>
+    <button data-f="todas" aria-pressed="true"><span data-i18n="f_todas">Todas</span> <small id="c-todas"></small></button>
+    <button data-f="l1" aria-pressed="false"><span data-i18n="f_l1">Línea 1</span> <small id="c-l1"></small></button>
+    <button data-f="l2" aria-pressed="false"><span data-i18n="f_l2">Línea 2</span> <small id="c-l2"></small></button>
+    <button data-f="ambas" aria-pressed="false"><span data-i18n="f_ambas">Ambas líneas (1-2)</span> <small id="c-ambas"></small></button>
+    <button data-f="pend" aria-pressed="false"><span data-i18n="f_pend">Con pendientes</span> <small id="c-pend"></small></button>
   </nav>
 
+  <div class="barra"><button type="button" class="btn sec" id="btn-exp" style="flex:0 0 auto" data-i18n="exp">Exportar herramientas y equipos (Excel)</button></div>
   <main class="grid" id="grid"></main>
 </div>
 
@@ -213,26 +228,30 @@ textarea { min-height:64px; resize:vertical; }
   <form id="form" class="dlg" method="dialog" novalidate>
     <h2 id="f-titulo">Proponer cambio</h2>
     <div class="ref" id="f-ref"></div>
-    <label>Observaciones <span class="opc">(opcional)</span>
+    <label><span data-i18n="obs">Observaciones</span> <span class="opc" data-i18n="opcional">(opcional)</span>
       <textarea id="f-obs" maxlength="1000"></textarea></label>
-    <label>Previos necesarios <span class="opc">(permisos, bloqueos, materiales, etc.)</span>
+    <label><span data-i18n="prev">Previos necesarios</span> <span class="opc" data-i18n="prev_ayuda">(permisos, bloqueos, materiales, etc.)</span>
       <textarea id="f-prev" maxlength="1000"></textarea></label>
-    <label>Herramientas y equipos <span class="opc">(opcional)</span>
-      <textarea id="f-herr" maxlength="1000"></textarea></label>
+    <div class="lbl"><span data-i18n="herr">Herramientas y equipos</span> <span class="opc" data-i18n="herr_ayuda">(indica la cantidad de cada uno)</span></div>
+    <div id="f-herr-lista"></div>
+    <button type="button" class="btn sec" id="f-herr-add" data-i18n="herr_add">+ Agregar herramienta o equipo</button>
     <div class="fila">
-      <label>Horas por persona
+      <label><span data-i18n="horas_p">Horas por persona</span>
         <input id="f-horas" type="number" step="0.5" min="0" max="999"></label>
-      <label>Cantidad de personal
+      <label><span data-i18n="pers_c">Cantidad de personal</span>
         <input id="f-pers" type="number" step="1" min="0" max="99"></label>
     </div>
-    <label>Asignar personal <span class="opc">(DNI separados por coma; supervisores solo de su área)</span>
-      <input id="f-asig" type="text" inputmode="numeric" placeholder="ej. 41143369, 70360053"></label>
-    <label>Agregar foto <span class="opc">(opcional)</span>
+    <div class="lbl"><span data-i18n="asig">Asignar personal</span> <span class="opc" data-i18n="asig_ayuda">(escribe 2 letras o más del nombre o el DNI y elige de la lista)</span></div>
+    <input id="f-buscarp" type="search" autocomplete="off" data-i18n-ph="pers_ph" placeholder="ej. ROD o 41143369" data-i18n-aria="buscar_pers_aria" aria-label="Buscar personal">
+    <div class="sug" id="f-sug" hidden></div>
+    <div class="chips" id="f-chips"></div>
+    <div class="opc" id="f-ya"></div>
+    <label><span data-i18n="foto_add">Agregar foto</span> <span class="opc" data-i18n="opcional">(opcional)</span>
       <input id="f-foto" type="file" accept="image/*" capture="environment"></label>
     <div class="err" id="f-err"></div>
     <div class="botones">
-      <button type="button" class="btn sec" id="f-cancel">Cancelar</button>
-      <button type="button" class="btn" id="f-save">Enviar propuesta</button>
+      <button type="button" class="btn sec" id="f-cancel" data-i18n="cancelar">Cancelar</button>
+      <button type="button" class="btn" id="f-save" data-i18n="enviar">Enviar propuesta</button>
     </div>
   </form>
 </dialog>
@@ -261,7 +280,261 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 const fmt = n => Number(n).toLocaleString('es-PE', {minimumFractionDigits:1, maximumFractionDigits:1});
 const dash = s => (s === '' || s === '-' || s == null) ? '—' : esc(s);
 const fechaCorta = s => (s || '').replace('T', ' ').slice(0, 16);
-const TIPOS = {observaciones:'Observaciones', previos:'Previos necesarios', herramientas:'Herramientas y equipos', horas:'Horas por persona', personal:'Cantidad de personal', foto:'Foto', asignacion:'Asignación de personal'};
+const I18N = {
+ "es": {
+  "title": "Parada de planta Beijing · Actividades",
+  "login_h1": "Parada de planta · Beijing",
+  "login_p": "Ingresa con tu DNI y tu PIN del sistema SGMC.",
+  "dni": "DNI",
+  "pin": "PIN",
+  "ph_8dig": "8 dígitos",
+  "entrar": "Entrar",
+  "entrando": "Entrando…",
+  "err_dni": "El DNI tiene 8 dígitos.",
+  "err_login": "DNI o PIN incorrecto.",
+  "err_schema": "La base de la PDP aún no está habilitada. Avisa al administrador (esquema \"pdp\" no expuesto en la API).",
+  "err_carga": "No se pudo cargar: ",
+  "cargando": "Cargando actividades…",
+  "app_h1": "Parada de planta · Planta Magnética Beijing",
+  "sub": "Programación preliminar Octubre 2026 (REV. 21) · Los cambios los revisa el residente antes de publicarse",
+  "morado": "Morado",
+  "sub_leyenda": "horas o personal corregidos y aprobados",
+  "refrescar": "Actualizar",
+  "salir": "Salir",
+  "k_act": "Actividades",
+  "k_hor": "Horas",
+  "k_hh": "HH totales",
+  "k_cor": "Con cambios aprobados",
+  "k_pen": "Propuestas pendientes",
+  "panel_res": "Propuestas pendientes de aprobación",
+  "panel_mias": "Mis propuestas",
+  "ph_buscar": "Buscar por N°, OT, equipo o texto",
+  "aria_buscar": "Buscar actividades",
+  "f_todas": "Todas",
+  "f_l1": "Línea 1",
+  "f_l2": "Línea 2",
+  "f_ambas": "Ambas líneas (1-2)",
+  "f_pend": "Con pendientes",
+  "exp": "Exportar herramientas y equipos (Excel)",
+  "no_act": "No hay actividades para este filtro.",
+  "ambas": "Ambas líneas",
+  "corregidos": "Horas/personal corregidos",
+  "pend_badge": "{n} pendiente(s)",
+  "sin_foto": "Sin foto",
+  "foto_alt": "Foto aprobada",
+  "linea_fmt": "Línea {l}",
+  "lineas_fmt": "Líneas 1-2",
+  "seis": "6 dígitos:",
+  "horas": "Horas",
+  "personal": "Personal",
+  "prev_l": "Previos necesarios:",
+  "herr_l": "Herramientas y equipos:",
+  "obs_l": "Observaciones:",
+  "asig_l": "Personal asignado:",
+  "proponer": "Proponer cambio",
+  "motivo": "Motivo:",
+  "decidida": "decidida ",
+  "est_pendiente": "Pendiente",
+  "est_aprobada": "Aprobada",
+  "est_rechazada": "Rechazada",
+  "tipo_observaciones": "Observaciones",
+  "tipo_previos": "Previos necesarios",
+  "tipo_herramientas": "Herramientas y equipos",
+  "tipo_horas": "Horas por persona",
+  "tipo_personal": "Cantidad de personal",
+  "tipo_foto": "Foto",
+  "tipo_asignacion": "Asignación de personal",
+  "actual_l": "Actual:",
+  "asignar_a": "Asignar a: ",
+  "vacio": "(vacío)",
+  "propone": "propone ",
+  "sin_nombre": "sin nombre",
+  "aprobar": "Aprobar",
+  "rechazar": "Rechazar",
+  "no_pend": "No hay propuestas pendientes.",
+  "prompt_rech": "Motivo del rechazo (opcional):",
+  "confirm_rech": "¿Rechazar esta propuesta?",
+  "no_reg": "No se pudo registrar: ",
+  "sin_rol": "sin rol en SGMC",
+  "obs": "Observaciones",
+  "opcional": "(opcional)",
+  "prev": "Previos necesarios",
+  "prev_ayuda": "(permisos, bloqueos, materiales, etc.)",
+  "herr": "Herramientas y equipos",
+  "herr_ayuda": "(indica la cantidad de cada uno)",
+  "herr_add": "+ Agregar herramienta o equipo",
+  "herr_ph": "Herramienta o equipo",
+  "herr_aria": "Herramienta o equipo",
+  "cant_aria": "Cantidad",
+  "quitar_fila": "Quitar fila",
+  "horas_p": "Horas por persona",
+  "pers_c": "Cantidad de personal",
+  "asig": "Asignar personal",
+  "asig_ayuda": "(escribe 2 letras o más del nombre o el DNI y elige de la lista)",
+  "pers_ph": "ej. ROD o 41143369",
+  "buscar_pers_aria": "Buscar personal",
+  "sin_coinc": "Sin coincidencias",
+  "quitar": "Quitar",
+  "ya_asig": "Ya asignados: ",
+  "foto_add": "Agregar foto",
+  "cancelar": "Cancelar",
+  "enviar": "Enviar propuesta",
+  "enviando": "Enviando…",
+  "err_hp": "Revisa horas y personal.",
+  "err_neg": "Horas y personal no pueden ser negativos.",
+  "err_cant": "La cantidad de \"{n}\" debe ser un número entero mayor a 0.",
+  "err_sin_cambios": "No hay cambios para enviar.",
+  "err_enviar": "No se pudo enviar. Intenta de nuevo.",
+  "err_foto": "La foto es demasiado pesada. Prueba con otra.",
+  "exp_sin": "No hay herramientas o equipos registrados.",
+  "csv_1": "N° actividad",
+  "csv_2": "Línea",
+  "csv_3": "Actividad",
+  "csv_4": "Herramienta / equipo",
+  "csv_5": "Cantidad",
+  "idioma_btn": "中文"
+ },
+ "zh": {
+  "title": "停机检修 北京 · 活动",
+  "login_h1": "停机检修 · 北京",
+  "login_p": "请输入您的身份证号(DNI)和 SGMC 系统 PIN 码。",
+  "dni": "身份证号 DNI",
+  "pin": "PIN 码",
+  "ph_8dig": "8 位数字",
+  "entrar": "进入",
+  "entrando": "正在进入…",
+  "err_dni": "身份证号必须为 8 位数字。",
+  "err_login": "身份证号或 PIN 码不正确。",
+  "err_schema": "数据库尚未启用。请通知管理员（API 中未开放 \"pdp\" 架构）。",
+  "err_carga": "加载失败：",
+  "cargando": "正在加载活动…",
+  "app_h1": "停机检修 · 北京磁性选矿厂",
+  "sub": "2026 年 10 月初步排程（REV. 21）· 变更由驻场负责人审核后发布",
+  "morado": "紫色",
+  "sub_leyenda": "已批准修正的工时或人员",
+  "refrescar": "刷新",
+  "salir": "退出",
+  "k_act": "活动数",
+  "k_hor": "工时",
+  "k_hh": "总 HH",
+  "k_cor": "已批准变更",
+  "k_pen": "待处理提案",
+  "panel_res": "待审批提案",
+  "panel_mias": "我的提案",
+  "ph_buscar": "按编号、OT、设备或文字搜索",
+  "aria_buscar": "搜索活动",
+  "f_todas": "全部",
+  "f_l1": "1 号线",
+  "f_l2": "2 号线",
+  "f_ambas": "两条线 (1-2)",
+  "f_pend": "有待处理",
+  "exp": "导出工具与设备 (Excel)",
+  "no_act": "此筛选条件下没有活动。",
+  "ambas": "两条线",
+  "corregidos": "工时/人员已修正",
+  "pend_badge": "{n} 项待处理",
+  "sin_foto": "无照片",
+  "foto_alt": "已批准照片",
+  "linea_fmt": "{l} 号线",
+  "lineas_fmt": "1-2 号线",
+  "seis": "6 位码:",
+  "horas": "工时",
+  "personal": "人员",
+  "prev_l": "前置条件:",
+  "herr_l": "工具与设备:",
+  "obs_l": "备注:",
+  "asig_l": "已分配人员:",
+  "proponer": "提出变更",
+  "motivo": "原因:",
+  "decidida": "决定于 ",
+  "est_pendiente": "待处理",
+  "est_aprobada": "已批准",
+  "est_rechazada": "已拒绝",
+  "tipo_observaciones": "备注",
+  "tipo_previos": "前置条件",
+  "tipo_herramientas": "工具与设备",
+  "tipo_horas": "每人工时",
+  "tipo_personal": "人员数量",
+  "tipo_foto": "照片",
+  "tipo_asignacion": "人员分配",
+  "actual_l": "当前:",
+  "asignar_a": "分配给: ",
+  "vacio": "（空）",
+  "propone": "提出人 ",
+  "sin_nombre": "未填写姓名",
+  "aprobar": "批准",
+  "rechazar": "拒绝",
+  "no_pend": "没有待处理提案。",
+  "prompt_rech": "拒绝原因（可选）：",
+  "confirm_rech": "确定拒绝此提案？",
+  "no_reg": "无法保存：",
+  "sin_rol": "未设置 SGMC 角色",
+  "obs": "备注",
+  "opcional": "（可选）",
+  "prev": "前置条件",
+  "prev_ayuda": "（许可、锁定、材料等）",
+  "herr": "工具与设备",
+  "herr_ayuda": "（请填写每项数量）",
+  "herr_add": "+ 添加工具或设备",
+  "herr_ph": "工具或设备",
+  "herr_aria": "工具或设备",
+  "cant_aria": "数量",
+  "quitar_fila": "删除此行",
+  "horas_p": "每人工时",
+  "pers_c": "人员数量",
+  "asig": "分配人员",
+  "asig_ayuda": "（输入姓名或身份证号至少 2 个字符，然后从列表中选择）",
+  "pers_ph": "例如 ROD 或 41143369",
+  "buscar_pers_aria": "搜索人员",
+  "sin_coinc": "无匹配结果",
+  "quitar": "删除",
+  "ya_asig": "已分配：",
+  "foto_add": "添加照片",
+  "cancelar": "取消",
+  "enviar": "发送提案",
+  "enviando": "发送中…",
+  "err_hp": "请检查工时和人员数量。",
+  "err_neg": "工时和人员数量不能为负数。",
+  "err_cant": "“{n}” 的数量必须是大于 0 的整数。",
+  "err_sin_cambios": "没有可发送的变更。",
+  "err_enviar": "无法发送，请重试。",
+  "err_foto": "照片太大，请换一张。",
+  "exp_sin": "没有已登记的工具或设备。",
+  "csv_1": "活动编号",
+  "csv_2": "线路",
+  "csv_3": "活动",
+  "csv_4": "工具 / 设备",
+  "csv_5": "数量",
+  "idioma_btn": "Español"
+ }
+};
+let lang = 'es';
+try { lang = localStorage.getItem('pdp_idioma') === 'zh' ? 'zh' : 'es'; } catch (e) {}
+function T(k, par) {
+  let t = (I18N[lang] && I18N[lang][k]) ?? I18N.es[k] ?? k;
+  if (par) for (const x in par) t = t.split('{' + x + '}').join(par[x]);
+  return t;
+}
+function abrirTitulo() {
+  const r = BASE[actual]; if (!r) return;
+  $('#f-titulo').textContent = `${T('proponer')} · N° ${r.activ || '—'} · ${T('linea_fmt', { l: r.linea })}`;
+}
+function aplicarIdioma() {
+  document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'es';
+  document.title = T('title');
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = T(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = T(el.dataset.i18nPh); });
+  document.querySelectorAll('[data-i18n-aria]').forEach(el => { el.setAttribute('aria-label', T(el.dataset.i18nAria)); });
+  $('#btn-idioma').textContent = T('idioma_btn');
+  $('#f-titulo') && (dlg.open && actual ? abrirTitulo() : null);
+  if (perfil) { render(); renderMias(); renderPanel(); if (dlg.open) { pintarHerr(); sugerir(); pintarChips(); } }
+}
+function cambiarIdioma() {
+  lang = lang === 'zh' ? 'es' : 'zh';
+  try { localStorage.setItem('pdp_idioma', lang); } catch (e) {}
+  aplicarIdioma();
+}
+$('#btn-idioma').addEventListener('click', cambiarIdioma);
 
 // Valores vigentes: los aprobados en la base, o los originales si no hay cambios
 function vista(id) {
@@ -286,11 +559,11 @@ $('#login-form').addEventListener('submit', async ev => {
   ev.preventDefault();
   const dni = $('#l-dni').value.trim(), pin = $('#l-pin').value;
   $('#l-err').textContent = '';
-  if (!/^\d{8}$/.test(dni)) { $('#l-err').textContent = 'El DNI tiene 8 dígitos.'; return; }
-  $('#l-btn').disabled = true; $('#l-btn').textContent = 'Entrando…';
+  if (!/^\d{8}$/.test(dni)) { $('#l-err').textContent = T('err_dni'); return; }
+  $('#l-btn').disabled = true; $('#l-btn').textContent = T('entrando');
   const { error } = await sb.auth.signInWithPassword({ email: dni + '@sgmc.local', password: pin });
-  $('#l-btn').disabled = false; $('#l-btn').textContent = 'Entrar';
-  if (error) { $('#l-err').textContent = 'DNI o PIN incorrecto.'; return; }
+  $('#l-btn').disabled = false; $('#l-btn').textContent = T('entrar');
+  if (error) { $('#l-err').textContent = T('err_login'); return; }
   $('#l-pin').value = '';
   await cargarTodo();
 });
@@ -304,7 +577,7 @@ function refrescarPronto() { clearTimeout(refrescando); refrescando = setTimeout
 async function cargarTodo() {
   const { data: sesion } = await sb.auth.getSession();
   if (!sesion.session) { $('#app').hidden = true; $('#login').hidden = false; return; }
-  if (!ROWS.length) $('#grid').innerHTML = '<p class="vacio">Cargando actividades…</p>';
+  if (!ROWS.length) $('#grid').innerHTML = '<p class="vacio">' + T('cargando') + '</p>';
   const uid = sesion.session.user.id;
   const [perf, acts, fx, pend, pers, asig] = await Promise.all([
     sb.rpc('mi_perfil'),
@@ -319,8 +592,8 @@ async function cargarTodo() {
   if (fallo) {
     const esquema = fallo.code === 'PGRST106' || /schema/i.test(fallo.message || '');
     $('#l-err').textContent = esquema
-      ? 'La base de la PDP aún no está habilitada. Avisa al administrador (esquema "pdp" no expuesto en la API).'
-      : 'No se pudo cargar: ' + (fallo.message || 'error desconocido');
+      ? T('err_schema')
+      : T('err_carga') + (fallo.message || 'error');
     $('#app').hidden = true; $('#login').hidden = false; return;
   }
   perfil = perf.data;
@@ -333,7 +606,7 @@ async function cargarTodo() {
   personal = {}; pers.data.forEach(p => personal[p.dni] = p);
   asignados = {}; asig.data.forEach(x => (asignados[x.actividad_id] = asignados[x.actividad_id] || []).push(x.dni));
   $('#login').hidden = true; $('#app').hidden = false;
-  $('#usuario').textContent = `${perfil.nombre || perfil.dni} · ${perfil.rol || 'sin rol en SGMC'}`;
+  $('#usuario').textContent = `${perfil.nombre || perfil.dni} · ${perfil.rol || T('sin_rol')}`;
   $('#panel-res').hidden = perfil.rol !== 'Residente';
   render(); renderPanel(); renderMias();
   if (!canal) {
@@ -343,16 +616,15 @@ async function cargarTodo() {
   }
 }
 
-const ESTADO = {pendiente:'Pendiente', aprobada:'Aprobada', rechazada:'Rechazada'};
 function renderMias() {
   $('#panel-mias').hidden = !misPropuestas.length;
   $('#lista-mias').innerHTML = misPropuestas.map(p => {
     const a = BASE[p.actividad_id];
     const cls = p.estado === 'aprobada' ? 'ok' : p.estado === 'rechazada' ? 'warn' : '';
     return `<div class="item">
-      <div><b>N° ${dash(a && a.activ)}</b> · ${esc(TIPOS[p.tipo] || p.tipo)} <span class="badge ${cls}">${ESTADO[p.estado] || p.estado}</span></div>
-      <div class="meta2">${fechaCorta(p.creado_at)}${p.decidido_at ? ' · decidida ' + fechaCorta(p.decidido_at) : ''}</div>
-      ${p.comentario_decision ? `<div class="meta2">Motivo: ${esc(p.comentario_decision)}</div>` : ''}
+      <div><b>N° ${dash(a && a.activ)}</b> · ${esc(T('tipo_' + p.tipo))} <span class="badge ${cls}">${T('est_' + p.estado)}</span></div>
+      <div class="meta2">${fechaCorta(p.creado_at)}${p.decidido_at ? ' · ' + T('decidida') + fechaCorta(p.decidido_at) : ''}</div>
+      ${p.comentario_decision ? `<div class="meta2">${T('motivo')} ${esc(p.comentario_decision)}</div>` : ''}
     </div>`;
   }).join('');
 }
@@ -378,7 +650,7 @@ function render() {
   $('#c-pend').textContent = `(${new Set(pendientes.map(p => p.actividad_id)).size})`;
   document.querySelectorAll('#filtros button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.f === filtro)));
   const lista = ROWS.filter(pasaFiltro);
-  $('#grid').innerHTML = lista.length ? lista.map(tarjeta).join('') : '<p class="vacio">No hay actividades para este filtro.</p>';
+  $('#grid').innerHTML = lista.length ? lista.map(tarjeta).join('') : '<p class="vacio">' + T('no_act') + '</p>';
 }
 
 function tarjeta(r) {
@@ -387,40 +659,40 @@ function tarjeta(r) {
   const b = BASE[r.id];
   const extra = fotosExtra[r.id] || [];
   let media = (r.fotos || []).map(x => `<div class="ph p${x}"></div>`).join('')
-            + extra.map(d => `<img class="ph" src="${d}" alt="Foto aprobada">`).join('');
-  media = media ? `<div class="media">${media}</div>` : `<div class="media nofoto">Sin foto</div>`;
+            + extra.map(d => `<img class="ph" src="${d}" alt="${T('foto_alt')}">`).join('');
+  media = media ? `<div class="media">${media}</div>` : `<div class="media nofoto">${T('sin_foto')}</div>`;
 
-  const linea = r.linea === '1-2' ? 'Líneas 1-2' : `Línea ${esc(r.linea)}`;
+  const linea = r.linea === '1-2' ? T('lineas_fmt') : T('linea_fmt', { l: esc(r.linea) });
   const badges = [];
-  if (r.linea === '1-2') badges.push('<span class="badge">Ambas líneas</span>');
-  if (v.corregida) badges.push('<span class="badge warn">Horas/personal corregidos</span>');
+  if (r.linea === '1-2') badges.push('<span class="badge">' + T('ambas') + '</span>');
+  if (v.corregida) badges.push('<span class="badge warn">' + T('corregidos') + '</span>');
   const nPend = pendientes.filter(p => p.actividad_id === r.id).length;
-  if (nPend) badges.push(`<span class="badge warn">${nPend} pendiente${nPend > 1 ? 's' : ''}</span>`);
+  if (nPend) badges.push(`<span class="badge warn">${T('pend_badge', { n: nPend })}</span>`);
 
-  const horasHtml = v.horas !== v.horasOrig ? `<s>${fmt(v.horasOrig)}</s>${fmt(v.horas)}` : fmt(v.horas);
-  const persHtml = v.pers !== v.persOrig ? `<s>${v.persOrig}</s>${v.pers}` : v.pers;
+  const horasHtml = v.horas !== v.horasOrig ? `<s>${fmt(v.horasOrig)}</s><span class="chg">${fmt(v.horas)}</span>` : fmt(v.horas);
+  const persHtml = v.pers !== v.persOrig ? `<s>${v.persOrig}</s><span class="chg">${v.pers}</span>` : v.pers;
 
   const notas = [];
-  if (v.prev) notas.push(`<div><b>Previos necesarios:</b> ${esc(v.prev)}</div>`);
-  if (v.herr) notas.push(`<div><b>Herramientas y equipos:</b> ${esc(v.herr)}</div>`);
-  if (v.obs)  notas.push(`<div><b>Observaciones:</b> ${esc(v.obs)}</div>`);
+  if (v.prev) notas.push(`<div><b>${T('prev_l')}</b> ${esc(v.prev)}</div>`);
+  if (v.herr) notas.push(`<div><b>${T('herr_l')}</b> ${esc(herrPlano(v.herr))}</div>`);
+  if (v.obs)  notas.push(`<div><b>${T('obs_l')}</b> ${esc(v.obs)}</div>`);
   const asig0 = asignados[r.id] || [];
-  if (asig0.length) notas.push(`<div><b>Personal asignado:</b> ${asig0.map(d => esc((personal[d] || {}).nombre || d)).join(', ')}</div>`);
+  if (asig0.length) notas.push(`<div><b>${T('asig_l')}</b> ${asig0.map(d => esc((personal[d] || {}).nombre || d)).join(', ')}</div>`);
 
   return `<article class="card">
     ${media}
     <div class="info">
       <div class="head"><span class="num">N° ${dash(r.activ)}</span><span class="badges">${badges.join('')}</span></div>
-      <div class="meta"><span><b>${linea}</b></span><span>OT SAP: <b>${dash(b.ot)}</b></span><span>6 dígitos: <b>${dash(r.seis)}</b></span></div>
+      <div class="meta"><span><b>${linea}</b></span><span>OT SAP: <b>${dash(b.ot)}</b></span><span>${T('seis')} <b>${dash(r.seis)}</b></span></div>
       <div class="act">${esc(r.actividad)}</div>
       <div class="hh">
-        <div><span>Horas</span><b>${horasHtml}</b></div>
-        <div><span>Personal</span><b>${persHtml}</b></div>
+        <div><span>${T('horas')}</span><b>${horasHtml}</b></div>
+        <div><span>${T('personal')}</span><b>${persHtml}</b></div>
         <div class="tot"><span>HH</span><b>${fmt(v.hh)}</b></div>
       </div>
       ${notas.length ? `<div class="notas">${notas.join('')}</div>` : ''}
       <div class="acciones">
-        <button class="btn" data-edit="${r.id}">Proponer cambio</button>
+        <button class="btn" data-edit="${r.id}">${T('proponer')}</button>
       </div>
     </div>
   </article>`;
@@ -431,7 +703,7 @@ function valorActual(p) {
   switch (p.tipo) {
     case 'observaciones': return v.obs;
     case 'previos': return v.prev;
-    case 'herramientas': return v.herr;
+    case 'herramientas': return herrPlano(v.herr);
     case 'horas': return fmt(v.horas);
     case 'personal': return String(v.pers);
     default: return '';
@@ -447,52 +719,139 @@ function renderPanel() {
     if (p.tipo === 'foto') {
       valor = `<img class="valor" src="${p.cambio.valor}" alt="Foto propuesta">`;
     } else if (p.tipo === 'asignacion') {
-      valor = `<div class="valor">Asignar a: <b>${esc(nombreDni(p.cambio.valor))}</b></div>`;
+      valor = `<div class="valor">${T('asignar_a')}<b>${esc(nombreDni(p.cambio.valor))}</b></div>`;
     } else {
-      actual = `<div class="meta2">Actual:</div><div class="valor actual">${esc(valorActual(p) || '—')}</div>`;
-      valor = `<div class="valor">${esc(p.cambio.valor) || '<i>(vacío)</i>'}</div>`;
+      actual = `<div class="meta2">${T('actual_l')}</div><div class="valor actual">${esc(valorActual(p) || '—')}</div>`;
+      const txt = p.tipo === 'herramientas' ? herrPlano(p.cambio.valor) : p.cambio.valor;
+      valor = `<div class="valor">${esc(txt) || '<i>' + T('vacio') + '</i>'}</div>`;
     }
     return `<div class="item">
       <div><b>N° ${dash(act0 && act0.activ)}</b> · ${esc(act0 ? act0.actividad : p.actividad_id)}</div>
-      <div class="meta2">${esc(TIPOS[p.tipo] || p.tipo)} · propone ${esc(p.autor_nombre || 'sin nombre')} · ${fechaCorta(p.creado_at)}</div>
+      <div class="meta2">${esc(T('tipo_' + p.tipo))} · ${T('propone')}${esc(p.autor_nombre || T('sin_nombre'))} · ${fechaCorta(p.creado_at)}</div>
       ${actual}
       ${valor}
       <div class="acciones">
-        <button class="btn ok" data-dec="aprobada" data-id="${p.id}">Aprobar</button>
-        <button class="btn no" data-dec="rechazada" data-id="${p.id}">Rechazar</button>
+        <button class="btn ok" data-dec="aprobada" data-id="${p.id}">${T('aprobar')}</button>
+        <button class="btn no" data-dec="rechazada" data-id="${p.id}">${T('rechazar')}</button>
       </div>
     </div>`;
-  }).join('') : '<p class="vacio" style="padding:4px 0">No hay propuestas pendientes.</p>';
+  }).join('') : '<p class="vacio" style="padding:4px 0">' + T('no_pend') + '</p>';
 }
 
 $('#lista-pend').addEventListener('click', async ev => {
   const b = ev.target.closest('button[data-dec]'); if (!b) return;
   const dec = b.dataset.dec;
-  const comentario = dec === 'rechazada' ? (prompt('Motivo del rechazo (opcional):') || null) : null;
-  if (dec === 'rechazada' && comentario === null && !confirm('¿Rechazar esta propuesta?')) return;
+  const comentario = dec === 'rechazada' ? (prompt(T('prompt_rech')) || null) : null;
+  if (dec === 'rechazada' && comentario === null && !confirm(T('confirm_rech'))) return;
   b.disabled = true;
   const { error } = await sb.rpc('decidir_propuesta', { p_id: b.dataset.id, p_decision: dec, p_comentario: comentario });
-  if (error) alert('No se pudo registrar: ' + error.message);
+  if (error) alert(T('no_reg') + error.message);
   await cargarTodo();
 });
+
+// ---------- Herramientas y personal ----------
+function parseHerr(s) {
+  const t = String(s ?? '').trim();
+  if (!t) return [];
+  if (t.startsWith('[')) {
+    try {
+      const a = JSON.parse(t);
+      if (Array.isArray(a)) return a.filter(x => x && x.n).map(x => ({ n: String(x.n), c: Number(x.c) || 1 }));
+    } catch (e) { /* texto libre */ }
+  }
+  return [{ n: t, c: 1 }];   // texto libre antiguo: se muestra como una línea con cantidad 1
+}
+function herrPlano(s) { return parseHerr(s).map(i => `${i.n} × ${i.c}`).join('; '); }
+function sinAcentos(s) { return String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
 
 // ---------- Formulario de propuesta ----------
 const dlg = $('#dlg');
 let actual = null;
+let herrRows = [];   // [{n, c}]
+let selPers = [];    // DNI elegidos en este formulario
+
+function pintarHerr() {
+  $('#f-herr-lista').innerHTML = herrRows.map((r, i) => `
+    <div class="herr-fila">
+      <input type="text" data-hn="${i}" value="${esc(r.n)}" placeholder="${T('herr_ph')}" maxlength="120" aria-label="${T('herr_aria')} ${i + 1}">
+      <input type="number" data-hc="${i}" value="${esc(r.c)}" min="1" max="999" step="1" inputmode="numeric" aria-label="${T('cant_aria')} ${i + 1}">
+      <button type="button" class="x" data-hx="${i}" aria-label="${T('quitar_fila')}">×</button>
+    </div>`).join('');
+}
+$('#f-herr-lista').addEventListener('input', ev => {
+  const t = ev.target;
+  if (t.dataset.hn !== undefined) herrRows[Number(t.dataset.hn)].n = t.value;
+  if (t.dataset.hc !== undefined) herrRows[Number(t.dataset.hc)].c = t.value;
+});
+$('#f-herr-lista').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-hx]'); if (!b) return;
+  herrRows.splice(Number(b.dataset.hx), 1);
+  if (!herrRows.length) herrRows.push({ n: '', c: 1 });
+  pintarHerr();
+});
+$('#f-herr-add').addEventListener('click', () => {
+  herrRows.push({ n: '', c: 1 });
+  pintarHerr();
+  const campos = document.querySelectorAll('#f-herr-lista input[data-hn]');
+  if (campos.length) campos[campos.length - 1].focus();
+});
+
+function pintarChips() {
+  $('#f-chips').innerHTML = selPers.map(d => `<span class="chip">${esc(nombreDni(d))}<button type="button" data-pd="${esc(d)}" aria-label="${T('quitar')}">×</button></span>`).join('');
+  const ya = asignados[actual] || [];
+  $('#f-ya').textContent = ya.length ? `${T('ya_asig')}${ya.map(nombreDni).join(', ')}` : '';
+}
+function sugerir() {
+  const q = sinAcentos($('#f-buscarp').value.trim());
+  const sug = $('#f-sug');
+  const excluir = new Set([...(asignados[actual] || []), ...selPers]);
+  if (q.length < 2) { sug.hidden = true; sug.innerHTML = ''; return; }
+  const res = Object.values(personal)
+    .filter(p => !excluir.has(p.dni) && (sinAcentos(p.nombre || '').includes(q) || String(p.dni).startsWith(q)))
+    .slice(0, 10);
+  sug.hidden = false;
+  sug.innerHTML = res.length
+    ? res.map(p => `<button type="button" data-pa="${esc(p.dni)}">${esc(p.nombre || p.dni)} <small>· ${esc(p.dni)}${p.area ? ' · ' + esc(p.area) : ''}</small></button>`).join('')
+    : '<button type="button" disabled>' + T('sin_coinc') + '</button>';
+}
+$('#f-buscarp').addEventListener('input', sugerir);
+$('#f-buscarp').addEventListener('keydown', ev => {
+  if (ev.key !== 'Enter') return;
+  ev.preventDefault();
+  const primero = document.querySelector('#f-sug button[data-pa]');
+  if (primero) primero.click();
+});
+$('#f-sug').addEventListener('click', ev => {
+  const b = ev.target.closest('button[data-pa]'); if (!b) return;
+  if (!selPers.includes(b.dataset.pa)) selPers.push(b.dataset.pa);
+  $('#f-buscarp').value = '';
+  sugerir(); pintarChips();
+  $('#f-buscarp').focus();
+});
+$('#f-chips').addEventListener('click', ev => {
+  const b = ev.target.closest('button[data-pd]'); if (!b) return;
+  selPers = selPers.filter(d => d !== b.dataset.pd);
+  pintarChips(); sugerir();
+});
+
 function abrir(id) {
   const r = BASE[id]; if (!r) return;
   actual = id;
   const v = vista(id);
-  $('#f-titulo').textContent = `Proponer cambio · N° ${r.activ || '—'} · Línea ${r.linea}`;
+  $('#f-titulo').textContent = `${T('proponer')} · N° ${r.activ || '—'} · ${T('linea_fmt', { l: r.linea })}`;
   $('#f-ref').textContent = r.actividad;
   $('#f-obs').value = v.obs;
   $('#f-prev').value = v.prev;
-  $('#f-herr').value = v.herr;
+  herrRows = parseHerr(v.herr);
+  if (!herrRows.length) herrRows = [{ n: '', c: 1 }];
+  pintarHerr();
   $('#f-horas').value = v.horas;
   $('#f-pers').value = v.pers;
-  $('#f-asig').value = '';
+  selPers = [];
+  $('#f-buscarp').value = '';
   $('#f-foto').value = '';
   $('#f-err').textContent = '';
+  sugerir(); pintarChips();
   dlg.showModal();
   $('#f-obs').focus();
 }
@@ -520,7 +879,7 @@ async function comprimir(file) {
     max *= 0.8; q -= 0.08;
   }
   URL.revokeObjectURL(url);
-  if (data.length > 260000) throw new Error('La foto es demasiado pesada. Prueba con otra.');
+  if (data.length > 260000) throw new Error(T('err_foto'));
   return data;
 }
 
@@ -528,12 +887,22 @@ $('#f-save').addEventListener('click', enviar);
 async function enviar() {
   if (enviando || !actual || !perfil) return;
   const err = $('#f-err');
-  if ($('#f-horas').value === '' || $('#f-pers').value === '') { err.textContent = 'Revisa horas y personal.'; return; }
+  if ($('#f-horas').value === '' || $('#f-pers').value === '') { err.textContent = T('err_hp'); return; }
+
+  const herrItems = [];
+  for (const r of herrRows) {
+    const n = String(r.n).trim();
+    if (!n) continue;                       // fila sin nombre: se ignora
+    const c = Number(r.c);
+    if (!Number.isInteger(c) || c < 1) { err.textContent = T('err_cant', { n }); return; }
+    herrItems.push({ n, c });
+  }
   const nuevo = {
-    obs: $('#f-obs').value.trim(), prev: $('#f-prev').value.trim(), herr: $('#f-herr').value.trim(),
+    obs: $('#f-obs').value.trim(), prev: $('#f-prev').value.trim(),
+    herr: herrItems.length ? JSON.stringify(herrItems) : '',
     horas: Number($('#f-horas').value), pers: Number($('#f-pers').value)
   };
-  if (!(nuevo.horas >= 0) || !(nuevo.pers >= 0)) { err.textContent = 'Horas y personal no pueden ser negativos.'; return; }
+  if (!(nuevo.horas >= 0) || !(nuevo.pers >= 0)) { err.textContent = T('err_neg'); return; }
   const v = vista(actual);
   const filas = [];
   const add = (tipo, valor) => filas.push({ actividad_id: actual, tipo, cambio: { valor: String(valor) }, autor_dni: perfil.dni, autor_nombre: perfil.nombre || null });
@@ -543,13 +912,11 @@ async function enviar() {
   if (nuevo.horas !== v.horas) add('horas', nuevo.horas);
   if (nuevo.pers !== v.pers) add('personal', nuevo.pers);
   const yaAsignados = asignados[actual] || [];
-  const dnis = [...new Set($('#f-asig').value.split(/[\s,;]+/).filter(Boolean))];
-  if (dnis.some(d => !/^\d{8}$/.test(d))) { err.textContent = 'Cada DNI de asignación debe tener 8 dígitos.'; return; }
-  dnis.filter(d => !yaAsignados.includes(d)).forEach(d => add('asignacion', d));
+  selPers.filter(d => !yaAsignados.includes(d)).forEach(d => add('asignacion', d));
   const foto = $('#f-foto').files[0];
 
-  if (!filas.length && !foto) { err.textContent = 'No hay cambios para enviar.'; return; }
-  enviando = true; $('#f-save').disabled = true; err.textContent = 'Enviando…';
+  if (!filas.length && !foto) { err.textContent = T('err_sin_cambios'); return; }
+  enviando = true; $('#f-save').disabled = true; err.textContent = T('enviando');
   try {
     if (foto) add('foto', await comprimir(foto));
     const { error } = await sb.from('propuestas').insert(filas);
@@ -557,13 +924,33 @@ async function enviar() {
     dlg.close();
     await cargarTodo();
   } catch (e) {
-    err.textContent = e.message || 'No se pudo enviar. Intenta de nuevo.';
+    err.textContent = e.message || T('err_enviar');
   } finally {
     enviando = false; $('#f-save').disabled = false;
   }
 }
 
+// ---------- Exportar herramientas y equipos (CSV para Excel) ----------
+function exportarHerramientas() {
+  const filas = [[T('csv_1'), T('csv_2'), 'OT SAP', T('csv_3'), T('csv_4'), T('csv_5')]];
+  for (const r of ROWS) {
+    const v = vista(r.id);
+    const b = BASE[r.id] || {};
+    for (const i of parseHerr(v.herr)) filas.push([r.activ || '', r.linea, b.ot || '', r.actividad, i.n, i.c]);
+  }
+  if (filas.length === 1) { alert(T('exp_sin')); return; }
+  const csv = filas.map(f => f.map(x => `"${String(x ?? '').replace(/"/g, '""')}"`).join(';')).join('\r\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'PDP_herramientas_equipos.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+$('#btn-exp').addEventListener('click', exportarHerramientas);
+
 // ---------- Inicio ----------
+aplicarIdioma();
 cargarTodo();
 </script>
 </body>

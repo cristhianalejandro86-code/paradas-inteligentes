@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="robots" content="noindex,nofollow">
-<meta name="app-version" content="2026-10-12 14:30 · v8">
+<meta name="app-version" content="2026-10-12 14:45 · v9">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Parada de planta Beijing · Actividades</title>
 <style>
@@ -52,6 +52,8 @@ img.ph { width:100%; height:100%; object-fit:contain; display:block; }
 .info { padding:10px 12px 12px; display:flex; flex-direction:column; gap:6px; flex:1; }
 .head { display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
 .num { font-size:20px; font-weight:700; color:var(--azul); }
+.int { font-size:12px; font-weight:700; color:#6a7383; background:#eef2f7; border-radius:999px; padding:2px 8px; white-space:nowrap; }
+.head { flex-wrap:wrap; }
 .badges { display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end; }
 .badge { font-size:12px; border-radius:999px; padding:2px 8px; background:#e8f0f8; color:var(--azul); white-space:nowrap; }
 .badge.ok { background:#e5f5ea; color:var(--ok); }
@@ -333,6 +335,7 @@ const I18N = {
   "pend_badge": "{n} pendiente(s)",
   "sin_foto": "Sin foto",
   "foto_alt": "Foto aprobada",
+  "num_int": "Int.",
   "linea_fmt": "Línea {l}",
   "lineas_fmt": "Líneas 1-2",
   "seis": "6 dígitos:",
@@ -454,6 +457,7 @@ const I18N = {
   "pend_badge": "{n} 项待处理",
   "sin_foto": "无照片",
   "foto_alt": "已批准照片",
+  "num_int": "内部",
   "linea_fmt": "{l} 号线",
   "lineas_fmt": "1-2 号线",
   "seis": "6 位码:",
@@ -771,7 +775,7 @@ function tarjeta(r) {
   return `<article class="card">
     ${media}
     <div class="info">
-      <div class="head"><span class="num">N° ${dash(r.activ)}</span><span class="badges">${badges.join('')}</span></div>
+      <div class="head"><span class="num">N° ${dash(r.activ)}</span><span class="int" title="Número interno de la fila">${esc(T('num_int'))} ${r.n ?? '—'}</span><span class="badges">${badges.join('')}</span></div>
       <div class="meta"><span><b>${linea}</b></span><span>OT SAP: <b>${dash(b.ot)}</b></span><span>${T('seis')} <b>${dash(r.seis)}</b></span></div>
       <div class="act">${esc(actT(r.actividad))}</div>
       <div class="hh">

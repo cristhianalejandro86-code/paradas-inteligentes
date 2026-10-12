@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
+<meta name="robots" content="noindex,nofollow">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Parada de planta Beijing · Actividades</title>
 <style>
@@ -22,6 +23,9 @@ h2 { font-size:17px; color:var(--azul); margin:0; }
 .panel { border:1px solid #f3d28a; background:#fffaf0; border-radius:10px; padding:12px; margin-bottom:14px; }
 .panel .item { border-top:1px solid #f0e2c0; padding:10px 0; display:flex; flex-direction:column; gap:6px; }
 .panel .item:first-of-type { border-top:0; }
+#panel-mias .item { border-top:1px solid #e6ebf2; }
+#panel-mias .item:first-of-type { border-top:0; }
+#buscar { font:inherit; font-size:15px; border:1px solid #aab6c6; border-radius:8px; padding:10px; width:100%; min-height:44px; }
 .panel .meta2 { font-size:12px; color:var(--gris); }
 .panel .valor { font-size:14px; white-space:pre-wrap; background:#fff; border:1px solid var(--borde); border-radius:6px; padding:6px 8px; max-height:120px; overflow:auto; }
 .panel img.valor { max-height:160px; object-fit:contain; }
@@ -183,6 +187,13 @@ textarea { min-height:64px; resize:vertical; }
     <div id="lista-pend"></div>
   </section>
 
+  <section class="panel" id="panel-mias" style="border-color:var(--borde);background:#fff" hidden>
+    <h2>Mis propuestas</h2>
+    <div id="lista-mias"></div>
+  </section>
+
+  <input id="buscar" type="search" placeholder="Buscar por N°, OT, equipo o texto" aria-label="Buscar actividades" style="margin-bottom:10px">
+
   <nav class="filtros" id="filtros" aria-label="Filtrar por línea">
     <button data-f="todas" aria-pressed="true">Todas <small id="c-todas"></small></button>
     <button data-f="l1" aria-pressed="false">Línea 1 <small id="c-l1"></small></button>
@@ -233,9 +244,11 @@ let act = {};                    // id -> valores aprobados en la base
 let fotosExtra = {};             // id -> [dataURL] fotos aprobadas
 let pendientes = [];             // propuestas en estado pendiente
 let personal = {};               // dni -> {nombre, area}
+let misPropuestas = [];          // propuestas que yo envié
 let asignados = {};              // actividad_id -> [dni]
 let perfil = null;
 let filtro = 'todas';
+let termino = '';
 let enviando = false;
 
 const $ = s => document.querySelector(s);
@@ -254,10 +267,12 @@ function vista(id) {
            corregida: horas !== Number(b.horas_original) || pers !== Number(b.pers_original) };
 }
 function pasaFiltro(r) {
-  if (filtro === 'l1') return r.linea === '1';
-  if (filtro === 'l2') return r.linea === '2';
-  if (filtro === 'ambas') return r.linea === '1-2';
-  return true;
+  if (filtro === 'l1' && r.linea !== '1') return false;
+  if (filtro === 'l2' && r.linea !== '2') return false;
+  if (filtro === 'ambas' && r.linea !== '1-2') return false;
+  if (!termino) return true;
+  const txt = [r.activ, r.ot, r.seis, r.actividad, BASE[r.id] && BASE[r.id].prog].join(' ').toLowerCase();
+  return termino.split(/\s+/).every(t => txt.includes(t));
 }
 
 // ---------- Sesión ----------
@@ -266,9 +281,9 @@ $('#login-form').addEventListener('submit', async ev => {
   const dni = $('#l-dni').value.trim(), pin = $('#l-pin').value;
   $('#l-err').textContent = '';
   if (!/^\d{8}$/.test(dni)) { $('#l-err').textContent = 'El DNI tiene 8 dígitos.'; return; }
-  $('#l-btn').disabled = true;
+  $('#l-btn').disabled = true; $('#l-btn').textContent = 'Entrando…';
   const { error } = await sb.auth.signInWithPassword({ email: dni + '@sgmc.local', password: pin });
-  $('#l-btn').disabled = false;
+  $('#l-btn').disabled = false; $('#l-btn').textContent = 'Entrar';
   if (error) { $('#l-err').textContent = 'DNI o PIN incorrecto.'; return; }
   $('#l-pin').value = '';
   await cargarTodo();
@@ -276,18 +291,25 @@ $('#login-form').addEventListener('submit', async ev => {
 $('#btn-salir').addEventListener('click', async () => { await sb.auth.signOut(); location.reload(); });
 $('#btn-refrescar').addEventListener('click', () => cargarTodo());
 
+let canal = null;
+let refrescando = null;
+function refrescarPronto() { clearTimeout(refrescando); refrescando = setTimeout(cargarTodo, 400); }
+
 async function cargarTodo() {
   const { data: sesion } = await sb.auth.getSession();
   if (!sesion.session) { $('#app').hidden = true; $('#login').hidden = false; return; }
+  if (!ROWS.length) $('#grid').innerHTML = '<p class="vacio">Cargando actividades…</p>';
+  const uid = sesion.session.user.id;
   const [perf, acts, fx, pend, pers, asig] = await Promise.all([
     sb.rpc('mi_perfil'),
     sb.from('actividades').select('*').order('n'),
     sb.from('fotos_extra').select('actividad_id,data').order('id'),
-    sb.from('propuestas').select('*').eq('estado', 'pendiente').order('creado_at'),
+    sb.from('propuestas').select('id,actividad_id,tipo,cambio,autor_user_id,autor_nombre,estado,creado_at,decidido_por,decidido_at,comentario_decision').eq('estado', 'pendiente').order('creado_at'),
     sb.from('personal').select('dni,nombre,area').eq('activo', true),
     sb.from('asignaciones').select('actividad_id,dni')
   ]);
-  const fallo = perf.error || acts.error || fx.error || pend.error || pers.error || asig.error;
+  const mias = await sb.from('propuestas').select('id,actividad_id,tipo,estado,creado_at,decidido_at,comentario_decision').eq('autor_user_id', uid).order('creado_at', { ascending: false }).limit(20);
+  const fallo = perf.error || acts.error || fx.error || pend.error || pers.error || asig.error || mias.error;
   if (fallo) { $('#l-err').textContent = 'No se pudo cargar: ' + fallo.message; $('#app').hidden = true; $('#login').hidden = false; return; }
   perfil = perf.data;
   ROWS = acts.data.map(a => ({ id: a.id, n: a.n, page: a.pagina, linea: a.linea, ot: a.ot, seis: a.seis, activ: a.activ, actividad: a.actividad, fotos: a.fotos || [] }));
@@ -295,12 +317,32 @@ async function cargarTodo() {
   act = BASE;
   fotosExtra = {}; fx.data.forEach(f => (fotosExtra[f.actividad_id] = fotosExtra[f.actividad_id] || []).push(f.data));
   pendientes = pend.data || [];
+  misPropuestas = mias.data || [];
   personal = {}; pers.data.forEach(p => personal[p.dni] = p);
   asignados = {}; asig.data.forEach(x => (asignados[x.actividad_id] = asignados[x.actividad_id] || []).push(x.dni));
   $('#login').hidden = true; $('#app').hidden = false;
   $('#usuario').textContent = `${perfil.nombre || perfil.dni} · ${perfil.rol || 'sin rol en SGMC'}`;
   $('#panel-res').hidden = perfil.rol !== 'Residente';
-  render(); renderPanel();
+  render(); renderPanel(); renderMias();
+  if (!canal) {
+    canal = sb.channel('pdp-cambios')
+      .on('postgres_changes', { event: '*', schema: 'pdp' }, refrescarPronto)
+      .subscribe();
+  }
+}
+
+const ESTADO = {pendiente:'Pendiente', aprobada:'Aprobada', rechazada:'Rechazada'};
+function renderMias() {
+  $('#panel-mias').hidden = !misPropuestas.length;
+  $('#lista-mias').innerHTML = misPropuestas.map(p => {
+    const a = BASE[p.actividad_id];
+    const cls = p.estado === 'aprobada' ? 'ok' : p.estado === 'rechazada' ? 'warn' : '';
+    return `<div class="item">
+      <div><b>N° ${dash(a && a.activ)}</b> · ${esc(TIPOS[p.tipo] || p.tipo)} <span class="badge ${cls}">${ESTADO[p.estado] || p.estado}</span></div>
+      <div class="meta2">${fechaCorta(p.creado_at)}${p.decidido_at ? ' · decidida ' + fechaCorta(p.decidido_at) : ''}</div>
+      ${p.comentario_decision ? `<div class="meta2">Motivo: ${esc(p.comentario_decision)}</div>` : ''}
+    </div>`;
+  }).join('');
 }
 
 // ---------- Render ----------
@@ -380,7 +422,7 @@ function renderPanel() {
       : `<div class="valor">${esc(p.cambio.valor) || '<i>(vacío)</i>'}</div>`;
     return `<div class="item">
       <div><b>N° ${dash(act0 && act0.activ)}</b> · ${esc(act0 ? act0.actividad : p.actividad_id)}</div>
-      <div class="meta2">${esc(TIPOS[p.tipo] || p.tipo)} · propone ${esc(p.autor_nombre || '')} (DNI •••${esc(p.autor_dni.slice(-3))}) · ${fechaCorta(p.creado_at)}</div>
+      <div class="meta2">${esc(TIPOS[p.tipo] || p.tipo)} · propone ${esc(p.autor_nombre || 'sin nombre')} · ${fechaCorta(p.creado_at)}</div>
       ${valor}
       <div class="acciones">
         <button class="btn ok" data-dec="aprobada" data-id="${p.id}">Aprobar</button>
@@ -424,6 +466,7 @@ function abrir(id) {
 $('#grid').addEventListener('click', ev => {
   const e = ev.target.closest('[data-edit]'); if (e) abrir(e.dataset.edit);
 });
+$('#buscar').addEventListener('input', ev => { termino = ev.target.value.trim().toLowerCase(); render(); });
 $('#filtros').addEventListener('click', ev => {
   const b = ev.target.closest('button[data-f]'); if (!b) return;
   filtro = b.dataset.f; render();

@@ -209,6 +209,8 @@ textarea { min-height:64px; resize:vertical; }
       <label>Cantidad de personal
         <input id="f-pers" type="number" step="1" min="0" max="99"></label>
     </div>
+    <label>Asignar personal <span class="opc">(DNI separados por coma; supervisores solo de su área)</span>
+      <input id="f-asig" type="text" inputmode="numeric" placeholder="ej. 41143369, 70360053"></label>
     <label>Agregar foto <span class="opc">(opcional)</span>
       <input id="f-foto" type="file" accept="image/*" capture="environment"></label>
     <div class="err" id="f-err"></div>
@@ -230,6 +232,8 @@ const BASE = Object.fromEntries(ROWS.map(r => [r.id, r]));
 let act = {};                    // id -> valores aprobados en la base
 let fotosExtra = {};             // id -> [dataURL] fotos aprobadas
 let pendientes = [];             // propuestas en estado pendiente
+let personal = {};               // dni -> {nombre, area}
+let asignados = {};              // actividad_id -> [dni]
 let perfil = null;
 let filtro = 'todas';
 let enviando = false;
@@ -275,18 +279,22 @@ $('#btn-refrescar').addEventListener('click', () => cargarTodo());
 async function cargarTodo() {
   const { data: sesion } = await sb.auth.getSession();
   if (!sesion.session) { $('#app').hidden = true; $('#login').hidden = false; return; }
-  const [perf, acts, fx, pend] = await Promise.all([
+  const [perf, acts, fx, pend, pers, asig] = await Promise.all([
     sb.rpc('mi_perfil'),
     sb.from('actividades').select('id,obs,prev,herr,horas,pers'),
     sb.from('fotos_extra').select('actividad_id,data').order('id'),
-    sb.from('propuestas').select('*').eq('estado', 'pendiente').order('creado_at')
+    sb.from('propuestas').select('*').eq('estado', 'pendiente').order('creado_at'),
+    sb.from('personal').select('dni,nombre,area').eq('activo', true),
+    sb.from('asignaciones').select('actividad_id,dni')
   ]);
-  const fallo = perf.error || acts.error || fx.error || pend.error;
+  const fallo = perf.error || acts.error || fx.error || pend.error || pers.error || asig.error;
   if (fallo) { $('#l-err').textContent = 'No se pudo cargar: ' + fallo.message; $('#app').hidden = true; $('#login').hidden = false; return; }
   perfil = perf.data;
   act = {}; acts.data.forEach(a => act[a.id] = a);
   fotosExtra = {}; fx.data.forEach(f => (fotosExtra[f.actividad_id] = fotosExtra[f.actividad_id] || []).push(f.data));
   pendientes = pend.data || [];
+  personal = {}; pers.data.forEach(p => personal[p.dni] = p);
+  asignados = {}; asig.data.forEach(x => (asignados[x.actividad_id] = asignados[x.actividad_id] || []).push(x.dni));
   $('#login').hidden = true; $('#app').hidden = false;
   $('#usuario').textContent = `${perfil.nombre || perfil.dni} · ${perfil.rol || 'sin rol en SGMC'}`;
   $('#panel-res').hidden = perfil.rol !== 'Residente';
@@ -339,6 +347,8 @@ function tarjeta(r) {
   if (v.prev) notas.push(`<div><b>Previos necesarios:</b> ${esc(v.prev)}</div>`);
   if (v.herr) notas.push(`<div><b>Herramientas y equipos:</b> ${esc(v.herr)}</div>`);
   if (v.obs)  notas.push(`<div><b>Observaciones:</b> ${esc(v.obs)}</div>`);
+  const asig0 = asignados[r.id] || [];
+  if (asig0.length) notas.push(`<div><b>Personal asignado:</b> ${asig0.map(d => esc((personal[d] || {}).nombre || d)).join(', ')}</div>`);
 
   return `<article class="card">
     ${media}
@@ -403,6 +413,7 @@ function abrir(id) {
   $('#f-herr').value = v.herr;
   $('#f-horas').value = v.horas;
   $('#f-pers').value = v.pers;
+  $('#f-asig').value = '';
   $('#f-foto').value = '';
   $('#f-err').textContent = '';
   dlg.showModal();
@@ -453,6 +464,10 @@ async function enviar() {
   if (nuevo.herr !== v.herr) add('herramientas', nuevo.herr);
   if (nuevo.horas !== v.horas) add('horas', nuevo.horas);
   if (nuevo.pers !== v.pers) add('personal', nuevo.pers);
+  const yaAsignados = asignados[actual] || [];
+  const dnis = [...new Set($('#f-asig').value.split(/[\s,;]+/).filter(Boolean))];
+  if (dnis.some(d => !/^\d{8}$/.test(d))) { err.textContent = 'Cada DNI de asignación debe tener 8 dígitos.'; return; }
+  dnis.filter(d => !yaAsignados.includes(d)).forEach(d => add('asignacion', d));
   const foto = $('#f-foto').files[0];
 
   if (!filas.length && !foto) { err.textContent = 'No hay cambios para enviar.'; return; }

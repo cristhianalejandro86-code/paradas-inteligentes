@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="robots" content="noindex,nofollow">
+<meta name="app-version" content="2026-10-12 12:55 · v5">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Parada de planta Beijing · Actividades</title>
 <style>
@@ -15,6 +16,7 @@ body { font-family: Arial, Helvetica, "PingFang SC", "Microsoft YaHei", sans-ser
 h1 { font-size:21px; color:var(--azul); margin:0 0 4px; line-height:1.2; }
 h2 { font-size:17px; color:var(--azul); margin:0; }
 .sub { color:var(--gris); font-size:13px; margin-bottom:12px; }
+.ver { color:var(--gris); font-size:12px; margin:-8px 0 12px; }
 .barra { display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:13px; color:var(--gris); margin-bottom:10px; flex-wrap:wrap; }
 #usuario { overflow-wrap:anywhere; flex:1 1 180px; }
 .barra button { border:1px solid var(--borde); background:#fff; border-radius:6px; padding:10px 14px; min-height:44px; cursor:pointer; font-size:14px; }
@@ -187,6 +189,7 @@ textarea { min-height:64px; resize:vertical; }
 <div id="app" hidden>
   <h1 data-i18n="app_h1">Parada de planta · Planta Magnética Beijing</h1>
   <div class="sub"><span data-i18n="sub">Programación preliminar Octubre 2026 (REV. 21) · Los cambios los revisa el residente antes de publicarse</span> · <span class="chg" data-i18n="morado">Morado</span> = <span data-i18n="sub_leyenda">horas o personal corregidos y aprobados</span></div>
+  <div class="ver" id="ver"></div>
   <div class="barra">
     <span id="usuario"></span>
     <span><button id="btn-refrescar" type="button" data-i18n="refrescar">Actualizar</button> <button id="btn-salir" type="button" data-i18n="salir">Salir</button></span>
@@ -279,6 +282,7 @@ let termino = '';
 let enviando = false;
 
 const $ = s => document.querySelector(s);
+const VERSION = document.querySelector('meta[name="app-version"]').content;
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt = n => Number(n).toLocaleString('es-PE', {minimumFractionDigits:1, maximumFractionDigits:1});
 const dash = s => (s === '' || s === '-' || s == null) ? '—' : esc(s);
@@ -398,7 +402,12 @@ const I18N = {
   "idioma_btn": "中文",
   "k_hh1": "HH Línea 1",
   "k_hh2": "HH Línea 2",
-  "k_hha": "HH Ambas líneas (1-2)"
+  "k_hha": "HH Ambas líneas (1-2)",
+  "ver_actual": "Versión {v}",
+  "ver_buscando": "Buscando versión nueva…",
+  "ver_nueva": "Hay una versión nueva ({v}). Recargando…",
+  "ver_al_dia": "Tienes la última versión: {v}",
+  "ver_error": "No se pudo comprobar la versión. Revisa tu conexión."
  },
  "zh": {
   "title": "停机检修 北京 · 活动",
@@ -514,7 +523,12 @@ const I18N = {
   "idioma_btn": "Español",
   "k_hh1": "1 号线 总 HH",
   "k_hh2": "2 号线 总 HH",
-  "k_hha": "两条线 (1-2) 总 HH"
+  "k_hha": "两条线 (1-2) 总 HH",
+  "ver_actual": "版本 {v}",
+  "ver_buscando": "正在检查新版本…",
+  "ver_nueva": "有新版本（{v}）。正在重新加载…",
+  "ver_al_dia": "您已是最新版本：{v}",
+  "ver_error": "无法检查版本，请检查网络连接。"
  }
 };
 let lang = 'es';
@@ -535,6 +549,7 @@ function aplicarIdioma() {
   document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = T(el.dataset.i18nPh); });
   document.querySelectorAll('[data-i18n-aria]').forEach(el => { el.setAttribute('aria-label', T(el.dataset.i18nAria)); });
   $('#btn-idioma').textContent = T('idioma_btn');
+  $('#ver').textContent = T('ver_actual', { v: VERSION });
   $('#f-titulo') && (dlg.open && actual ? abrirTitulo() : null);
   if (perfil) { render(); renderMias(); renderPanel(); if (dlg.open) { pintarHerr(); sugerir(); pintarChips(); } }
 }
@@ -577,7 +592,26 @@ $('#login-form').addEventListener('submit', async ev => {
   await cargarTodo();
 });
 $('#btn-salir').addEventListener('click', async () => { await sb.auth.signOut(); location.reload(); });
-$('#btn-refrescar').addEventListener('click', () => cargarTodo());
+async function comprobarVersion() {
+  const msg = $('#ver');
+  msg.textContent = T('ver_buscando');
+  try {
+    const r = await fetch(location.pathname + '?v=' + Date.now(), { cache: 'no-store' });
+    const m = (await r.text()).match(/<meta name="app-version" content="([^"]*)"/);
+    const nueva = m ? m[1] : null;
+    if (nueva && nueva !== VERSION) {
+      msg.textContent = T('ver_nueva', { v: nueva });
+      location.href = location.pathname + '?v=' + Date.now();
+      return;
+    }
+    msg.textContent = T('ver_al_dia', { v: VERSION });
+    await cargarTodo();
+  } catch (e) {
+    msg.textContent = T('ver_error');
+    await cargarTodo();
+  }
+}
+$('#btn-refrescar').addEventListener('click', comprobarVersion);
 
 let canal = null;
 let refrescando = null;

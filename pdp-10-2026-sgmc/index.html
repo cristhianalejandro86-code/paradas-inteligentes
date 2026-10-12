@@ -199,6 +199,7 @@ textarea { min-height:64px; resize:vertical; }
     <button data-f="l1" aria-pressed="false">Línea 1 <small id="c-l1"></small></button>
     <button data-f="l2" aria-pressed="false">Línea 2 <small id="c-l2"></small></button>
     <button data-f="ambas" aria-pressed="false">Ambas líneas (1-2) <small id="c-ambas"></small></button>
+    <button data-f="pend" aria-pressed="false">Con pendientes <small id="c-pend"></small></button>
   </nav>
 
   <main class="grid" id="grid"></main>
@@ -270,6 +271,7 @@ function pasaFiltro(r) {
   if (filtro === 'l1' && r.linea !== '1') return false;
   if (filtro === 'l2' && r.linea !== '2') return false;
   if (filtro === 'ambas' && r.linea !== '1-2') return false;
+  if (filtro === 'pend' && !pendientes.some(p => p.actividad_id === r.id)) return false;
   if (!termino) return true;
   const txt = [r.activ, r.ot, r.seis, r.actividad, BASE[r.id] && BASE[r.id].prog].join(' ').toLowerCase();
   return termino.split(/\s+/).every(t => txt.includes(t));
@@ -310,7 +312,13 @@ async function cargarTodo() {
   ]);
   const mias = await sb.from('propuestas').select('id,actividad_id,tipo,estado,creado_at,decidido_at,comentario_decision').eq('autor_user_id', uid).order('creado_at', { ascending: false }).limit(20);
   const fallo = perf.error || acts.error || fx.error || pend.error || pers.error || asig.error || mias.error;
-  if (fallo) { $('#l-err').textContent = 'No se pudo cargar: ' + fallo.message; $('#app').hidden = true; $('#login').hidden = false; return; }
+  if (fallo) {
+    const esquema = fallo.code === 'PGRST106' || /schema/i.test(fallo.message || '');
+    $('#l-err').textContent = esquema
+      ? 'La base de la PDP aún no está habilitada. Avisa al administrador (esquema "pdp" no expuesto en la API).'
+      : 'No se pudo cargar: ' + (fallo.message || 'error desconocido');
+    $('#app').hidden = true; $('#login').hidden = false; return;
+  }
   perfil = perf.data;
   ROWS = acts.data.map(a => ({ id: a.id, n: a.n, page: a.pagina, linea: a.linea, ot: a.ot, seis: a.seis, activ: a.activ, actividad: a.actividad, fotos: a.fotos || [] }));
   BASE = {}; acts.data.forEach(a => BASE[a.id] = a);
@@ -363,6 +371,7 @@ function render() {
   $('#c-l1').textContent = `(${cnt.l1})`;
   $('#c-l2').textContent = `(${cnt.l2})`;
   $('#c-ambas').textContent = `(${cnt.ambas})`;
+  $('#c-pend').textContent = `(${new Set(pendientes.map(p => p.actividad_id)).size})`;
   document.querySelectorAll('#filtros button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.f === filtro)));
   const lista = ROWS.filter(pasaFiltro);
   $('#grid').innerHTML = lista.length ? lista.map(tarjeta).join('') : '<p class="vacio">No hay actividades para este filtro.</p>';
@@ -413,16 +422,36 @@ function tarjeta(r) {
   </article>`;
 }
 
+function valorActual(p) {
+  const v = vista(p.actividad_id);
+  switch (p.tipo) {
+    case 'observaciones': return v.obs;
+    case 'previos': return v.prev;
+    case 'herramientas': return v.herr;
+    case 'horas': return fmt(v.horas);
+    case 'personal': return String(v.pers);
+    default: return '';
+  }
+}
+function nombreDni(d) { return (personal[d] && personal[d].nombre) || d; }
+
 function renderPanel() {
   if (perfil.rol !== 'Residente') return;
   $('#lista-pend').innerHTML = pendientes.length ? pendientes.map(p => {
     const act0 = BASE[p.actividad_id];
-    const valor = p.tipo === 'foto'
-      ? `<img class="valor" src="${p.cambio.valor}" alt="Foto propuesta">`
-      : `<div class="valor">${esc(p.cambio.valor) || '<i>(vacío)</i>'}</div>`;
+    let valor, actual = '';
+    if (p.tipo === 'foto') {
+      valor = `<img class="valor" src="${p.cambio.valor}" alt="Foto propuesta">`;
+    } else if (p.tipo === 'asignacion') {
+      valor = `<div class="valor">Asignar a: <b>${esc(nombreDni(p.cambio.valor))}</b></div>`;
+    } else {
+      actual = `<div class="meta2">Actual: <b>${esc(valorActual(p) || '—')}</b></div>`;
+      valor = `<div class="valor">${esc(p.cambio.valor) || '<i>(vacío)</i>'}</div>`;
+    }
     return `<div class="item">
       <div><b>N° ${dash(act0 && act0.activ)}</b> · ${esc(act0 ? act0.actividad : p.actividad_id)}</div>
       <div class="meta2">${esc(TIPOS[p.tipo] || p.tipo)} · propone ${esc(p.autor_nombre || 'sin nombre')} · ${fechaCorta(p.creado_at)}</div>
+      ${actual}
       ${valor}
       <div class="acciones">
         <button class="btn ok" data-dec="aprobada" data-id="${p.id}">Aprobar</button>

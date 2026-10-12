@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="robots" content="noindex,nofollow">
-<meta name="app-version" content="2026-10-12 14:45 · v9">
+<meta name="app-version" content="2026-10-12 16:30 · v10">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Parada de planta Beijing · Actividades</title>
 <style>
@@ -52,6 +52,7 @@ img.ph { width:100%; height:100%; object-fit:contain; display:block; }
 .info { padding:10px 12px 12px; display:flex; flex-direction:column; gap:6px; flex:1; }
 .head { display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
 .num { font-size:20px; font-weight:700; color:var(--azul); }
+.solo-lectura [data-edit], .solo-lectura [data-dec] { display:none !important; }
 .int { font-size:12px; font-weight:700; color:#6a7383; background:#eef2f7; border-radius:999px; padding:2px 8px; white-space:nowrap; }
 .head { flex-wrap:wrap; }
 .badges { display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end; }
@@ -190,6 +191,7 @@ textarea { min-height:64px; resize:vertical; }
     <div class="err" id="l-err"></div>
     <button class="btn" type="submit" id="l-btn" data-i18n="entrar">Entrar</button>
   </form>
+  <button class="btn sec" type="button" id="l-invitado" data-i18n="entrar_inv" style="margin-top:10px">Entrar como invitado (solo ver)</button>
 </section>
 
 <div id="app" hidden>
@@ -336,6 +338,8 @@ const I18N = {
   "sin_foto": "Sin foto",
   "foto_alt": "Foto aprobada",
   "num_int": "Int.",
+  "entrar_inv": "Entrar como invitado (solo ver)",
+  "solo_ver": "Invitado · solo ver",
   "linea_fmt": "Línea {l}",
   "lineas_fmt": "Líneas 1-2",
   "seis": "6 dígitos:",
@@ -458,6 +462,8 @@ const I18N = {
   "sin_foto": "无照片",
   "foto_alt": "已批准照片",
   "num_int": "内部",
+  "entrar_inv": "以访客身份进入（仅查看）",
+  "solo_ver": "访客 · 仅查看",
   "linea_fmt": "{l} 号线",
   "lineas_fmt": "1-2 号线",
   "seis": "6 位码:",
@@ -637,6 +643,13 @@ $('#login-form').addEventListener('submit', async ev => {
   $('#l-pin').value = '';
   await cargarTodo();
 });
+// Invitado: sesión anónima de Supabase, sin rol, solo lectura
+$('#l-invitado').addEventListener('click', async () => {
+  $('#l-err').textContent = '';
+  const { error } = await sb.auth.signInAnonymously();
+  if (error) { $('#l-err').textContent = T('err_login'); return; }
+  await cargarTodo();
+});
 $('#btn-salir').addEventListener('click', async () => { await sb.auth.signOut(); location.reload(); });
 async function comprobarVersion() {
   const msg = $('#ver');
@@ -686,6 +699,7 @@ async function cargarTodo() {
     $('#app').hidden = true; $('#login').hidden = false; return;
   }
   perfil = perf.data;
+  document.body.classList.toggle('solo-lectura', !(perfil && perfil.rol));
   ROWS = acts.data.map(a => ({ id: a.id, n: a.n, page: a.pagina, linea: a.linea, ot: a.ot, seis: a.seis, activ: a.activ, actividad: a.actividad, fotos: a.fotos || [] }));
   BASE = {}; acts.data.forEach(a => BASE[a.id] = a);
   act = BASE;
@@ -695,7 +709,7 @@ async function cargarTodo() {
   personal = {}; pers.data.forEach(p => personal[p.dni] = p);
   asignados = {}; asig.data.forEach(x => (asignados[x.actividad_id] = asignados[x.actividad_id] || []).push(x.dni));
   $('#login').hidden = true; $('#app').hidden = false;
-  $('#usuario').textContent = `${perfil.nombre || perfil.dni} · ${perfil.rol || T('sin_rol')}`;
+  $('#usuario').textContent = perfil.rol ? `${perfil.nombre || perfil.dni} · ${perfil.rol}` : T('solo_ver');
   $('#panel-res').hidden = perfil.rol !== 'Residente';
   render(); renderPanel(); renderMias();
   if (!canal) {

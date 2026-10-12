@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="robots" content="noindex,nofollow">
-<meta name="app-version" content="2026-10-12 12:55 · v5">
+<meta name="app-version" content="2026-10-12 13:30 · v6">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Parada de planta Beijing · Actividades</title>
 <style>
@@ -169,13 +169,13 @@ textarea { min-height:64px; resize:vertical; }
 .sug button { display:block; width:100%; text-align:left; border:0; border-bottom:1px solid var(--borde); background:#fff; padding:10px; min-height:44px; font-size:14px; cursor:pointer; }
 .sug button:disabled { color:var(--gris); cursor:default; }
 .sug small { color:var(--gris); }
-#btn-idioma { position:fixed; right:10px; bottom:10px; z-index:30; border:1px solid var(--azul); background:#fff; color:var(--azul); border-radius:999px; padding:10px 16px; min-height:44px; font-size:14px; font-weight:600; cursor:pointer; box-shadow:0 1px 4px rgba(0,0,0,.15); }
+.btn-idioma { border:1px solid var(--azul); background:#fff; color:var(--azul); border-radius:999px; padding:8px 14px; min-height:40px; font-size:14px; font-weight:600; cursor:pointer; }
 </style>
 </head>
 <body>
-<button type="button" id="btn-idioma" aria-label="Idioma / 语言">中文</button>
 
 <section class="login" id="login" hidden>
+  <div style="text-align:right"><button type="button" class="btn-idioma idioma" aria-label="Idioma / 语言">中文</button></div>
   <h1 data-i18n="login_h1">Parada de planta · Beijing</h1>
   <p data-i18n="login_p">Ingresa con tu DNI y tu PIN del sistema SGMC.</p>
   <form id="login-form" style="display:flex;flex-direction:column;gap:10px">
@@ -192,7 +192,7 @@ textarea { min-height:64px; resize:vertical; }
   <div class="ver" id="ver"></div>
   <div class="barra">
     <span id="usuario"></span>
-    <span><button id="btn-refrescar" type="button" data-i18n="refrescar">Actualizar</button> <button id="btn-salir" type="button" data-i18n="salir">Salir</button></span>
+    <span><button class="btn-idioma idioma" type="button" aria-label="Idioma / 语言">中文</button> <button id="btn-refrescar" type="button" data-i18n="refrescar">Actualizar</button> <button id="btn-salir" type="button" data-i18n="salir">Salir</button></span>
   </div>
 
   <div class="kpis">
@@ -548,7 +548,7 @@ function aplicarIdioma() {
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = T(el.dataset.i18n); });
   document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = T(el.dataset.i18nPh); });
   document.querySelectorAll('[data-i18n-aria]').forEach(el => { el.setAttribute('aria-label', T(el.dataset.i18nAria)); });
-  $('#btn-idioma').textContent = T('idioma_btn');
+  document.querySelectorAll('.idioma').forEach(b => { b.textContent = T('idioma_btn'); });
   $('#ver').textContent = T('ver_actual', { v: VERSION });
   $('#f-titulo') && (dlg.open && actual ? abrirTitulo() : null);
   if (perfil) { render(); renderMias(); renderPanel(); if (dlg.open) { pintarHerr(); sugerir(); pintarChips(); } }
@@ -558,7 +558,7 @@ function cambiarIdioma() {
   try { localStorage.setItem('pdp_idioma', lang); } catch (e) {}
   aplicarIdioma();
 }
-$('#btn-idioma').addEventListener('click', cambiarIdioma);
+document.querySelectorAll('.idioma').forEach(b => b.addEventListener('click', cambiarIdioma));
 
 // Valores vigentes: los aprobados en la base, o los originales si no hay cambios
 function vista(id) {

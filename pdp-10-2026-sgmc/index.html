@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="robots" content="noindex,nofollow">
-<meta name="app-version" content="2026-10-12 17:05 · v12">
+<meta name="app-version" content="2026-10-12 17:30 · v13">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Parada de planta Beijing · Actividades</title>
 <style>
@@ -986,7 +986,7 @@ $('#grid').addEventListener('click', ev => {
 async function cambiarBacklog(id, valor) {
   let motivo = null;
   if (valor) motivo = prompt(T('bl_prompt')) || null;
-  const { error } = await sb.rpc('set_backlog', { p_id: id, p_valor: valor, p_motivo: motivo });
+  const { error } = await sb.rpc('marcar_backlog', { p_id: id, p_valor: valor, p_motivo: motivo });
   if (error) { alert(error.message); return; }
   await cargarTodo();
 }

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="robots" content="noindex,nofollow">
-<meta name="app-version" content="2026-10-12 13:30 · v6">
+<meta name="app-version" content="2026-10-12 14:05 · v7">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Parada de planta Beijing · Actividades</title>
 <style>
@@ -542,6 +542,44 @@ function abrirTitulo() {
   const r = BASE[actual]; if (!r) return;
   $('#f-titulo').textContent = `${T('proponer')} · N° ${r.activ || '—'} · ${T('linea_fmt', { l: r.linea })}`;
 }
+// Traducción de nombres de actividad (glosario técnico; números y códigos se conservan)
+const GLOS_ACT = [
+  [/DESMONTAJE Y MONTAJE/gi, '拆装'], [/APERTURA Y CIERRE/gi, '开闭'],
+  [/DESMONTAJE/gi, '拆卸'], [/MONTAJE/gi, '安装'], [/APERTURA/gi, '打开'], [/CIERRE/gi, '关闭'],
+  [/ALINEAMIENTO/gi, '对中'], [/VERIFICACI[OÓ]N/gi, '检查'], [/INSPECCI[OÓ]N/gi, '检查'],
+  [/REPARACI[OÓ]N/gi, '维修'], [/REFORZAMIENTO|REFUERZO/gi, '加固'], [/CAMBIO/gi, '更换'],
+  [/ENGRASE/gi, '加注润滑脂'], [/GIRO DE CARRETE/gi, '旋转卷筒'],
+  [/TRASLADO DE EQUIPOS, HERRAMIENTAS Y MANIOBRAS CON EL PUENTE GRUA/gi, '设备工具转运与桥式起重机吊装'],
+  [/ACOPLE/gi, '联轴器'], [/\bEJE DE AGITACI[OÓ]N\b/gi, '搅拌轴'], [/\bEJE\b/gi, '轴'],
+  [/ESTATOR/gi, '定子'], [/CELDA \.F/gi, '浮选槽'], [/CELDAS? DE FLOTACI[OÓ]N|CELDAS? FLOTACI[OÓ]N|\bCF\b/gi, '浮选槽'],
+  [/BANCO/gi, '浮选组'], [/ASIENTO/gi, '座'], [/ACONDICIONADOR/gi, '调浆槽'],
+  [/REDUCTOR/gi, '减速机'], [/ACEITE/gi, '油'], [/MOTOR/gi, '电机'], [/SOPLADOR/gi, '鼓风机'],
+  [/POLEAS/gi, '皮带轮'], [/CORREAS DE TRANSMISI[OÓ]N/gi, '传动皮带'], [/CORREAS/gi, '皮带'],
+  [/TENSI[OÓ]N/gi, '张紧'], [/ALIMENTACI[OÓ]N/gi, '给料'], [/DESCARGA/gi, '排料'],
+  [/MOLINO/gi, '磨机'], [/CAJ[OÓ]N DE COLAS/gi, '尾矿箱'], [/CAJ[OÓ]N DISTRIBUIDOR/gi, '分配箱'],
+  [/CAJ[OÓ]N/gi, '箱'], [/COLAS/gi, '尾矿'], [/TUBER[IÍ]AS?/gi, '管道'],
+  [/VALVULA MARIPOSA NEUMATICA/gi, '气动蝶阀'], [/VALVULA MARIPOSA/gi, '蝶阀'],
+  [/VALVULA CUCHILLA|VALVULA CUHILLA/gi, '闸阀'], [/VALVULA MOTORIZADA/gi, '电动阀'], [/VALVULA/gi, '阀门'],
+  [/TAPA MANHOLE|TAPA MAHOLE/gi, '人孔盖'], [/MANHOLE|MAHOLE/gi, '人孔'],
+  [/CAMPANA/gi, '罩'], [/CALAFATEO/gi, '密封'], [/\bNIDO\b/gi, '旋流器组'], [/CICLONES/gi, '旋流器'],
+  [/SECUNDARIOS/gi, '二次'], [/OVERFLOW/gi, '溢流'], [/REDUCCI[OÓ]N/gi, '变径'], [/\bCODO\b/gi, '弯头'],
+  [/MANGUERA/gi, '软管'], [/NIPLE/gi, '接头'], [/TEMPLADORES/gi, '张紧器'], [/SOPORTES/gi, '支架'],
+  [/DISCO DE IMPACTO/gi, '冲击盘'], [/TANQUE/gi, '槽体'], [/TINA DE HIDROCILONES/gi, '水力旋流器槽'],
+  [/HIDROCILONES/gi, '水力旋流器'], [/CANALETAS?/gi, '溜槽'], [/SEP\. ?MAG\./gi, '磁选'],
+  [/SUMIDERO/gi, '集水坑'], [/BOMBA/gi, '泵'], [/CONCENTRADO/gi, '精矿'], [/CELDAS NUEVAS/gi, '新浮选槽'],
+  [/TRONCAL DE ESPUMA/gi, '泡沫主槽'], [/ESPUMA/gi, '泡沫'], [/IMPULSOR/gi, '叶轮'], [/PALAS/gi, '叶片'],
+  [/AGITACI[OÓ]N/gi, '搅拌'], [/DISTRIBUIDOR DE AIRE/gi, '供气分配器'], [/\bAIRE\b/gi, '空气'],
+  [/BASE/gi, '底座'], [/COMPONTE|COMPONENTE/gi, '组件'], [/BYPPASS|BYPASS/gi, '旁路'],
+  [/AL AC\b/gi, '至调浆槽'], [/LLEGADA/gi, '至'], [/\bL([12])\b/gi, '线$1'], [/\bNV\b|NIVEL/gi, '层'], [/LINEA ?(\d)/gi, '线$1'],
+  [/\bDEL\b|\bDE LA\b|\bDE LAS\b|\bDE LOS\b|\bDE\b|\bLOS\b|\bLAS\b|\bLA\b|\bEL\b|\bAL\b|\bY\b|\bA\b/gi, ' '],
+];
+function actT(s) {
+  if (!s) return s || '';
+  if (lang !== 'zh') return s;
+  let t = String(s);
+  for (const [re, zh] of GLOS_ACT) t = t.replace(re, zh);
+  return t.replace(/\s{2,}/g, ' ').replace(/\s+,/g, ',').trim();
+}
 function aplicarIdioma() {
   document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'es';
   document.title = T('title');
@@ -731,7 +769,7 @@ function tarjeta(r) {
     <div class="info">
       <div class="head"><span class="num">N° ${dash(r.activ)}</span><span class="badges">${badges.join('')}</span></div>
       <div class="meta"><span><b>${linea}</b></span><span>OT SAP: <b>${dash(b.ot)}</b></span><span>${T('seis')} <b>${dash(r.seis)}</b></span></div>
-      <div class="act">${esc(r.actividad)}</div>
+      <div class="act">${esc(actT(r.actividad))}</div>
       <div class="hh">
         <div><span>${T('horas')}</span><b>${horasHtml}</b></div>
         <div><span>${T('personal')}</span><b>${persHtml}</b></div>
@@ -773,7 +811,7 @@ function renderPanel() {
       valor = `<div class="valor">${esc(txt) || '<i>' + T('vacio') + '</i>'}</div>`;
     }
     return `<div class="item">
-      <div><b>N° ${dash(act0 && act0.activ)}</b> · ${esc(act0 ? act0.actividad : p.actividad_id)}</div>
+      <div><b>N° ${dash(act0 && act0.activ)}</b> · ${esc(act0 ? actT(act0.actividad) : p.actividad_id)}</div>
       <div class="meta2">${esc(T('tipo_' + p.tipo))} · ${T('propone')}${esc(p.autor_nombre || T('sin_nombre'))} · ${fechaCorta(p.creado_at)}</div>
       ${actual}
       ${valor}
@@ -886,7 +924,7 @@ function abrir(id) {
   actual = id;
   const v = vista(id);
   $('#f-titulo').textContent = `${T('proponer')} · N° ${r.activ || '—'} · ${T('linea_fmt', { l: r.linea })}`;
-  $('#f-ref').textContent = r.actividad;
+  $('#f-ref').textContent = actT(r.actividad);
   $('#f-obs').value = v.obs;
   $('#f-prev').value = v.prev;
   herrRows = parseHerr(v.herr);

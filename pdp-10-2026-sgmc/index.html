@@ -9,12 +9,14 @@
 :root { --azul:#0f3d6e; --gris:#5b6675; --borde:#cfd8e3; --fondo:#f4f7fb; --ok:#1b7f3b; --warn:#a15c00; --err:#b00020; }
 * { box-sizing:border-box; }
 html,body { margin:0; }
-body { font-family: Arial, Helvetica, sans-serif; color:#1a1a1a; background:#fff; padding:14px; max-width:1200px; margin:0 auto; font-size:15px; }
+body { font-family: Arial, Helvetica, sans-serif; color:#1a1a1a; background:#fff; padding:14px; max-width:1200px; margin:0 auto; font-size:15px; overflow-wrap:anywhere; }
+*, *::before, *::after { min-width:0; }
 [hidden] { display:none !important; }
 h1 { font-size:21px; color:var(--azul); margin:0 0 4px; line-height:1.2; }
 h2 { font-size:17px; color:var(--azul); margin:0; }
 .sub { color:var(--gris); font-size:13px; margin-bottom:12px; }
 .barra { display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:13px; color:var(--gris); margin-bottom:10px; flex-wrap:wrap; }
+#usuario { overflow-wrap:anywhere; flex:1 1 180px; }
 .barra button { border:1px solid var(--borde); background:#fff; border-radius:6px; padding:10px 14px; min-height:44px; cursor:pointer; font-size:14px; }
 .kpis { display:grid; grid-template-columns: repeat(auto-fit, minmax(120px,1fr)); gap:8px; margin-bottom:12px; }
 .kpi { border:1px solid var(--borde); border-radius:8px; padding:8px 10px; background:#fff; }
@@ -27,13 +29,15 @@ h2 { font-size:17px; color:var(--azul); margin:0; }
 #panel-mias .item:first-of-type { border-top:0; }
 #buscar { font:inherit; font-size:15px; border:1px solid #aab6c6; border-radius:8px; padding:10px; width:100%; min-height:44px; }
 .panel .meta2 { font-size:12px; color:var(--gris); }
-.panel .valor { font-size:14px; white-space:pre-wrap; background:#fff; border:1px solid var(--borde); border-radius:6px; padding:6px 8px; max-height:120px; overflow:auto; }
+.panel .valor { font-size:14px; white-space:pre-wrap; overflow-wrap:anywhere; background:#fff; border:1px solid var(--borde); border-radius:6px; padding:6px 8px; max-height:120px; overflow:auto; }
 .panel img.valor { max-height:160px; object-fit:contain; }
+.panel .valor.actual { background:#f7f9fc; color:#4a5566; max-height:80px; }
 .filtros { position:sticky; top:0; z-index:5; background:#fff; padding:8px 0; display:flex; gap:6px; flex-wrap:wrap; border-bottom:1px solid var(--borde); margin-bottom:12px; }
 .filtros button { border:1px solid var(--azul); background:#fff; color:var(--azul); border-radius:999px; padding:10px 14px; min-height:44px; font-size:15px; cursor:pointer; }
 .filtros button[aria-pressed="true"] { background:var(--azul); color:#fff; }
 .filtros button small { opacity:.8; font-size:12px; }
 .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap:14px; }
+.grid > * { min-width:0; }
 .card { border:1px solid #9aa9bd; border-radius:10px; overflow:hidden; background:#fff; display:flex; flex-direction:column; }
 .media { height:min(75vw, 300px); min-height:200px; background:#eef2f7; display:flex; gap:2px; align-items:stretch; justify-content:center; border-bottom:1px solid #9aa9bd; }
 .media.nofoto { align-items:center; color:#6a7383; font-style:italic; }
@@ -70,7 +74,7 @@ label { display:flex; flex-direction:column; gap:4px; font-size:13px; font-weigh
 label span.opc { font-weight:400; color:var(--gris); }
 textarea, input[type=number], input[type=text], input[type=password], input[type=file] { font:inherit; font-size:15px; font-weight:400; border:1px solid #aab6c6; border-radius:8px; padding:9px 10px; width:100%; }
 textarea { min-height:64px; resize:vertical; }
-.fila { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.fila { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px; }
 .err { color:var(--err); font-size:13px; min-height:1em; }
 .botones { display:flex; gap:8px; justify-content:flex-end; }
 .botones .btn { flex:0 0 auto; padding:11px 16px; }
@@ -445,7 +449,7 @@ function renderPanel() {
     } else if (p.tipo === 'asignacion') {
       valor = `<div class="valor">Asignar a: <b>${esc(nombreDni(p.cambio.valor))}</b></div>`;
     } else {
-      actual = `<div class="meta2">Actual: <b>${esc(valorActual(p) || '—')}</b></div>`;
+      actual = `<div class="meta2">Actual:</div><div class="valor actual">${esc(valorActual(p) || '—')}</div>`;
       valor = `<div class="valor">${esc(p.cambio.valor) || '<i>(vacío)</i>'}</div>`;
     }
     return `<div class="item">

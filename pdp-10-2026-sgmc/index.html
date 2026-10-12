@@ -196,6 +196,9 @@ textarea { min-height:64px; resize:vertical; }
     <div class="kpi"><div class="v" id="k-act">–</div><div class="l" data-i18n="k_act">Actividades</div></div>
     <div class="kpi"><div class="v" id="k-hor">–</div><div class="l" data-i18n="k_hor">Horas</div></div>
     <div class="kpi"><div class="v" id="k-hh">–</div><div class="l" data-i18n="k_hh">HH totales</div></div>
+    <div class="kpi"><div class="v" id="k-hh1">–</div><div class="l" data-i18n="k_hh1">HH Línea 1</div></div>
+    <div class="kpi"><div class="v" id="k-hh2">–</div><div class="l" data-i18n="k_hh2">HH Línea 2</div></div>
+    <div class="kpi"><div class="v" id="k-hha">–</div><div class="l" data-i18n="k_hha">HH Ambas líneas (1-2)</div></div>
     <div class="kpi"><div class="v" id="k-cor">0</div><div class="l" data-i18n="k_cor">Con cambios aprobados</div></div>
     <div class="kpi"><div class="v" id="k-pen">0</div><div class="l" data-i18n="k_pen">Propuestas pendientes</div></div>
   </div>
@@ -392,7 +395,10 @@ const I18N = {
   "csv_3": "Actividad",
   "csv_4": "Herramienta / equipo",
   "csv_5": "Cantidad",
-  "idioma_btn": "中文"
+  "idioma_btn": "中文",
+  "k_hh1": "HH Línea 1",
+  "k_hh2": "HH Línea 2",
+  "k_hha": "HH Ambas líneas (1-2)"
  },
  "zh": {
   "title": "停机检修 北京 · 活动",
@@ -505,7 +511,10 @@ const I18N = {
   "csv_3": "活动",
   "csv_4": "工具 / 设备",
   "csv_5": "数量",
-  "idioma_btn": "Español"
+  "idioma_btn": "Español",
+  "k_hh1": "1 号线 总 HH",
+  "k_hh2": "2 号线 总 HH",
+  "k_hha": "两条线 (1-2) 总 HH"
  }
 };
 let lang = 'es';
@@ -631,16 +640,20 @@ function renderMias() {
 
 // ---------- Render ----------
 function render() {
-  let hor = 0, hh = 0, cor = 0;
+  let hor = 0, hh = 0, cor = 0, hh1 = 0, hh2 = 0, hha = 0;
   const cnt = {todas:0, l1:0, l2:0, ambas:0};
   for (const r of ROWS) {
     const v = vista(r.id);
     hor += v.horas; hh += v.hh; if (v.corregida) cor++;
+    if (r.linea === '1') hh1 += v.hh; else if (r.linea === '2') hh2 += v.hh; else if (r.linea === '1-2') hha += v.hh;
     cnt.todas++; if (r.linea === '1') cnt.l1++; if (r.linea === '2') cnt.l2++; if (r.linea === '1-2') cnt.ambas++;
   }
   $('#k-act').textContent = ROWS.length;
   $('#k-hor').textContent = fmt(hor);
   $('#k-hh').textContent = fmt(hh);
+  $('#k-hh1').textContent = fmt(hh1);
+  $('#k-hh2').textContent = fmt(hh2);
+  $('#k-hha').textContent = fmt(hha);
   $('#k-cor').textContent = cor;
   $('#k-pen').textContent = pendientes.length;
   $('#c-todas').textContent = `(${cnt.todas})`;

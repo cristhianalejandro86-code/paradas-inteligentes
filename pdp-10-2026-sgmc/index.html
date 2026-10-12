@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="robots" content="noindex,nofollow">
-<meta name="app-version" content="2026-10-12 16:45 · v11">
+<meta name="app-version" content="2026-10-12 17:05 · v12">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Parada de planta Beijing · Actividades</title>
 <style>
@@ -53,6 +53,8 @@ img.ph { width:100%; height:100%; object-fit:contain; display:block; }
 .head { display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
 .num { font-size:20px; font-weight:700; color:var(--azul); }
 .solo-lectura [data-edit], .solo-lectura [data-dec] { display:none !important; }
+.card.backlog { opacity:.55; border-style:dashed; }
+.card.backlog .media { filter:grayscale(.7); }
 .int { font-size:12px; font-weight:700; color:#6a7383; background:#eef2f7; border-radius:999px; padding:2px 8px; white-space:nowrap; }
 .head { flex-wrap:wrap; }
 .badges { display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end; }
@@ -338,6 +340,10 @@ const I18N = {
   "sin_foto": "Sin foto",
   "foto_alt": "Foto aprobada",
   "num_int": "Int.",
+  "bl_badge": "Backlog",
+  "bl_pasar": "Pasar a backlog",
+  "bl_restituir": "Restituir",
+  "bl_prompt": "Motivo para pasar a backlog (opcional):",
   "entrar_inv": "Entrar como invitado (solo ver) · 以访客身份进入（仅查看）",
   "solo_ver": "Invitado · solo ver",
   "linea_fmt": "Línea {l}",
@@ -462,6 +468,10 @@ const I18N = {
   "sin_foto": "无照片",
   "foto_alt": "已批准照片",
   "num_int": "内部",
+  "bl_badge": "待办(backlog)",
+  "bl_pasar": "移入待办(backlog)",
+  "bl_restituir": "恢复",
+  "bl_prompt": "移入待办的原因（可选）：",
   "entrar_inv": "以访客身份进入（仅查看）· Entrar como invitado (solo ver)",
   "solo_ver": "访客 · 仅查看",
   "linea_fmt": "{l} 号线",
@@ -700,7 +710,7 @@ async function cargarTodo() {
   }
   perfil = perf.data;
   document.body.classList.toggle('solo-lectura', !(perfil && perfil.rol));
-  ROWS = acts.data.map(a => ({ id: a.id, n: a.n, page: a.pagina, linea: a.linea, ot: a.ot, seis: a.seis, activ: a.activ, actividad: a.actividad, fotos: a.fotos || [] }));
+  ROWS = acts.data.map(a => ({ id: a.id, n: a.n, page: a.pagina, linea: a.linea, ot: a.ot, seis: a.seis, activ: a.activ, actividad: a.actividad, fotos: a.fotos || [], backlog: !!a.backlog, motivo: a.backlog_motivo || '' }));
   BASE = {}; acts.data.forEach(a => BASE[a.id] = a);
   act = BASE;
   fotosExtra = {}; fx.data.forEach(f => (fotosExtra[f.actividad_id] = fotosExtra[f.actividad_id] || []).push(f.data));
@@ -738,11 +748,13 @@ function render() {
   const cnt = {todas:0, l1:0, l2:0, ambas:0};
   for (const r of ROWS) {
     const v = vista(r.id);
-    hor += v.horas; hh += v.hh; if (v.corregida) cor++;
-    if (r.linea === '1') hh1 += v.hh; else if (r.linea === '2') hh2 += v.hh; else if (r.linea === '1-2') hha += v.hh;
+    if (!r.backlog) {
+      hor += v.horas; hh += v.hh; if (v.corregida) cor++;
+      if (r.linea === '1') hh1 += v.hh; else if (r.linea === '2') hh2 += v.hh; else if (r.linea === '1-2') hha += v.hh;
+    }
     cnt.todas++; if (r.linea === '1') cnt.l1++; if (r.linea === '2') cnt.l2++; if (r.linea === '1-2') cnt.ambas++;
   }
-  $('#k-act').textContent = ROWS.length;
+  $('#k-act').textContent = ROWS.filter(r => !r.backlog).length;
   $('#k-hor').textContent = fmt(hor);
   $('#k-hh').textContent = fmt(hh);
   $('#k-hh1').textContent = fmt(hh1);
@@ -786,7 +798,10 @@ function tarjeta(r) {
   const asig0 = asignados[r.id] || [];
   if (asig0.length) notas.push(`<div><b>${T('asig_l')}</b> ${asig0.map(d => esc((personal[d] || {}).nombre || d)).join(', ')}</div>`);
 
-  return `<article class="card">
+  if (r.backlog) badges.unshift('<span class="badge warn">' + T('bl_badge') + (r.motivo ? ': ' + esc(r.motivo) : '') + '</span>');
+  const btnBl = perfil && perfil.rol === 'Residente'
+    ? `<button class="btn sec" data-bl="${r.id}" data-valor="${r.backlog ? '0' : '1'}">${T(r.backlog ? 'bl_restituir' : 'bl_pasar')}</button>` : '';
+  return `<article class="card${r.backlog ? ' backlog' : ''}">
     ${media}
     <div class="info">
       <div class="head"><span class="num">N° ${dash(r.activ)}</span><span class="int" title="Número interno de la fila">${esc(T('num_int'))} ${r.n ?? '—'}</span><span class="badges">${badges.join('')}</span></div>
@@ -800,6 +815,7 @@ function tarjeta(r) {
       ${notas.length ? `<div class="notas">${notas.join('')}</div>` : ''}
       <div class="acciones">
         <button class="btn" data-edit="${r.id}">${T('proponer')}</button>
+        ${btnBl}
       </div>
     </div>
   </article>`;
@@ -964,7 +980,16 @@ function abrir(id) {
 }
 $('#grid').addEventListener('click', ev => {
   const e = ev.target.closest('[data-edit]'); if (e) abrir(e.dataset.edit);
+  const bl = ev.target.closest('[data-bl]'); if (bl) cambiarBacklog(bl.dataset.bl, bl.dataset.valor === '1');
 });
+// Solo el Residente: pasar una actividad a backlog (sale de las HH) o restituirla
+async function cambiarBacklog(id, valor) {
+  let motivo = null;
+  if (valor) motivo = prompt(T('bl_prompt')) || null;
+  const { error } = await sb.rpc('set_backlog', { p_id: id, p_valor: valor, p_motivo: motivo });
+  if (error) { alert(error.message); return; }
+  await cargarTodo();
+}
 $('#buscar').addEventListener('input', ev => { termino = ev.target.value.trim().toLowerCase(); render(); });
 $('#filtros').addEventListener('click', ev => {
   const b = ev.target.closest('button[data-f]'); if (!b) return;

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="robots" content="noindex,nofollow">
-<meta name="app-version" content="2026-10-19 16:40 · v17">
+<meta name="app-version" content="2026-10-19 17:30 · v18">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Parada de planta Beijing · Actividades</title>
 <style>
@@ -43,6 +43,9 @@ h2 { font-size:17px; color:var(--azul); margin:0; }
 .card { border:1px solid #9aa9bd; border-radius:10px; overflow:hidden; background:#fff; display:flex; flex-direction:column; }
 .media { height:min(75vw, 300px); min-height:200px; background:#eef2f7; display:flex; gap:2px; align-items:stretch; justify-content:center; border-bottom:1px solid #9aa9bd; }
 .media.nofoto { align-items:center; color:#6a7383; font-style:italic; }
+.fw { position:relative; flex:1 1 0; min-width:0; display:flex; }
+.fw > .ph, .fw > img.ph { flex:1 1 auto; width:100%; height:100%; }
+.quitar-foto { position:absolute; top:6px; right:6px; width:34px; height:34px; border-radius:50%; border:0; background:rgba(180,30,30,.92); color:#fff; font-size:22px; line-height:1; cursor:pointer; z-index:2; box-shadow:0 1px 4px rgba(0,0,0,.35); }
 .ph { flex:1 1 0; background-size:contain; background-position:center; background-repeat:no-repeat; background-color:#eef2f7; min-width:0; cursor:zoom-in; touch-action:manipulation; }
 #visor { position:fixed; inset:0; z-index:100; background:rgba(0,0,0,.94); display:flex; align-items:center; justify-content:center; padding:12px; cursor:zoom-out; }
 #visor[hidden] { display:none; }
@@ -702,7 +705,7 @@ async function cargarTodo() {
   const [perf, acts, fx, pend, pers, asig] = await Promise.all([
     sb.rpc('mi_perfil'),
     sb.from('actividades').select('*').order('n'),
-    sb.from('fotos_extra').select('actividad_id,data').order('id'),
+    sb.from('fotos_extra').select('id,actividad_id,data').order('id'),
     sb.from('propuestas').select('id,actividad_id,tipo,cambio,autor_user_id,autor_nombre,estado,creado_at,decidido_por,decidido_at,comentario_decision').eq('estado', 'pendiente').order('creado_at'),
     sb.from('personal').select('dni,nombre,area').eq('activo', true),
     sb.from('asignaciones').select('actividad_id,dni')
@@ -721,7 +724,7 @@ async function cargarTodo() {
   ROWS = acts.data.map(a => ({ id: a.id, n: a.n, page: a.pagina, linea: a.linea, ot: a.ot, seis: a.seis, activ: a.activ, actividad: a.actividad, fotos: a.fotos || [], backlog: !!a.backlog, motivo: a.backlog_motivo || '', rev: a.rev_cambio || '', oculta: !!a.oculta, ocultaMotivo: a.oculta_motivo || '' }));
   BASE = {}; acts.data.forEach(a => BASE[a.id] = a);
   act = BASE;
-  fotosExtra = {}; fx.data.forEach(f => (fotosExtra[f.actividad_id] = fotosExtra[f.actividad_id] || []).push(f.data));
+  fotosExtra = {}; fx.data.forEach(f => (fotosExtra[f.actividad_id] = fotosExtra[f.actividad_id] || []).push({ id: f.id, data: f.data }));
   pendientes = pend.data || [];
   misPropuestas = mias.data || [];
   personal = {}; pers.data.forEach(p => personal[p.dni] = p);
@@ -788,8 +791,11 @@ function tarjeta(r) {
   const v = vista(r.id);
   const b = BASE[r.id];
   const extra = fotosExtra[r.id] || [];
-  let media = (r.fotos || []).map(x => `<div class="ph p${x}"></div>`).join('')
-            + extra.map(d => `<img class="ph" src="${d}" alt="${T('foto_alt')}">`).join('');
+  // Solo el Residente ve el botón para quitar una foto
+  const esRes = perfil && perfil.rol === 'Residente';
+  const quitar = (tipo, clave) => esRes ? `<button class="quitar-foto" data-quitar="${tipo}" data-clave="${clave}" data-act="${r.id}" title="Quitar foto" aria-label="Quitar foto">×</button>` : '';
+  let media = (r.fotos || []).map(x => `<div class="fw"><div class="ph p${x}"></div>${quitar('base', x)}</div>`).join('')
+            + extra.map(f => `<div class="fw"><img class="ph" src="${f.data}" alt="${T('foto_alt')}">${quitar('extra', f.id)}</div>`).join('');
   media = media ? `<div class="media">${media}</div>` : `<div class="media nofoto">${T('sin_foto')}</div>`;
 
   const linea = r.linea === '1-2' ? T('lineas_fmt') : T('linea_fmt', { l: esc(r.linea) });
@@ -1007,6 +1013,7 @@ $('#grid').addEventListener('click', ev => {
   const bl = ev.target.closest('[data-bl]'); if (bl) cambiarBacklog(bl.dataset.bl, bl.dataset.valor === '1');
   const tx = ev.target.closest('[data-txt]'); if (tx) editarTexto(tx.dataset.txt);
   const oc = ev.target.closest('[data-oc]'); if (oc) cambiarOculta(oc.dataset.oc, oc.dataset.valor === '1');
+  const qf = ev.target.closest('[data-quitar]'); if (qf) quitarFoto(qf.dataset.quitar, qf.dataset.clave, qf.dataset.act);
 });
 // Solo el Residente DNI 43888823: cambiar el texto de una actividad (la validación se hace en la base de datos)
 async function editarTexto(id) {
@@ -1014,6 +1021,15 @@ async function editarTexto(id) {
   const nuevo = prompt('Nuevo texto de la actividad:', act0 ? act0.actividad : '');
   if (nuevo === null) return;
   const { error } = await sb.rpc('editar_texto_actividad', { p_id: id, p_texto: nuevo });
+  if (error) { alert(error.message); return; }
+  await cargarTodo();
+}
+// Solo el Residente: quitar una foto de la actividad (no afecta a las demás)
+async function quitarFoto(tipo, clave, actId) {
+  if (!confirm('¿Quitar esta foto de la actividad? No se puede deshacer.')) return;
+  const { error } = tipo === 'extra'
+    ? await sb.rpc('quitar_foto_extra', { p_id: Number(clave) })
+    : await sb.rpc('quitar_foto_base', { p_actividad_id: actId, p_foto: Number(clave) });
   if (error) { alert(error.message); return; }
   await cargarTodo();
 }

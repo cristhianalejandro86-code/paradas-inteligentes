@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="robots" content="noindex,nofollow">
-<meta name="app-version" content="2026-10-19 17:30 · v18">
+<meta name="app-version" content="2026-10-19 18:45 · v19">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Parada de planta Beijing · Actividades</title>
 <style>
@@ -286,6 +286,7 @@ const sb = supabase.createClient(SB_URL, SB_KEY, { db: { schema: 'pdp' } });
 let ROWS = [];                   // actividades (se cargan desde la base tras iniciar sesión)
 let BASE = {};                   // id -> actividad
 let act = {};                    // id -> valores aprobados en la base
+let numInt = {};                 // id -> número interno (solo cuentan las no ocultas)
 let fotosExtra = {};             // id -> [dataURL] fotos aprobadas
 let pendientes = [];             // propuestas en estado pendiente
 let personal = {};               // dni -> {nombre, area}
@@ -756,6 +757,8 @@ function renderMias() {
 
 // ---------- Render ----------
 function render() {
+  numInt = {}; let kInt = 0;
+  for (const r of ROWS) if (!r.oculta) numInt[r.id] = ++kInt;
   let hor = 0, hh = 0, cor = 0, hh1 = 0, hh2 = 0, hha = 0;
   const cnt = {todas:0, l1:0, l2:0, ambas:0};
   for (const r of ROWS) {
@@ -832,7 +835,7 @@ function tarjeta(r) {
   return `<article class="card${r.backlog ? ' backlog' : ''}${r.rev && !/No aparece/.test(r.rev) ? ' rev-cambio' : ''}">
     ${media}
     <div class="info">
-      <div class="head"><span class="num">N° ${dash(r.activ)}</span><span class="int" title="Número interno de la fila">${esc(T('num_int'))} ${r.n ?? '—'}</span><span class="badges">${badges.join('')}</span></div>
+      <div class="head"><span class="num">N° ${dash(r.activ)}</span>${r.oculta ? '' : `<span class="int" title="Número interno de la fila">${esc(T('num_int'))} ${numInt[r.id] ?? '—'}</span>`}<span class="badges">${badges.join('')}</span></div>
       <div class="meta"><span><b>${linea}</b></span><span>OT SAP: <b>${dash(b.ot)}</b></span><span>${T('seis')} <b>${dash(r.seis)}</b></span></div>
       <div class="act">${esc(actT(r.actividad))}</div>
       <div class="hh">

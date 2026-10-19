@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="robots" content="noindex,nofollow">
-<meta name="app-version" content="2026-10-13 14:30 · v14">
+<meta name="app-version" content="2026-10-19 15:00 · v15">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Parada de planta Beijing · Actividades</title>
 <style>
@@ -810,6 +810,9 @@ function tarjeta(r) {
   if (r.backlog) badges.unshift('<span class="badge warn">' + T('bl_badge') + (r.motivo ? ': ' + esc(r.motivo) : '') + '</span>');
   const btnBl = perfil && perfil.rol === 'Residente'
     ? `<button class="btn sec" data-bl="${r.id}" data-valor="${r.backlog ? '0' : '1'}">${T(r.backlog ? 'bl_restituir' : 'bl_pasar')}</button>` : '';
+  // Solo el Residente con DNI 43888823: corregir el texto de la actividad
+  const btnTxt = perfil && perfil.rol === 'Residente' && perfil.dni === '43888823'
+    ? `<button class="btn sec" data-txt="${r.id}">Editar texto</button>` : '';
   return `<article class="card${r.backlog ? ' backlog' : ''}${r.rev && !/No aparece/.test(r.rev) ? ' rev-cambio' : ''}">
     ${media}
     <div class="info">
@@ -825,6 +828,7 @@ function tarjeta(r) {
       <div class="acciones">
         <button class="btn" data-edit="${r.id}">${T('proponer')}</button>
         ${btnBl}
+        ${btnTxt}
       </div>
     </div>
   </article>`;
@@ -990,7 +994,17 @@ function abrir(id) {
 $('#grid').addEventListener('click', ev => {
   const e = ev.target.closest('[data-edit]'); if (e) abrir(e.dataset.edit);
   const bl = ev.target.closest('[data-bl]'); if (bl) cambiarBacklog(bl.dataset.bl, bl.dataset.valor === '1');
+  const tx = ev.target.closest('[data-txt]'); if (tx) editarTexto(tx.dataset.txt);
 });
+// Solo el Residente DNI 43888823: cambiar el texto de una actividad (la validación se hace en la base de datos)
+async function editarTexto(id) {
+  const act0 = BASE[id];
+  const nuevo = prompt('Nuevo texto de la actividad:', act0 ? act0.actividad : '');
+  if (nuevo === null) return;
+  const { error } = await sb.rpc('editar_texto_actividad', { p_id: id, p_texto: nuevo });
+  if (error) { alert(error.message); return; }
+  await cargarTodo();
+}
 // Solo el Residente: pasar una actividad a backlog (sale de las HH) o restituirla
 async function cambiarBacklog(id, valor) {
   let motivo = null;

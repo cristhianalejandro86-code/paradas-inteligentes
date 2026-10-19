@@ -1,0 +1,1179 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex,nofollow">
+<meta name="app-version" content="2026-10-19 18:45 · v19">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Parada de planta Beijing · Actividades</title>
+<style>
+:root { --azul:#0f3d6e; --gris:#5b6675; --borde:#cfd8e3; --fondo:#f4f7fb; --ok:#1b7f3b; --warn:#a15c00; --err:#b00020; }
+* { box-sizing:border-box; }
+html,body { margin:0; }
+body { font-family: Arial, Helvetica, "PingFang SC", "Microsoft YaHei", sans-serif; color:#1a1a1a; background:#fff; padding:14px; max-width:1200px; margin:0 auto; font-size:15px; overflow-wrap:anywhere; }
+*, *::before, *::after { min-width:0; }
+[hidden] { display:none !important; }
+h1 { font-size:21px; color:var(--azul); margin:0 0 4px; line-height:1.2; }
+h2 { font-size:17px; color:var(--azul); margin:0; }
+.sub { color:var(--gris); font-size:13px; margin-bottom:12px; }
+.ver { color:var(--gris); font-size:12px; margin:-8px 0 12px; }
+.barra { display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:13px; color:var(--gris); margin-bottom:10px; flex-wrap:wrap; }
+#usuario { overflow-wrap:anywhere; flex:1 1 180px; }
+.barra button { border:1px solid var(--borde); background:#fff; border-radius:6px; padding:10px 14px; min-height:44px; cursor:pointer; font-size:14px; }
+.kpis { display:grid; grid-template-columns: repeat(auto-fit, minmax(120px,1fr)); gap:8px; margin-bottom:12px; }
+.kpi { border:1px solid var(--borde); border-radius:8px; padding:8px 10px; background:#fff; }
+.kpi .v { font-size:19px; font-weight:700; color:var(--azul); }
+.kpi .l { font-size:12px; color:var(--gris); text-transform:uppercase; letter-spacing:.03em; }
+.panel { border:1px solid #f3d28a; background:#fffaf0; border-radius:10px; padding:12px; margin-bottom:14px; }
+.panel .item { border-top:1px solid #f0e2c0; padding:10px 0; display:flex; flex-direction:column; gap:6px; }
+.panel .item:first-of-type { border-top:0; }
+#panel-mias .item { border-top:1px solid #e6ebf2; }
+#panel-mias .item:first-of-type { border-top:0; }
+#buscar { font:inherit; font-size:15px; border:1px solid #aab6c6; border-radius:8px; padding:10px; width:100%; min-height:44px; }
+.panel .meta2 { font-size:12px; color:var(--gris); }
+.panel .valor { font-size:14px; white-space:pre-wrap; overflow-wrap:anywhere; background:#fff; border:1px solid var(--borde); border-radius:6px; padding:6px 8px; max-height:120px; overflow:auto; }
+.panel img.valor { max-height:160px; object-fit:contain; }
+.panel .valor.actual { background:#f7f9fc; color:#4a5566; max-height:80px; }
+.filtros { position:sticky; top:0; z-index:5; background:#fff; padding:8px 0; display:flex; gap:6px; flex-wrap:wrap; border-bottom:1px solid var(--borde); margin-bottom:12px; }
+.filtros button { border:1px solid var(--azul); background:#fff; color:var(--azul); border-radius:999px; padding:10px 14px; min-height:44px; font-size:15px; cursor:pointer; }
+.filtros button[aria-pressed="true"] { background:var(--azul); color:#fff; }
+.filtros button small { opacity:.8; font-size:12px; }
+.grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap:14px; }
+.grid > * { min-width:0; }
+.card { border:1px solid #9aa9bd; border-radius:10px; overflow:hidden; background:#fff; display:flex; flex-direction:column; }
+.media { height:min(75vw, 300px); min-height:200px; background:#eef2f7; display:flex; gap:2px; align-items:stretch; justify-content:center; border-bottom:1px solid #9aa9bd; }
+.media.nofoto { align-items:center; color:#6a7383; font-style:italic; }
+.fw { position:relative; flex:1 1 0; min-width:0; display:flex; }
+.fw > .ph, .fw > img.ph { flex:1 1 auto; width:100%; height:100%; }
+.quitar-foto { position:absolute; top:6px; right:6px; width:34px; height:34px; border-radius:50%; border:0; background:rgba(180,30,30,.92); color:#fff; font-size:22px; line-height:1; cursor:pointer; z-index:2; box-shadow:0 1px 4px rgba(0,0,0,.35); }
+.ph { flex:1 1 0; background-size:contain; background-position:center; background-repeat:no-repeat; background-color:#eef2f7; min-width:0; cursor:zoom-in; touch-action:manipulation; }
+#visor { position:fixed; inset:0; z-index:100; background:rgba(0,0,0,.94); display:flex; align-items:center; justify-content:center; padding:12px; cursor:zoom-out; }
+#visor[hidden] { display:none; }
+#visor img { max-width:100%; max-height:100%; width:auto; height:auto; object-fit:contain; touch-action:pinch-zoom; user-select:none; }
+#visor-x { position:fixed; top:10px; right:10px; width:44px; height:44px; border-radius:50%; border:0; background:rgba(255,255,255,.18); color:#fff; font-size:22px; cursor:pointer; }
+img.ph { width:100%; height:100%; object-fit:contain; display:block; }
+.info { padding:10px 12px 12px; display:flex; flex-direction:column; gap:6px; flex:1; }
+.head { display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+.num { font-size:20px; font-weight:700; color:var(--azul); }
+.solo-lectura [data-edit], .solo-lectura [data-dec] { display:none !important; }
+.card.backlog { opacity:.55; border-style:dashed; }
+.card.backlog .media { filter:grayscale(.7); }
+.card.rev-cambio { box-shadow:0 0 0 2px #7c3aed; }
+.int { font-size:12px; font-weight:700; color:#6a7383; background:#eef2f7; border-radius:999px; padding:2px 8px; white-space:nowrap; }
+.head { flex-wrap:wrap; }
+.badges { display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end; }
+.badge { font-size:12px; border-radius:999px; padding:2px 8px; background:#e8f0f8; color:var(--azul); white-space:nowrap; }
+.badge.ok { background:#e5f5ea; color:var(--ok); }
+.badge.warn { background:#fff1dc; color:var(--warn); }
+.meta { display:flex; flex-wrap:wrap; gap:2px 12px; font-size:13px; color:#333; }
+.act { font-size:15px; font-weight:600; line-height:1.3; }
+.hh { display:grid; grid-template-columns:repeat(3,1fr); border-top:1px solid #d6dee9; padding-top:8px; text-align:center; }
+.hh span { display:block; font-size:12px; color:var(--gris); text-transform:uppercase; }
+.hh b { font-size:17px; }
+.hh b s { color:#9aa3af; font-weight:400; font-size:13px; margin-right:4px; }
+.hh .tot b { color:var(--azul); }
+.notas { background:var(--fondo); border-radius:8px; padding:8px 10px; font-size:13px; line-height:1.4; display:flex; flex-direction:column; gap:4px; }
+.notas div b { color:var(--azul); }
+.acciones { display:flex; gap:8px; margin-top:auto; }
+.btn { flex:1; border:0; background:var(--azul); color:#fff; border-radius:8px; padding:12px 10px; min-height:44px; font-size:15px; font-weight:600; cursor:pointer; }
+.btn.sec { background:#fff; color:var(--azul); border:1px solid var(--azul); }
+.btn.ok { background:var(--ok); }
+.btn.no { background:#fff; color:var(--err); border:1px solid var(--err); }
+.btn:disabled { opacity:.5; cursor:default; }
+.vacio { color:var(--gris); padding:24px 0; }
+dialog { border:0; border-radius:12px; padding:0; width:min(560px, calc(100vw - 24px)); max-height:calc(100vh - 24px); box-shadow:0 10px 40px rgba(0,0,0,.3); }
+dialog::backdrop { background:rgba(15,30,50,.5); }
+form.dlg { padding:16px; display:flex; flex-direction:column; gap:10px; }
+form.dlg .ref { font-size:13px; color:var(--gris); margin-top:-6px; }
+label { display:flex; flex-direction:column; gap:4px; font-size:13px; font-weight:600; color:#333; }
+label span.opc { font-weight:400; color:var(--gris); }
+textarea, input[type=number], input[type=text], input[type=password], input[type=file] { font:inherit; font-size:15px; font-weight:400; border:1px solid #aab6c6; border-radius:8px; padding:9px 10px; width:100%; }
+textarea { min-height:64px; resize:vertical; }
+.fila { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px; }
+.err { color:var(--err); font-size:13px; min-height:1em; }
+.botones { display:flex; gap:8px; justify-content:flex-end; }
+.botones .btn { flex:0 0 auto; padding:11px 16px; }
+.login { max-width:360px; margin:40px auto; border:1px solid var(--borde); border-radius:12px; padding:20px; display:flex; flex-direction:column; gap:12px; }
+.login p { margin:0; font-size:13px; color:var(--gris); }
+.p10{background-image:url(fotos/10.jpg)}
+.p11{background-image:url(fotos/11.jpg)}
+.p12{background-image:url(fotos/12.jpg)}
+.p13{background-image:url(fotos/13.jpg)}
+.p14{background-image:url(fotos/14.jpg)}
+.p15{background-image:url(fotos/15.jpg)}
+.p16{background-image:url(fotos/16.jpg)}
+.p17{background-image:url(fotos/17.jpg)}
+.p18{background-image:url(fotos/18.jpg)}
+.p19{background-image:url(fotos/19.jpg)}
+.p20{background-image:url(fotos/20.jpg)}
+.p21{background-image:url(fotos/21.jpg)}
+.p22{background-image:url(fotos/22.jpg)}
+.p23{background-image:url(fotos/23.jpg)}
+.p30{background-image:url(fotos/30.jpg)}
+.p31{background-image:url(fotos/31.jpg)}
+.p32{background-image:url(fotos/32.jpg)}
+.p33{background-image:url(fotos/33.jpg)}
+.p34{background-image:url(fotos/34.jpg)}
+.p35{background-image:url(fotos/35.jpg)}
+.p36{background-image:url(fotos/36.jpg)}
+.p37{background-image:url(fotos/37.jpg)}
+.p41{background-image:url(fotos/41.jpg)}
+.p42{background-image:url(fotos/42.jpg)}
+.p43{background-image:url(fotos/43.jpg)}
+.p44{background-image:url(fotos/44.jpg)}
+.p45{background-image:url(fotos/45.jpg)}
+.p47{background-image:url(fotos/47.jpg)}
+.p48{background-image:url(fotos/48.jpg)}
+.p49{background-image:url(fotos/49.jpg)}
+.p50{background-image:url(fotos/50.jpg)}
+.p51{background-image:url(fotos/51.jpg)}
+.p52{background-image:url(fotos/52.jpg)}
+.p56{background-image:url(fotos/56.jpg)}
+.p57{background-image:url(fotos/57.jpg)}
+.p58{background-image:url(fotos/58.jpg)}
+.p59{background-image:url(fotos/59.jpg)}
+.p60{background-image:url(fotos/60.jpg)}
+.p64{background-image:url(fotos/64.jpg)}
+.p65{background-image:url(fotos/65.jpg)}
+.p66{background-image:url(fotos/66.jpg)}
+.p67{background-image:url(fotos/67.jpg)}
+.p68{background-image:url(fotos/68.jpg)}
+.p72{background-image:url(fotos/72.jpg)}
+.p73{background-image:url(fotos/73.jpg)}
+.p74{background-image:url(fotos/74.jpg)}
+.p75{background-image:url(fotos/75.jpg)}
+.p76{background-image:url(fotos/76.jpg)}
+.p77{background-image:url(fotos/77.jpg)}
+.p78{background-image:url(fotos/78.jpg)}
+.p82{background-image:url(fotos/82.jpg)}
+.p83{background-image:url(fotos/83.jpg)}
+.p84{background-image:url(fotos/84.jpg)}
+.p85{background-image:url(fotos/85.jpg)}
+.p86{background-image:url(fotos/86.jpg)}
+.p87{background-image:url(fotos/87.jpg)}
+.p88{background-image:url(fotos/88.jpg)}
+.p89{background-image:url(fotos/89.jpg)}
+.p90{background-image:url(fotos/90.jpg)}
+.p91{background-image:url(fotos/91.jpg)}
+.p92{background-image:url(fotos/92.jpg)}
+.p93{background-image:url(fotos/93.jpg)}
+.p94{background-image:url(fotos/94.jpg)}
+.p95{background-image:url(fotos/95.jpg)}
+.p99{background-image:url(fotos/99.jpg)}
+.p100{background-image:url(fotos/100.jpg)}
+.p101{background-image:url(fotos/101.jpg)}
+.p102{background-image:url(fotos/102.jpg)}
+.p103{background-image:url(fotos/103.jpg)}
+.p104{background-image:url(fotos/104.jpg)}
+.p105{background-image:url(fotos/105.jpg)}
+.p106{background-image:url(fotos/106.jpg)}
+.p111{background-image:url(fotos/111.jpg)}
+.p112{background-image:url(fotos/112.jpg)}
+.p113{background-image:url(fotos/113.jpg)}
+.chg { color:#6a1b9a; font-weight:700; }
+.lbl { font-size:14px; font-weight:600; color:#1a1a1a; }
+.herr-fila { display:grid; grid-template-columns:minmax(0,1fr) 84px auto; gap:6px; align-items:center; }
+.herr-fila input { font:inherit; font-size:15px; border:1px solid #aab6c6; border-radius:8px; padding:8px; min-height:44px; min-width:0; width:100%; }
+.herr-fila .x { border:1px solid var(--err); background:#fff; color:var(--err); border-radius:8px; min-height:44px; min-width:44px; font-size:18px; cursor:pointer; }
+.chips { display:flex; flex-wrap:wrap; gap:6px; }
+.chip { background:#e8f0f8; color:var(--azul); border-radius:999px; padding:6px 10px; font-size:14px; display:inline-flex; align-items:center; gap:6px; }
+.chip button { border:0; background:none; color:var(--err); font-size:16px; cursor:pointer; padding:0 2px; min-height:28px; }
+.sug { border:1px solid #aab6c6; border-radius:8px; background:#fff; max-height:220px; overflow:auto; }
+.sug button { display:block; width:100%; text-align:left; border:0; border-bottom:1px solid var(--borde); background:#fff; padding:10px; min-height:44px; font-size:14px; cursor:pointer; }
+.sug button:disabled { color:var(--gris); cursor:default; }
+.sug small { color:var(--gris); }
+.btn-idioma { border:1px solid var(--azul); background:#fff; color:var(--azul); border-radius:999px; padding:8px 14px; min-height:40px; font-size:14px; font-weight:600; cursor:pointer; }
+</style>
+</head>
+<body>
+
+<section class="login" id="login" hidden>
+  <div style="text-align:right"><button type="button" class="btn-idioma idioma" aria-label="Idioma / 语言">中文</button></div>
+  <h1 data-i18n="login_h1">Parada de planta · Beijing</h1>
+  <p data-i18n="login_p">Ingresa con tu DNI y tu PIN del sistema SGMC.</p>
+  <form id="login-form" style="display:flex;flex-direction:column;gap:10px">
+    <label><span data-i18n="dni">DNI</span> <input id="l-dni" type="text" inputmode="numeric" autocomplete="username" maxlength="8" data-i18n-ph="ph_8dig" placeholder="8 dígitos"></label>
+    <label><span data-i18n="pin">PIN</span> <input id="l-pin" type="password" autocomplete="current-password" maxlength="8"></label>
+    <div class="err" id="l-err"></div>
+    <button class="btn" type="submit" id="l-btn" data-i18n="entrar">Entrar</button>
+  </form>
+  <button class="btn sec" type="button" id="l-invitado" data-i18n="entrar_inv" style="margin-top:10px">Entrar como invitado (solo ver) · 以访客身份进入（仅查看）</button>
+</section>
+
+<div id="app" hidden>
+  <h1 data-i18n="app_h1">Parada de planta · Planta Magnética Beijing</h1>
+  <div class="sub"><span data-i18n="sub">Programación preliminar Octubre 2026 (REV. 21) · Los cambios los revisa el residente antes de publicarse</span> · <span class="chg" data-i18n="morado">Morado</span> = <span data-i18n="sub_leyenda">horas o personal corregidos y aprobados</span></div>
+  <div class="ver" id="ver"></div>
+  <div class="barra">
+    <span id="usuario"></span>
+    <span><button class="btn-idioma idioma" type="button" aria-label="Idioma / 语言">中文</button> <button id="btn-refrescar" type="button" data-i18n="refrescar">Actualizar</button> <button id="btn-salir" type="button" data-i18n="salir">Salir</button></span>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="v" id="k-act">–</div><div class="l" data-i18n="k_act">Actividades</div></div>
+    <div class="kpi"><div class="v" id="k-hor">–</div><div class="l" data-i18n="k_hor">Horas</div></div>
+    <div class="kpi"><div class="v" id="k-hh">–</div><div class="l" data-i18n="k_hh">HH totales</div></div>
+    <div class="kpi"><div class="v" id="k-hh1">–</div><div class="l" data-i18n="k_hh1">HH Línea 1</div></div>
+    <div class="kpi"><div class="v" id="k-hh2">–</div><div class="l" data-i18n="k_hh2">HH Línea 2</div></div>
+    <div class="kpi"><div class="v" id="k-hha">–</div><div class="l" data-i18n="k_hha">HH Ambas líneas (1-2)</div></div>
+    <div class="kpi"><div class="v" id="k-cor">0</div><div class="l" data-i18n="k_cor">Con cambios aprobados</div></div>
+    <div class="kpi"><div class="v" id="k-pen">0</div><div class="l" data-i18n="k_pen">Propuestas pendientes</div></div>
+  </div>
+
+  <section class="panel" id="panel-res" hidden>
+    <h2 data-i18n="panel_res">Propuestas pendientes de aprobación</h2>
+    <div id="lista-pend"></div>
+  </section>
+
+  <section class="panel" id="panel-mias" style="border-color:var(--borde);background:#fff" hidden>
+    <h2 data-i18n="panel_mias">Mis propuestas</h2>
+    <div id="lista-mias"></div>
+  </section>
+
+  <input id="buscar" type="search" data-i18n-ph="ph_buscar" placeholder="Buscar por N°, OT, equipo o texto" data-i18n-aria="aria_buscar" aria-label="Buscar actividades" style="margin-bottom:10px">
+
+  <nav class="filtros" id="filtros" aria-label="Filtrar por línea">
+    <button data-f="todas" aria-pressed="true"><span data-i18n="f_todas">Todas</span> <small id="c-todas"></small></button>
+    <button data-f="l1" aria-pressed="false"><span data-i18n="f_l1">Línea 1</span> <small id="c-l1"></small></button>
+    <button data-f="l2" aria-pressed="false"><span data-i18n="f_l2">Línea 2</span> <small id="c-l2"></small></button>
+    <button data-f="ambas" aria-pressed="false"><span data-i18n="f_ambas">Ambas líneas (1-2)</span> <small id="c-ambas"></small></button>
+    <button data-f="pend" aria-pressed="false"><span data-i18n="f_pend">Con pendientes</span> <small id="c-pend"></small></button>
+    <button data-f="ocultas" aria-pressed="false" id="f-ocultas" hidden>Ocultas <small id="c-ocultas"></small></button>
+  </nav>
+
+  <div class="barra"><button type="button" class="btn sec" id="btn-exp" style="flex:0 0 auto" data-i18n="exp">Exportar herramientas y equipos (Excel)</button></div>
+  <main class="grid" id="grid"></main>
+</div>
+
+<dialog id="dlg">
+  <form id="form" class="dlg" method="dialog" novalidate>
+    <h2 id="f-titulo">Proponer cambio</h2>
+    <div class="ref" id="f-ref"></div>
+    <label><span data-i18n="obs">Observaciones</span> <span class="opc" data-i18n="opcional">(opcional)</span>
+      <textarea id="f-obs" maxlength="1000"></textarea></label>
+    <label><span data-i18n="prev">Previos necesarios</span> <span class="opc" data-i18n="prev_ayuda">(permisos, bloqueos, materiales, etc.)</span>
+      <textarea id="f-prev" maxlength="1000"></textarea></label>
+    <div class="lbl"><span data-i18n="herr">Herramientas y equipos</span> <span class="opc" data-i18n="herr_ayuda">(indica la cantidad de cada uno)</span></div>
+    <div id="f-herr-lista"></div>
+    <button type="button" class="btn sec" id="f-herr-add" data-i18n="herr_add">+ Agregar herramienta o equipo</button>
+    <div class="fila">
+      <label><span data-i18n="horas_p">Horas por persona</span>
+        <input id="f-horas" type="number" step="0.5" min="0" max="999"></label>
+      <label><span data-i18n="pers_c">Cantidad de personal</span>
+        <input id="f-pers" type="number" step="1" min="0" max="99"></label>
+    </div>
+    <div class="lbl"><span data-i18n="asig">Asignar personal</span> <span class="opc" data-i18n="asig_ayuda">(escribe 2 letras o más del nombre o el DNI y elige de la lista)</span></div>
+    <input id="f-buscarp" type="search" autocomplete="off" data-i18n-ph="pers_ph" placeholder="ej. ROD o 41143369" data-i18n-aria="buscar_pers_aria" aria-label="Buscar personal">
+    <div class="sug" id="f-sug" hidden></div>
+    <div class="chips" id="f-chips"></div>
+    <div class="opc" id="f-ya"></div>
+    <label><span data-i18n="foto_add">Agregar foto</span> <span class="opc" data-i18n="opcional">(opcional)</span>
+      <input id="f-foto" type="file" accept="image/*" capture="environment"></label>
+    <div class="err" id="f-err"></div>
+    <div class="botones">
+      <button type="button" class="btn sec" id="f-cancel" data-i18n="cancelar">Cancelar</button>
+      <button type="button" class="btn" id="f-save" data-i18n="enviar">Enviar propuesta</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+const SB_URL = 'https://kfkvjflkesxivpgnsjff.supabase.co';
+const SB_KEY = 'sb_publishable_gz2D9kx2sg701EfJzQOuZg_EDTMZfY0';
+const sb = supabase.createClient(SB_URL, SB_KEY, { db: { schema: 'pdp' } });
+
+let ROWS = [];                   // actividades (se cargan desde la base tras iniciar sesión)
+let BASE = {};                   // id -> actividad
+let act = {};                    // id -> valores aprobados en la base
+let numInt = {};                 // id -> número interno (solo cuentan las no ocultas)
+let fotosExtra = {};             // id -> [dataURL] fotos aprobadas
+let pendientes = [];             // propuestas en estado pendiente
+let personal = {};               // dni -> {nombre, area}
+let misPropuestas = [];          // propuestas que yo envié
+let asignados = {};              // actividad_id -> [dni]
+let perfil = null;
+let filtro = 'todas';
+let termino = '';
+let enviando = false;
+
+const $ = s => document.querySelector(s);
+const VERSION = document.querySelector('meta[name="app-version"]').content;
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = n => Number(n).toLocaleString('es-PE', {minimumFractionDigits:1, maximumFractionDigits:1});
+const dash = s => (s === '' || s === '-' || s == null) ? '—' : esc(s);
+const fechaCorta = s => (s || '').replace('T', ' ').slice(0, 16);
+const I18N = {
+ "es": {
+  "title": "Parada de planta Beijing · Actividades",
+  "login_h1": "Parada de planta · Beijing",
+  "login_p": "Ingresa con tu DNI y tu PIN del sistema SGMC.",
+  "dni": "DNI",
+  "pin": "PIN",
+  "ph_8dig": "8 dígitos",
+  "entrar": "Entrar",
+  "entrando": "Entrando…",
+  "err_dni": "El DNI tiene 8 dígitos.",
+  "err_login": "DNI o PIN incorrecto.",
+  "err_schema": "La base de la PDP aún no está habilitada. Avisa al administrador (esquema \"pdp\" no expuesto en la API).",
+  "err_carga": "No se pudo cargar: ",
+  "cargando": "Cargando actividades…",
+  "app_h1": "Parada de planta · Planta Magnética Beijing",
+  "sub": "Programación preliminar Octubre 2026 (REV. 21) · Los cambios los revisa el residente antes de publicarse",
+  "morado": "Morado",
+  "sub_leyenda": "horas o personal corregidos y aprobados",
+  "refrescar": "Actualizar",
+  "salir": "Salir",
+  "k_act": "Actividades",
+  "k_hor": "Horas",
+  "k_hh": "HH totales",
+  "k_cor": "Con cambios aprobados",
+  "k_pen": "Propuestas pendientes",
+  "panel_res": "Propuestas pendientes de aprobación",
+  "panel_mias": "Mis propuestas",
+  "ph_buscar": "Buscar por N°, OT, equipo o texto",
+  "aria_buscar": "Buscar actividades",
+  "f_todas": "Todas",
+  "f_l1": "Línea 1",
+  "f_l2": "Línea 2",
+  "f_ambas": "Ambas líneas (1-2)",
+  "f_pend": "Con pendientes",
+  "exp": "Exportar herramientas y equipos (Excel)",
+  "no_act": "No hay actividades para este filtro.",
+  "ambas": "Ambas líneas",
+  "corregidos": "Horas/personal corregidos",
+  "pend_badge": "{n} pendiente(s)",
+  "sin_foto": "Sin foto",
+  "foto_alt": "Foto aprobada",
+  "num_int": "Int.",
+  "rev_badge": "REV 23.4",
+  "rev_noesta": "No está en REV 23.4",
+  "bl_badge": "Backlog",
+  "bl_pasar": "Pasar a backlog",
+  "bl_restituir": "Restituir",
+  "bl_prompt": "Motivo para pasar a backlog (opcional):",
+  "entrar_inv": "Entrar como invitado (solo ver) · 以访客身份进入（仅查看）",
+  "solo_ver": "Invitado · solo ver",
+  "linea_fmt": "Línea {l}",
+  "lineas_fmt": "Líneas 1-2",
+  "seis": "6 dígitos:",
+  "horas": "Horas",
+  "personal": "Personal",
+  "prev_l": "Previos necesarios:",
+  "herr_l": "Herramientas y equipos:",
+  "obs_l": "Observaciones:",
+  "asig_l": "Personal asignado:",
+  "proponer": "Proponer cambio",
+  "motivo": "Motivo:",
+  "decidida": "decidida ",
+  "est_pendiente": "Pendiente",
+  "est_aprobada": "Aprobada",
+  "est_rechazada": "Rechazada",
+  "tipo_observaciones": "Observaciones",
+  "tipo_previos": "Previos necesarios",
+  "tipo_herramientas": "Herramientas y equipos",
+  "tipo_horas": "Horas por persona",
+  "tipo_personal": "Cantidad de personal",
+  "tipo_foto": "Foto",
+  "tipo_asignacion": "Asignación de personal",
+  "actual_l": "Actual:",
+  "asignar_a": "Asignar a: ",
+  "vacio": "(vacío)",
+  "propone": "propone ",
+  "sin_nombre": "sin nombre",
+  "aprobar": "Aprobar",
+  "rechazar": "Rechazar",
+  "no_pend": "No hay propuestas pendientes.",
+  "prompt_rech": "Motivo del rechazo (opcional):",
+  "confirm_rech": "¿Rechazar esta propuesta?",
+  "no_reg": "No se pudo registrar: ",
+  "sin_rol": "sin rol en SGMC",
+  "obs": "Observaciones",
+  "opcional": "(opcional)",
+  "prev": "Previos necesarios",
+  "prev_ayuda": "(permisos, bloqueos, materiales, etc.)",
+  "herr": "Herramientas y equipos",
+  "herr_ayuda": "(indica la cantidad de cada uno)",
+  "herr_add": "+ Agregar herramienta o equipo",
+  "herr_ph": "Herramienta o equipo",
+  "herr_aria": "Herramienta o equipo",
+  "cant_aria": "Cantidad",
+  "quitar_fila": "Quitar fila",
+  "horas_p": "Horas por persona",
+  "pers_c": "Cantidad de personal",
+  "asig": "Asignar personal",
+  "asig_ayuda": "(escribe 2 letras o más del nombre o el DNI y elige de la lista)",
+  "pers_ph": "ej. ROD o 41143369",
+  "buscar_pers_aria": "Buscar personal",
+  "sin_coinc": "Sin coincidencias",
+  "quitar": "Quitar",
+  "ya_asig": "Ya asignados: ",
+  "foto_add": "Agregar foto",
+  "cancelar": "Cancelar",
+  "enviar": "Enviar propuesta",
+  "enviando": "Enviando…",
+  "err_hp": "Revisa horas y personal.",
+  "err_neg": "Horas y personal no pueden ser negativos.",
+  "err_cant": "La cantidad de \"{n}\" debe ser un número entero mayor a 0.",
+  "err_sin_cambios": "No hay cambios para enviar.",
+  "err_enviar": "No se pudo enviar. Intenta de nuevo.",
+  "err_foto": "La foto es demasiado pesada. Prueba con otra.",
+  "exp_sin": "No hay herramientas o equipos registrados.",
+  "csv_1": "N° actividad",
+  "csv_2": "Línea",
+  "csv_3": "Actividad",
+  "csv_4": "Herramienta / equipo",
+  "csv_5": "Cantidad",
+  "idioma_btn": "中文",
+  "k_hh1": "HH Línea 1",
+  "k_hh2": "HH Línea 2",
+  "k_hha": "HH Ambas líneas (1-2)",
+  "ver_actual": "Versión {v}",
+  "ver_buscando": "Buscando versión nueva…",
+  "ver_nueva": "Hay una versión nueva ({v}). Recargando…",
+  "ver_al_dia": "Tienes la última versión: {v}",
+  "ver_error": "No se pudo comprobar la versión. Revisa tu conexión."
+ },
+ "zh": {
+  "title": "停机检修 北京 · 活动",
+  "login_h1": "停机检修 · 北京",
+  "login_p": "请输入您的身份证号(DNI)和 SGMC 系统 PIN 码。",
+  "dni": "身份证号 DNI",
+  "pin": "PIN 码",
+  "ph_8dig": "8 位数字",
+  "entrar": "进入",
+  "entrando": "正在进入…",
+  "err_dni": "身份证号必须为 8 位数字。",
+  "err_login": "身份证号或 PIN 码不正确。",
+  "err_schema": "数据库尚未启用。请通知管理员（API 中未开放 \"pdp\" 架构）。",
+  "err_carga": "加载失败：",
+  "cargando": "正在加载活动…",
+  "app_h1": "停机检修 · 北京磁性选矿厂",
+  "sub": "2026 年 10 月初步排程（REV. 21）· 变更由驻场负责人审核后发布",
+  "morado": "紫色",
+  "sub_leyenda": "已批准修正的工时或人员",
+  "refrescar": "刷新",
+  "salir": "退出",
+  "k_act": "活动数",
+  "k_hor": "工时",
+  "k_hh": "总 HH",
+  "k_cor": "已批准变更",
+  "k_pen": "待处理提案",
+  "panel_res": "待审批提案",
+  "panel_mias": "我的提案",
+  "ph_buscar": "按编号、OT、设备或文字搜索",
+  "aria_buscar": "搜索活动",
+  "f_todas": "全部",
+  "f_l1": "1 号线",
+  "f_l2": "2 号线",
+  "f_ambas": "两条线 (1-2)",
+  "f_pend": "有待处理",
+  "exp": "导出工具与设备 (Excel)",
+  "no_act": "此筛选条件下没有活动。",
+  "ambas": "两条线",
+  "corregidos": "工时/人员已修正",
+  "pend_badge": "{n} 项待处理",
+  "sin_foto": "无照片",
+  "foto_alt": "已批准照片",
+  "num_int": "内部",
+  "rev_badge": "REV 23.4",
+  "rev_noesta": "不在 REV 23.4 中",
+  "bl_badge": "待办(backlog)",
+  "bl_pasar": "移入待办(backlog)",
+  "bl_restituir": "恢复",
+  "bl_prompt": "移入待办的原因（可选）：",
+  "entrar_inv": "以访客身份进入（仅查看）· Entrar como invitado (solo ver)",
+  "solo_ver": "访客 · 仅查看",
+  "linea_fmt": "{l} 号线",
+  "lineas_fmt": "1-2 号线",
+  "seis": "6 位码:",
+  "horas": "工时",
+  "personal": "人员",
+  "prev_l": "前置条件:",
+  "herr_l": "工具与设备:",
+  "obs_l": "备注:",
+  "asig_l": "已分配人员:",
+  "proponer": "提出变更",
+  "motivo": "原因:",
+  "decidida": "决定于 ",
+  "est_pendiente": "待处理",
+  "est_aprobada": "已批准",
+  "est_rechazada": "已拒绝",
+  "tipo_observaciones": "备注",
+  "tipo_previos": "前置条件",
+  "tipo_herramientas": "工具与设备",
+  "tipo_horas": "每人工时",
+  "tipo_personal": "人员数量",
+  "tipo_foto": "照片",
+  "tipo_asignacion": "人员分配",
+  "actual_l": "当前:",
+  "asignar_a": "分配给: ",
+  "vacio": "（空）",
+  "propone": "提出人 ",
+  "sin_nombre": "未填写姓名",
+  "aprobar": "批准",
+  "rechazar": "拒绝",
+  "no_pend": "没有待处理提案。",
+  "prompt_rech": "拒绝原因（可选）：",
+  "confirm_rech": "确定拒绝此提案？",
+  "no_reg": "无法保存：",
+  "sin_rol": "未设置 SGMC 角色",
+  "obs": "备注",
+  "opcional": "（可选）",
+  "prev": "前置条件",
+  "prev_ayuda": "（许可、锁定、材料等）",
+  "herr": "工具与设备",
+  "herr_ayuda": "（请填写每项数量）",
+  "herr_add": "+ 添加工具或设备",
+  "herr_ph": "工具或设备",
+  "herr_aria": "工具或设备",
+  "cant_aria": "数量",
+  "quitar_fila": "删除此行",
+  "horas_p": "每人工时",
+  "pers_c": "人员数量",
+  "asig": "分配人员",
+  "asig_ayuda": "（输入姓名或身份证号至少 2 个字符，然后从列表中选择）",
+  "pers_ph": "例如 ROD 或 41143369",
+  "buscar_pers_aria": "搜索人员",
+  "sin_coinc": "无匹配结果",
+  "quitar": "删除",
+  "ya_asig": "已分配：",
+  "foto_add": "添加照片",
+  "cancelar": "取消",
+  "enviar": "发送提案",
+  "enviando": "发送中…",
+  "err_hp": "请检查工时和人员数量。",
+  "err_neg": "工时和人员数量不能为负数。",
+  "err_cant": "“{n}” 的数量必须是大于 0 的整数。",
+  "err_sin_cambios": "没有可发送的变更。",
+  "err_enviar": "无法发送，请重试。",
+  "err_foto": "照片太大，请换一张。",
+  "exp_sin": "没有已登记的工具或设备。",
+  "csv_1": "活动编号",
+  "csv_2": "线路",
+  "csv_3": "活动",
+  "csv_4": "工具 / 设备",
+  "csv_5": "数量",
+  "idioma_btn": "Español",
+  "k_hh1": "1 号线 总 HH",
+  "k_hh2": "2 号线 总 HH",
+  "k_hha": "两条线 (1-2) 总 HH",
+  "ver_actual": "版本 {v}",
+  "ver_buscando": "正在检查新版本…",
+  "ver_nueva": "有新版本（{v}）。正在重新加载…",
+  "ver_al_dia": "您已是最新版本：{v}",
+  "ver_error": "无法检查版本，请检查网络连接。"
+ }
+};
+let lang = 'es';
+try { lang = localStorage.getItem('pdp_idioma') === 'zh' ? 'zh' : 'es'; } catch (e) {}
+function T(k, par) {
+  let t = (I18N[lang] && I18N[lang][k]) ?? I18N.es[k] ?? k;
+  if (par) for (const x in par) t = t.split('{' + x + '}').join(par[x]);
+  return t;
+}
+function abrirTitulo() {
+  const r = BASE[actual]; if (!r) return;
+  $('#f-titulo').textContent = `${T('proponer')} · N° ${r.activ || '—'} · ${T('linea_fmt', { l: r.linea })}`;
+}
+// Traducción de nombres de actividad (glosario técnico; números y códigos se conservan)
+const GLOS_ACT = [
+  [/DESMONTAJE Y MONTAJE/gi, '拆装'], [/APERTURA Y CIERRE/gi, '开闭'],
+  [/DESMONTAJE/gi, '拆卸'], [/MONTAJE/gi, '安装'], [/APERTURA/gi, '打开'], [/CIERRE/gi, '关闭'],
+  [/ALINEAMIENTO/gi, '对中'], [/VERIFICACI[OÓ]N/gi, '检查'], [/INSPECCI[OÓ]N/gi, '检查'],
+  [/REPARACI[OÓ]N/gi, '维修'], [/REFORZAMIENTO|REFUERZO/gi, '加固'], [/CAMBIO/gi, '更换'],
+  [/ENGRASE/gi, '加注润滑脂'], [/GIRO DE CARRETE/gi, '旋转卷筒'],
+  [/TRASLADO DE EQUIPOS, HERRAMIENTAS Y MANIOBRAS CON EL PUENTE GRUA/gi, '设备工具转运与桥式起重机吊装'],
+  [/ACOPLE/gi, '联轴器'], [/\bEJE DE AGITACI[OÓ]N\b/gi, '搅拌轴'], [/\bEJE\b/gi, '轴'],
+  [/ESTATOR/gi, '定子'], [/CELDA \.F/gi, '浮选槽'], [/CELDAS? DE FLOTACI[OÓ]N|CELDAS? FLOTACI[OÓ]N|\bCF\b/gi, '浮选槽'],
+  [/BANCO/gi, '浮选组'], [/ASIENTO/gi, '座'], [/ACONDICIONADOR/gi, '调浆槽'],
+  [/REDUCTOR/gi, '减速机'], [/ACEITE/gi, '油'], [/MOTOR/gi, '电机'], [/SOPLADOR/gi, '鼓风机'],
+  [/POLEAS/gi, '皮带轮'], [/CORREAS DE TRANSMISI[OÓ]N/gi, '传动皮带'], [/CORREAS/gi, '皮带'],
+  [/TENSI[OÓ]N/gi, '张紧'], [/ALIMENTACI[OÓ]N/gi, '给料'], [/DESCARGA/gi, '排料'],
+  [/MOLINO/gi, '磨机'], [/CAJ[OÓ]N DE COLAS/gi, '尾矿箱'], [/CAJ[OÓ]N DISTRIBUIDOR/gi, '分配箱'],
+  [/CAJ[OÓ]N/gi, '箱'], [/COLAS/gi, '尾矿'], [/TUBER[IÍ]AS?/gi, '管道'],
+  [/VALVULA MARIPOSA NEUMATICA/gi, '气动蝶阀'], [/VALVULA MARIPOSA/gi, '蝶阀'],
+  [/VALVULA CUCHILLA|VALVULA CUHILLA/gi, '闸阀'], [/VALVULA MOTORIZADA/gi, '电动阀'], [/VALVULA/gi, '阀门'],
+  [/TAPA MANHOLE|TAPA MAHOLE/gi, '人孔盖'], [/MANHOLE|MAHOLE/gi, '人孔'],
+  [/CAMPANA/gi, '罩'], [/CALAFATEO/gi, '密封'], [/\bNIDO\b/gi, '旋流器组'], [/CICLONES/gi, '旋流器'],
+  [/SECUNDARIOS/gi, '二次'], [/OVERFLOW/gi, '溢流'], [/REDUCCI[OÓ]N/gi, '变径'], [/\bCODO\b/gi, '弯头'],
+  [/MANGUERA/gi, '软管'], [/NIPLE/gi, '接头'], [/TEMPLADORES/gi, '张紧器'], [/SOPORTES/gi, '支架'],
+  [/DISCO DE IMPACTO/gi, '冲击盘'], [/TANQUE/gi, '槽体'], [/TINA DE HIDROCILONES/gi, '水力旋流器槽'],
+  [/HIDROCILONES/gi, '水力旋流器'], [/CANALETAS?/gi, '溜槽'], [/SEP\. ?MAG\./gi, '磁选'],
+  [/SUMIDERO/gi, '集水坑'], [/BOMBA/gi, '泵'], [/CONCENTRADO/gi, '精矿'], [/CELDAS NUEVAS/gi, '新浮选槽'],
+  [/TRONCAL DE ESPUMA/gi, '泡沫主槽'], [/ESPUMA/gi, '泡沫'], [/IMPULSOR/gi, '叶轮'], [/PALAS/gi, '叶片'],
+  [/AGITACI[OÓ]N/gi, '搅拌'], [/DISTRIBUIDOR DE AIRE/gi, '供气分配器'], [/\bAIRE\b/gi, '空气'],
+  [/BASE/gi, '底座'], [/COMPONTE|COMPONENTE/gi, '组件'], [/BYPPASS|BYPASS/gi, '旁路'],
+  [/AL AC\b/gi, '至调浆槽'], [/LLEGADA/gi, '至'], [/\bL([12])\b/gi, '线$1'], [/\bNV\b|NIVEL/gi, '层'], [/LINEA ?(\d)/gi, '线$1'],
+  [/\bDEL\b|\bDE LA\b|\bDE LAS\b|\bDE LOS\b|\bDE\b|\bLOS\b|\bLAS\b|\bLA\b|\bEL\b|\bAL\b|\bY\b|\bA\b/gi, ' '],
+];
+function actT(s) {
+  if (!s) return s || '';
+  if (lang !== 'zh') return s;
+  let t = String(s);
+  for (const [re, zh] of GLOS_ACT) t = t.replace(re, zh);
+  return t.replace(/\s{2,}/g, ' ').replace(/\s+,/g, ',').trim();
+}
+function aplicarIdioma() {
+  document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'es';
+  document.title = T('title');
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = T(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = T(el.dataset.i18nPh); });
+  document.querySelectorAll('[data-i18n-aria]').forEach(el => { el.setAttribute('aria-label', T(el.dataset.i18nAria)); });
+  document.querySelectorAll('.idioma').forEach(b => { b.textContent = T('idioma_btn'); });
+  $('#ver').textContent = T('ver_actual', { v: VERSION });
+  $('#f-titulo') && (dlg.open && actual ? abrirTitulo() : null);
+  if (perfil) { render(); renderMias(); renderPanel(); if (dlg.open) { pintarHerr(); sugerir(); pintarChips(); } }
+}
+function cambiarIdioma() {
+  lang = lang === 'zh' ? 'es' : 'zh';
+  try { localStorage.setItem('pdp_idioma', lang); } catch (e) {}
+  aplicarIdioma();
+}
+document.querySelectorAll('.idioma').forEach(b => b.addEventListener('click', cambiarIdioma));
+
+// Valores vigentes: los aprobados en la base, o los originales si no hay cambios
+function vista(id) {
+  const b = BASE[id];
+  const horas = Number(b.horas), pers = Number(b.pers);
+  return { horas, pers, hh: horas * pers, horasOrig: Number(b.horas_original), persOrig: Number(b.pers_original),
+           obs: b.obs || '', prev: b.prev || '', herr: b.herr || '',
+           corregida: horas !== Number(b.horas_original) || pers !== Number(b.pers_original) };
+}
+function pasaFiltro(r) {
+  if (filtro === 'ocultas') return !!r.oculta;
+  if (r.oculta) return false;
+  if (filtro === 'l1' && r.linea !== '1') return false;
+  if (filtro === 'l2' && r.linea !== '2') return false;
+  if (filtro === 'ambas' && r.linea !== '1-2') return false;
+  if (filtro === 'pend' && !pendientes.some(p => p.actividad_id === r.id)) return false;
+  if (!termino) return true;
+  const txt = [r.activ, r.ot, r.seis, r.actividad, BASE[r.id] && BASE[r.id].prog].join(' ').toLowerCase();
+  return termino.split(/\s+/).every(t => txt.includes(t));
+}
+
+// ---------- Sesión ----------
+$('#login-form').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const dni = $('#l-dni').value.trim(), pin = $('#l-pin').value;
+  $('#l-err').textContent = '';
+  if (!/^\d{8}$/.test(dni)) { $('#l-err').textContent = T('err_dni'); return; }
+  $('#l-btn').disabled = true; $('#l-btn').textContent = T('entrando');
+  const { error } = await sb.auth.signInWithPassword({ email: dni + '@sgmc.local', password: pin });
+  $('#l-btn').disabled = false; $('#l-btn').textContent = T('entrar');
+  if (error) { $('#l-err').textContent = T('err_login'); return; }
+  $('#l-pin').value = '';
+  await cargarTodo();
+});
+// Invitado: sesión anónima de Supabase, sin rol, solo lectura
+$('#l-invitado').addEventListener('click', async () => {
+  $('#l-err').textContent = '';
+  const { error } = await sb.auth.signInAnonymously();
+  if (error) { $('#l-err').textContent = T('err_login'); return; }
+  await cargarTodo();
+});
+$('#btn-salir').addEventListener('click', async () => { await sb.auth.signOut(); location.reload(); });
+async function comprobarVersion() {
+  const msg = $('#ver');
+  msg.textContent = T('ver_buscando');
+  try {
+    const r = await fetch(location.pathname + '?v=' + Date.now(), { cache: 'no-store' });
+    const m = (await r.text()).match(/<meta name="app-version" content="([^"]*)"/);
+    const nueva = m ? m[1] : null;
+    if (nueva && nueva !== VERSION) {
+      msg.textContent = T('ver_nueva', { v: nueva });
+      location.href = location.pathname + '?v=' + Date.now();
+      return;
+    }
+    msg.textContent = T('ver_al_dia', { v: VERSION });
+    await cargarTodo();
+  } catch (e) {
+    msg.textContent = T('ver_error');
+    await cargarTodo();
+  }
+}
+$('#btn-refrescar').addEventListener('click', comprobarVersion);
+
+let canal = null;
+let refrescando = null;
+function refrescarPronto() { clearTimeout(refrescando); refrescando = setTimeout(cargarTodo, 400); }
+
+async function cargarTodo() {
+  const { data: sesion } = await sb.auth.getSession();
+  if (!sesion.session) { $('#app').hidden = true; $('#login').hidden = false; return; }
+  if (!ROWS.length) $('#grid').innerHTML = '<p class="vacio">' + T('cargando') + '</p>';
+  const uid = sesion.session.user.id;
+  const [perf, acts, fx, pend, pers, asig] = await Promise.all([
+    sb.rpc('mi_perfil'),
+    sb.from('actividades').select('*').order('n'),
+    sb.from('fotos_extra').select('id,actividad_id,data').order('id'),
+    sb.from('propuestas').select('id,actividad_id,tipo,cambio,autor_user_id,autor_nombre,estado,creado_at,decidido_por,decidido_at,comentario_decision').eq('estado', 'pendiente').order('creado_at'),
+    sb.from('personal').select('dni,nombre,area').eq('activo', true),
+    sb.from('asignaciones').select('actividad_id,dni')
+  ]);
+  const mias = await sb.from('propuestas').select('id,actividad_id,tipo,estado,creado_at,decidido_at,comentario_decision').eq('autor_user_id', uid).order('creado_at', { ascending: false }).limit(20);
+  const fallo = perf.error || acts.error || fx.error || pend.error || pers.error || asig.error || mias.error;
+  if (fallo) {
+    const esquema = fallo.code === 'PGRST106' || /schema/i.test(fallo.message || '');
+    $('#l-err').textContent = esquema
+      ? T('err_schema')
+      : T('err_carga') + (fallo.message || 'error');
+    $('#app').hidden = true; $('#login').hidden = false; return;
+  }
+  perfil = perf.data;
+  document.body.classList.toggle('solo-lectura', !(perfil && perfil.rol));
+  ROWS = acts.data.map(a => ({ id: a.id, n: a.n, page: a.pagina, linea: a.linea, ot: a.ot, seis: a.seis, activ: a.activ, actividad: a.actividad, fotos: a.fotos || [], backlog: !!a.backlog, motivo: a.backlog_motivo || '', rev: a.rev_cambio || '', oculta: !!a.oculta, ocultaMotivo: a.oculta_motivo || '' }));
+  BASE = {}; acts.data.forEach(a => BASE[a.id] = a);
+  act = BASE;
+  fotosExtra = {}; fx.data.forEach(f => (fotosExtra[f.actividad_id] = fotosExtra[f.actividad_id] || []).push({ id: f.id, data: f.data }));
+  pendientes = pend.data || [];
+  misPropuestas = mias.data || [];
+  personal = {}; pers.data.forEach(p => personal[p.dni] = p);
+  asignados = {}; asig.data.forEach(x => (asignados[x.actividad_id] = asignados[x.actividad_id] || []).push(x.dni));
+  $('#login').hidden = true; $('#app').hidden = false;
+  $('#usuario').textContent = perfil.rol ? `${perfil.nombre || perfil.dni} · ${perfil.rol}` : T('solo_ver');
+  $('#panel-res').hidden = perfil.rol !== 'Residente';
+  $('#f-ocultas').hidden = perfil.rol !== 'Residente';
+  render(); renderPanel(); renderMias();
+  if (!canal) {
+    canal = sb.channel('pdp-cambios')
+      .on('postgres_changes', { event: '*', schema: 'pdp' }, refrescarPronto)
+      .subscribe();
+  }
+}
+
+function renderMias() {
+  $('#panel-mias').hidden = !misPropuestas.length;
+  $('#lista-mias').innerHTML = misPropuestas.map(p => {
+    const a = BASE[p.actividad_id];
+    const cls = p.estado === 'aprobada' ? 'ok' : p.estado === 'rechazada' ? 'warn' : '';
+    return `<div class="item">
+      <div><b>N° ${dash(a && a.activ)}</b> · ${esc(T('tipo_' + p.tipo))} <span class="badge ${cls}">${T('est_' + p.estado)}</span></div>
+      <div class="meta2">${fechaCorta(p.creado_at)}${p.decidido_at ? ' · ' + T('decidida') + fechaCorta(p.decidido_at) : ''}</div>
+      ${p.comentario_decision ? `<div class="meta2">${T('motivo')} ${esc(p.comentario_decision)}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ---------- Render ----------
+function render() {
+  numInt = {}; let kInt = 0;
+  for (const r of ROWS) if (!r.oculta) numInt[r.id] = ++kInt;
+  let hor = 0, hh = 0, cor = 0, hh1 = 0, hh2 = 0, hha = 0;
+  const cnt = {todas:0, l1:0, l2:0, ambas:0};
+  for (const r of ROWS) {
+    if (r.oculta) continue;
+    const v = vista(r.id);
+    if (!r.backlog) {
+      hor += v.horas; hh += v.hh; if (v.corregida) cor++;
+      if (r.linea === '1') hh1 += v.hh; else if (r.linea === '2') hh2 += v.hh; else if (r.linea === '1-2') hha += v.hh;
+    }
+    cnt.todas++; if (r.linea === '1') cnt.l1++; if (r.linea === '2') cnt.l2++; if (r.linea === '1-2') cnt.ambas++;
+  }
+  $('#k-act').textContent = ROWS.filter(r => !r.backlog && !r.oculta).length;
+  $('#k-hor').textContent = fmt(hor);
+  $('#k-hh').textContent = fmt(hh);
+  $('#k-hh1').textContent = fmt(hh1);
+  $('#k-hh2').textContent = fmt(hh2);
+  $('#k-hha').textContent = fmt(hha);
+  $('#k-cor').textContent = cor;
+  $('#k-pen').textContent = pendientes.length;
+  $('#c-todas').textContent = `(${cnt.todas})`;
+  $('#c-l1').textContent = `(${cnt.l1})`;
+  $('#c-l2').textContent = `(${cnt.l2})`;
+  $('#c-ambas').textContent = `(${cnt.ambas})`;
+  $('#c-ocultas').textContent = `(${ROWS.filter(r => r.oculta).length})`;
+  $('#c-pend').textContent = `(${new Set(pendientes.map(p => p.actividad_id)).size})`;
+  document.querySelectorAll('#filtros button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.f === filtro)));
+  const lista = ROWS.filter(pasaFiltro);
+  $('#grid').innerHTML = lista.length ? lista.map(tarjeta).join('') : '<p class="vacio">' + T('no_act') + '</p>';
+}
+
+function tarjeta(r) {
+  const a = act[r.id] || {};
+  const v = vista(r.id);
+  const b = BASE[r.id];
+  const extra = fotosExtra[r.id] || [];
+  // Solo el Residente ve el botón para quitar una foto
+  const esRes = perfil && perfil.rol === 'Residente';
+  const quitar = (tipo, clave) => esRes ? `<button class="quitar-foto" data-quitar="${tipo}" data-clave="${clave}" data-act="${r.id}" title="Quitar foto" aria-label="Quitar foto">×</button>` : '';
+  let media = (r.fotos || []).map(x => `<div class="fw"><div class="ph p${x}"></div>${quitar('base', x)}</div>`).join('')
+            + extra.map(f => `<div class="fw"><img class="ph" src="${f.data}" alt="${T('foto_alt')}">${quitar('extra', f.id)}</div>`).join('');
+  media = media ? `<div class="media">${media}</div>` : `<div class="media nofoto">${T('sin_foto')}</div>`;
+
+  const linea = r.linea === '1-2' ? T('lineas_fmt') : T('linea_fmt', { l: esc(r.linea) });
+  const badges = [];
+  if (r.linea === '1-2') badges.push('<span class="badge">' + T('ambas') + '</span>');
+  if (r.rev) {
+    const noEsta = /No aparece/.test(r.rev);
+    badges.unshift(`<span class="badge ${noEsta ? 'warn' : 'chg'}" title="${esc(r.rev)}">${noEsta ? '⚠ ' + esc(T('rev_noesta')) : '🔄 ' + esc(T('rev_badge'))}</span>`);
+  }
+  if (v.corregida) badges.push('<span class="badge warn">' + T('corregidos') + '</span>');
+  const nPend = pendientes.filter(p => p.actividad_id === r.id).length;
+  if (nPend) badges.push(`<span class="badge warn">${T('pend_badge', { n: nPend })}</span>`);
+
+  const horasHtml = v.horas !== v.horasOrig ? `<s>${fmt(v.horasOrig)}</s><span class="chg">${fmt(v.horas)}</span>` : fmt(v.horas);
+  const persHtml = v.pers !== v.persOrig ? `<s>${v.persOrig}</s><span class="chg">${v.pers}</span>` : v.pers;
+
+  const notas = [];
+  if (v.prev) notas.push(`<div><b>${T('prev_l')}</b> ${esc(v.prev)}</div>`);
+  if (v.herr) notas.push(`<div><b>${T('herr_l')}</b> ${esc(herrPlano(v.herr))}</div>`);
+  if (v.obs)  notas.push(`<div><b>${T('obs_l')}</b> ${esc(v.obs)}</div>`);
+  const asig0 = asignados[r.id] || [];
+  if (asig0.length) notas.push(`<div><b>${T('asig_l')}</b> ${asig0.map(d => esc((personal[d] || {}).nombre || d)).join(', ')}</div>`);
+
+  if (r.backlog) badges.unshift('<span class="badge warn">' + T('bl_badge') + (r.motivo ? ': ' + esc(r.motivo) : '') + '</span>');
+  if (r.oculta) badges.unshift('<span class="badge warn">Oculta' + (r.ocultaMotivo ? ': ' + esc(r.ocultaMotivo) : '') + '</span>');
+  const btnBl = perfil && perfil.rol === 'Residente'
+    ? `<button class="btn sec" data-bl="${r.id}" data-valor="${r.backlog ? '0' : '1'}">${T(r.backlog ? 'bl_restituir' : 'bl_pasar')}</button>` : '';
+  // Solo el Residente: ocultar una actividad que ya no va (reversible)
+  const btnOc = perfil && perfil.rol === 'Residente'
+    ? `<button class="btn sec" data-oc="${r.id}" data-valor="${r.oculta ? '0' : '1'}">${r.oculta ? 'Mostrar de nuevo' : 'Ocultar'}</button>` : '';
+  // Solo el Residente con DNI 43888823: corregir el texto de la actividad
+  const btnTxt = perfil && perfil.rol === 'Residente' && perfil.dni === '43888823'
+    ? `<button class="btn sec" data-txt="${r.id}">Editar texto</button>` : '';
+  return `<article class="card${r.backlog ? ' backlog' : ''}${r.rev && !/No aparece/.test(r.rev) ? ' rev-cambio' : ''}">
+    ${media}
+    <div class="info">
+      <div class="head"><span class="num">N° ${dash(r.activ)}</span>${r.oculta ? '' : `<span class="int" title="Número interno de la fila">${esc(T('num_int'))} ${numInt[r.id] ?? '—'}</span>`}<span class="badges">${badges.join('')}</span></div>
+      <div class="meta"><span><b>${linea}</b></span><span>OT SAP: <b>${dash(b.ot)}</b></span><span>${T('seis')} <b>${dash(r.seis)}</b></span></div>
+      <div class="act">${esc(actT(r.actividad))}</div>
+      <div class="hh">
+        <div><span>${T('horas')}</span><b>${horasHtml}</b></div>
+        <div><span>${T('personal')}</span><b>${persHtml}</b></div>
+        <div class="tot"><span>HH</span><b>${fmt(v.hh)}</b></div>
+      </div>
+      ${notas.length ? `<div class="notas">${notas.join('')}</div>` : ''}
+      <div class="acciones">
+        <button class="btn" data-edit="${r.id}">${T('proponer')}</button>
+        ${btnBl}
+        ${btnOc}
+        ${btnTxt}
+      </div>
+    </div>
+  </article>`;
+}
+
+function valorActual(p) {
+  const v = vista(p.actividad_id);
+  switch (p.tipo) {
+    case 'observaciones': return v.obs;
+    case 'previos': return v.prev;
+    case 'herramientas': return herrPlano(v.herr);
+    case 'horas': return fmt(v.horas);
+    case 'personal': return String(v.pers);
+    default: return '';
+  }
+}
+function nombreDni(d) { return (personal[d] && personal[d].nombre) || d; }
+
+function renderPanel() {
+  if (perfil.rol !== 'Residente') return;
+  $('#lista-pend').innerHTML = pendientes.length ? pendientes.map(p => {
+    const act0 = BASE[p.actividad_id];
+    let valor, actual = '';
+    if (p.tipo === 'foto') {
+      valor = `<img class="valor" src="${p.cambio.valor}" alt="Foto propuesta">`;
+    } else if (p.tipo === 'asignacion') {
+      valor = `<div class="valor">${T('asignar_a')}<b>${esc(nombreDni(p.cambio.valor))}</b></div>`;
+    } else {
+      actual = `<div class="meta2">${T('actual_l')}</div><div class="valor actual">${esc(valorActual(p) || '—')}</div>`;
+      const txt = p.tipo === 'herramientas' ? herrPlano(p.cambio.valor) : p.cambio.valor;
+      valor = `<div class="valor">${esc(txt) || '<i>' + T('vacio') + '</i>'}</div>`;
+    }
+    return `<div class="item">
+      <div><b>N° ${dash(act0 && act0.activ)}</b> · ${esc(act0 ? actT(act0.actividad) : p.actividad_id)}</div>
+      <div class="meta2">${esc(T('tipo_' + p.tipo))} · ${T('propone')}${esc(p.autor_nombre || T('sin_nombre'))} · ${fechaCorta(p.creado_at)}</div>
+      ${actual}
+      ${valor}
+      <div class="acciones">
+        <button class="btn ok" data-dec="aprobada" data-id="${p.id}">${T('aprobar')}</button>
+        <button class="btn no" data-dec="rechazada" data-id="${p.id}">${T('rechazar')}</button>
+      </div>
+    </div>`;
+  }).join('') : '<p class="vacio" style="padding:4px 0">' + T('no_pend') + '</p>';
+}
+
+$('#lista-pend').addEventListener('click', async ev => {
+  const b = ev.target.closest('button[data-dec]'); if (!b) return;
+  const dec = b.dataset.dec;
+  const comentario = dec === 'rechazada' ? (prompt(T('prompt_rech')) || null) : null;
+  if (dec === 'rechazada' && comentario === null && !confirm(T('confirm_rech'))) return;
+  b.disabled = true;
+  const { error } = await sb.rpc('decidir_propuesta', { p_id: b.dataset.id, p_decision: dec, p_comentario: comentario });
+  if (error) alert(T('no_reg') + error.message);
+  await cargarTodo();
+});
+
+// ---------- Herramientas y personal ----------
+function parseHerr(s) {
+  const t = String(s ?? '').trim();
+  if (!t) return [];
+  if (t.startsWith('[')) {
+    try {
+      const a = JSON.parse(t);
+      if (Array.isArray(a)) return a.filter(x => x && x.n).map(x => ({ n: String(x.n), c: Number(x.c) || 1 }));
+    } catch (e) { /* texto libre */ }
+  }
+  return [{ n: t, c: 1 }];   // texto libre antiguo: se muestra como una línea con cantidad 1
+}
+function herrPlano(s) { return parseHerr(s).map(i => `${i.n} × ${i.c}`).join('; '); }
+function sinAcentos(s) { return String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+
+// ---------- Formulario de propuesta ----------
+const dlg = $('#dlg');
+let actual = null;
+let herrRows = [];   // [{n, c}]
+let selPers = [];    // DNI elegidos en este formulario
+
+function pintarHerr() {
+  $('#f-herr-lista').innerHTML = herrRows.map((r, i) => `
+    <div class="herr-fila">
+      <input type="text" data-hn="${i}" value="${esc(r.n)}" placeholder="${T('herr_ph')}" maxlength="120" aria-label="${T('herr_aria')} ${i + 1}">
+      <input type="number" data-hc="${i}" value="${esc(r.c)}" min="1" max="999" step="1" inputmode="numeric" aria-label="${T('cant_aria')} ${i + 1}">
+      <button type="button" class="x" data-hx="${i}" aria-label="${T('quitar_fila')}">×</button>
+    </div>`).join('');
+}
+$('#f-herr-lista').addEventListener('input', ev => {
+  const t = ev.target;
+  if (t.dataset.hn !== undefined) herrRows[Number(t.dataset.hn)].n = t.value;
+  if (t.dataset.hc !== undefined) herrRows[Number(t.dataset.hc)].c = t.value;
+});
+$('#f-herr-lista').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-hx]'); if (!b) return;
+  herrRows.splice(Number(b.dataset.hx), 1);
+  if (!herrRows.length) herrRows.push({ n: '', c: 1 });
+  pintarHerr();
+});
+$('#f-herr-add').addEventListener('click', () => {
+  herrRows.push({ n: '', c: 1 });
+  pintarHerr();
+  const campos = document.querySelectorAll('#f-herr-lista input[data-hn]');
+  if (campos.length) campos[campos.length - 1].focus();
+});
+
+function pintarChips() {
+  $('#f-chips').innerHTML = selPers.map(d => `<span class="chip">${esc(nombreDni(d))}<button type="button" data-pd="${esc(d)}" aria-label="${T('quitar')}">×</button></span>`).join('');
+  const ya = asignados[actual] || [];
+  $('#f-ya').textContent = ya.length ? `${T('ya_asig')}${ya.map(nombreDni).join(', ')}` : '';
+}
+function sugerir() {
+  const q = sinAcentos($('#f-buscarp').value.trim());
+  const sug = $('#f-sug');
+  const excluir = new Set([...(asignados[actual] || []), ...selPers]);
+  if (q.length < 2) { sug.hidden = true; sug.innerHTML = ''; return; }
+  const res = Object.values(personal)
+    .filter(p => !excluir.has(p.dni) && (sinAcentos(p.nombre || '').includes(q) || String(p.dni).startsWith(q)))
+    .slice(0, 10);
+  sug.hidden = false;
+  sug.innerHTML = res.length
+    ? res.map(p => `<button type="button" data-pa="${esc(p.dni)}">${esc(p.nombre || p.dni)} <small>· ${esc(p.dni)}${p.area ? ' · ' + esc(p.area) : ''}</small></button>`).join('')
+    : '<button type="button" disabled>' + T('sin_coinc') + '</button>';
+}
+$('#f-buscarp').addEventListener('input', sugerir);
+$('#f-buscarp').addEventListener('keydown', ev => {
+  if (ev.key !== 'Enter') return;
+  ev.preventDefault();
+  const primero = document.querySelector('#f-sug button[data-pa]');
+  if (primero) primero.click();
+});
+$('#f-sug').addEventListener('click', ev => {
+  const b = ev.target.closest('button[data-pa]'); if (!b) return;
+  if (!selPers.includes(b.dataset.pa)) selPers.push(b.dataset.pa);
+  $('#f-buscarp').value = '';
+  sugerir(); pintarChips();
+  $('#f-buscarp').focus();
+});
+$('#f-chips').addEventListener('click', ev => {
+  const b = ev.target.closest('button[data-pd]'); if (!b) return;
+  selPers = selPers.filter(d => d !== b.dataset.pd);
+  pintarChips(); sugerir();
+});
+
+function abrir(id) {
+  const r = BASE[id]; if (!r) return;
+  actual = id;
+  const v = vista(id);
+  $('#f-titulo').textContent = `${T('proponer')} · N° ${r.activ || '—'} · ${T('linea_fmt', { l: r.linea })}`;
+  $('#f-ref').textContent = actT(r.actividad);
+  $('#f-obs').value = v.obs;
+  $('#f-prev').value = v.prev;
+  herrRows = parseHerr(v.herr);
+  if (!herrRows.length) herrRows = [{ n: '', c: 1 }];
+  pintarHerr();
+  $('#f-horas').value = v.horas;
+  $('#f-pers').value = v.pers;
+  selPers = [];
+  $('#f-buscarp').value = '';
+  $('#f-foto').value = '';
+  $('#f-err').textContent = '';
+  sugerir(); pintarChips();
+  dlg.showModal();
+  $('#f-obs').focus();
+}
+$('#grid').addEventListener('click', ev => {
+  const e = ev.target.closest('[data-edit]'); if (e) abrir(e.dataset.edit);
+  const bl = ev.target.closest('[data-bl]'); if (bl) cambiarBacklog(bl.dataset.bl, bl.dataset.valor === '1');
+  const tx = ev.target.closest('[data-txt]'); if (tx) editarTexto(tx.dataset.txt);
+  const oc = ev.target.closest('[data-oc]'); if (oc) cambiarOculta(oc.dataset.oc, oc.dataset.valor === '1');
+  const qf = ev.target.closest('[data-quitar]'); if (qf) quitarFoto(qf.dataset.quitar, qf.dataset.clave, qf.dataset.act);
+});
+// Solo el Residente DNI 43888823: cambiar el texto de una actividad (la validación se hace en la base de datos)
+async function editarTexto(id) {
+  const act0 = BASE[id];
+  const nuevo = prompt('Nuevo texto de la actividad:', act0 ? act0.actividad : '');
+  if (nuevo === null) return;
+  const { error } = await sb.rpc('editar_texto_actividad', { p_id: id, p_texto: nuevo });
+  if (error) { alert(error.message); return; }
+  await cargarTodo();
+}
+// Solo el Residente: quitar una foto de la actividad (no afecta a las demás)
+async function quitarFoto(tipo, clave, actId) {
+  if (!confirm('¿Quitar esta foto de la actividad? No se puede deshacer.')) return;
+  const { error } = tipo === 'extra'
+    ? await sb.rpc('quitar_foto_extra', { p_id: Number(clave) })
+    : await sb.rpc('quitar_foto_base', { p_actividad_id: actId, p_foto: Number(clave) });
+  if (error) { alert(error.message); return; }
+  await cargarTodo();
+}
+// Solo el Residente: ocultar o volver a mostrar una actividad (no borra nada)
+async function cambiarOculta(id, valor) {
+  let motivo = null;
+  if (valor) motivo = prompt('Motivo para ocultar (opcional):') || null;
+  const { error } = await sb.rpc('ocultar_actividad', { p_id: id, p_valor: valor, p_motivo: motivo });
+  if (error) { alert(error.message); return; }
+  await cargarTodo();
+}
+// Solo el Residente: pasar una actividad a backlog (sale de las HH) o restituirla
+async function cambiarBacklog(id, valor) {
+  let motivo = null;
+  if (valor) motivo = prompt(T('bl_prompt')) || null;
+  const { error } = await sb.rpc('marcar_backlog', { p_id: id, p_valor: valor, p_motivo: motivo });
+  if (error) { alert(error.message); return; }
+  await cargarTodo();
+}
+$('#buscar').addEventListener('input', ev => { termino = ev.target.value.trim().toLowerCase(); render(); });
+$('#filtros').addEventListener('click', ev => {
+  const b = ev.target.closest('button[data-f]'); if (!b) return;
+  filtro = b.dataset.f; render();
+});
+$('#f-cancel').addEventListener('click', () => dlg.close());
+
+async function comprimir(file) {
+  const url = URL.createObjectURL(file);
+  const img = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = url; });
+  let max = 1000, q = 0.78, data = '';
+  for (let k = 0; k < 6; k++) {
+    const s = Math.min(1, max / Math.max(img.width, img.height));
+    const c = document.createElement('canvas');
+    c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    data = c.toDataURL('image/jpeg', q);
+    if (data.length <= 260000) break;
+    max *= 0.8; q -= 0.08;
+  }
+  URL.revokeObjectURL(url);
+  if (data.length > 260000) throw new Error(T('err_foto'));
+  return data;
+}
+
+$('#f-save').addEventListener('click', enviar);
+async function enviar() {
+  if (enviando || !actual || !perfil) return;
+  const err = $('#f-err');
+  if ($('#f-horas').value === '' || $('#f-pers').value === '') { err.textContent = T('err_hp'); return; }
+
+  const herrItems = [];
+  for (const r of herrRows) {
+    const n = String(r.n).trim();
+    if (!n) continue;                       // fila sin nombre: se ignora
+    const c = Number(r.c);
+    if (!Number.isInteger(c) || c < 1) { err.textContent = T('err_cant', { n }); return; }
+    herrItems.push({ n, c });
+  }
+  const nuevo = {
+    obs: $('#f-obs').value.trim(), prev: $('#f-prev').value.trim(),
+    herr: herrItems.length ? JSON.stringify(herrItems) : '',
+    horas: Number($('#f-horas').value), pers: Number($('#f-pers').value)
+  };
+  if (!(nuevo.horas >= 0) || !(nuevo.pers >= 0)) { err.textContent = T('err_neg'); return; }
+  const v = vista(actual);
+  const filas = [];
+  const add = (tipo, valor) => filas.push({ actividad_id: actual, tipo, cambio: { valor: String(valor) }, autor_dni: perfil.dni, autor_nombre: perfil.nombre || null });
+  if (nuevo.obs !== v.obs) add('observaciones', nuevo.obs);
+  if (nuevo.prev !== v.prev) add('previos', nuevo.prev);
+  if (nuevo.herr !== v.herr) add('herramientas', nuevo.herr);
+  if (nuevo.horas !== v.horas) add('horas', nuevo.horas);
+  if (nuevo.pers !== v.pers) add('personal', nuevo.pers);
+  const yaAsignados = asignados[actual] || [];
+  selPers.filter(d => !yaAsignados.includes(d)).forEach(d => add('asignacion', d));
+  const foto = $('#f-foto').files[0];
+
+  if (!filas.length && !foto) { err.textContent = T('err_sin_cambios'); return; }
+  enviando = true; $('#f-save').disabled = true; err.textContent = T('enviando');
+  try {
+    if (foto) add('foto', await comprimir(foto));
+    const { error } = await sb.from('propuestas').insert(filas);
+    if (error) throw error;
+    dlg.close();
+    await cargarTodo();
+  } catch (e) {
+    err.textContent = e.message || T('err_enviar');
+  } finally {
+    enviando = false; $('#f-save').disabled = false;
+  }
+}
+
+// ---------- Exportar herramientas y equipos (CSV para Excel) ----------
+function exportarHerramientas() {
+  const filas = [[T('csv_1'), T('csv_2'), 'OT SAP', T('csv_3'), T('csv_4'), T('csv_5')]];
+  for (const r of ROWS) {
+    if (r.oculta) continue;
+    const v = vista(r.id);
+    const b = BASE[r.id] || {};
+    for (const i of parseHerr(v.herr)) filas.push([r.activ || '', r.linea, b.ot || '', r.actividad, i.n, i.c]);
+  }
+  if (filas.length === 1) { alert(T('exp_sin')); return; }
+  const csv = filas.map(f => f.map(x => `"${String(x ?? '').replace(/"/g, '""')}"`).join(';')).join('\r\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'PDP_herramientas_equipos.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+$('#btn-exp').addEventListener('click', exportarHerramientas);
+
+// ---------- Inicio ----------
+aplicarIdioma();
+cargarTodo();
+</script>
+<div id="visor" hidden role="dialog" aria-modal="true" aria-label="Foto">
+  <button type="button" id="visor-x" aria-label="Cerrar">✕</button>
+  <img id="visor-img" alt="">
+</div>
+<script>
+// Foto a pantalla completa: doble clic o doble toque sobre la foto
+(function () {
+  const visor = document.getElementById('visor'), img = document.getElementById('visor-img');
+  function fotoDe(el) {
+    if (el.tagName === 'IMG') return el.getAttribute('src');
+    const m = getComputedStyle(el).backgroundImage.match(/url\(["']?([^"')]+)["']?\)/);
+    return m ? m[1] : null;
+  }
+  function abrir(src) { if (!src) return; img.src = src; visor.hidden = false; }
+  function cerrar() { visor.hidden = true; img.removeAttribute('src'); }
+  let ultimo = { t: 0, el: null };
+  document.addEventListener('click', ev => {
+    const el = ev.target.closest('.ph, img.valor');
+    if (!el || !visor.hidden) return;
+    const ahora = Date.now();
+    if (ultimo.el === el && ahora - ultimo.t < 400) { ultimo = { t: 0, el: null }; abrir(fotoDe(el)); }
+    else ultimo = { t: ahora, el };
+  }, true);
+  visor.addEventListener('click', cerrar);
+  document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !visor.hidden) cerrar(); });
+})();
+</script>
+</body>
+</html>

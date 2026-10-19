@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="robots" content="noindex,nofollow">
-<meta name="app-version" content="2026-10-19 16:07 · v16">
+<meta name="app-version" content="2026-10-19 16:40 · v17">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Parada de planta Beijing · Actividades</title>
 <style>
@@ -235,6 +235,7 @@ textarea { min-height:64px; resize:vertical; }
     <button data-f="l2" aria-pressed="false"><span data-i18n="f_l2">Línea 2</span> <small id="c-l2"></small></button>
     <button data-f="ambas" aria-pressed="false"><span data-i18n="f_ambas">Ambas líneas (1-2)</span> <small id="c-ambas"></small></button>
     <button data-f="pend" aria-pressed="false"><span data-i18n="f_pend">Con pendientes</span> <small id="c-pend"></small></button>
+    <button data-f="ocultas" aria-pressed="false" id="f-ocultas" hidden>Ocultas <small id="c-ocultas"></small></button>
   </nav>
 
   <div class="barra"><button type="button" class="btn sec" id="btn-exp" style="flex:0 0 auto" data-i18n="exp">Exportar herramientas y equipos (Excel)</button></div>
@@ -636,6 +637,8 @@ function vista(id) {
            corregida: horas !== Number(b.horas_original) || pers !== Number(b.pers_original) };
 }
 function pasaFiltro(r) {
+  if (filtro === 'ocultas') return !!r.oculta;
+  if (r.oculta) return false;
   if (filtro === 'l1' && r.linea !== '1') return false;
   if (filtro === 'l2' && r.linea !== '2') return false;
   if (filtro === 'ambas' && r.linea !== '1-2') return false;
@@ -715,7 +718,7 @@ async function cargarTodo() {
   }
   perfil = perf.data;
   document.body.classList.toggle('solo-lectura', !(perfil && perfil.rol));
-  ROWS = acts.data.map(a => ({ id: a.id, n: a.n, page: a.pagina, linea: a.linea, ot: a.ot, seis: a.seis, activ: a.activ, actividad: a.actividad, fotos: a.fotos || [], backlog: !!a.backlog, motivo: a.backlog_motivo || '', rev: a.rev_cambio || '' }));
+  ROWS = acts.data.map(a => ({ id: a.id, n: a.n, page: a.pagina, linea: a.linea, ot: a.ot, seis: a.seis, activ: a.activ, actividad: a.actividad, fotos: a.fotos || [], backlog: !!a.backlog, motivo: a.backlog_motivo || '', rev: a.rev_cambio || '', oculta: !!a.oculta, ocultaMotivo: a.oculta_motivo || '' }));
   BASE = {}; acts.data.forEach(a => BASE[a.id] = a);
   act = BASE;
   fotosExtra = {}; fx.data.forEach(f => (fotosExtra[f.actividad_id] = fotosExtra[f.actividad_id] || []).push(f.data));
@@ -726,6 +729,7 @@ async function cargarTodo() {
   $('#login').hidden = true; $('#app').hidden = false;
   $('#usuario').textContent = perfil.rol ? `${perfil.nombre || perfil.dni} · ${perfil.rol}` : T('solo_ver');
   $('#panel-res').hidden = perfil.rol !== 'Residente';
+  $('#f-ocultas').hidden = perfil.rol !== 'Residente';
   render(); renderPanel(); renderMias();
   if (!canal) {
     canal = sb.channel('pdp-cambios')
@@ -752,6 +756,7 @@ function render() {
   let hor = 0, hh = 0, cor = 0, hh1 = 0, hh2 = 0, hha = 0;
   const cnt = {todas:0, l1:0, l2:0, ambas:0};
   for (const r of ROWS) {
+    if (r.oculta) continue;
     const v = vista(r.id);
     if (!r.backlog) {
       hor += v.horas; hh += v.hh; if (v.corregida) cor++;
@@ -759,7 +764,7 @@ function render() {
     }
     cnt.todas++; if (r.linea === '1') cnt.l1++; if (r.linea === '2') cnt.l2++; if (r.linea === '1-2') cnt.ambas++;
   }
-  $('#k-act').textContent = ROWS.filter(r => !r.backlog).length;
+  $('#k-act').textContent = ROWS.filter(r => !r.backlog && !r.oculta).length;
   $('#k-hor').textContent = fmt(hor);
   $('#k-hh').textContent = fmt(hh);
   $('#k-hh1').textContent = fmt(hh1);
@@ -771,6 +776,7 @@ function render() {
   $('#c-l1').textContent = `(${cnt.l1})`;
   $('#c-l2').textContent = `(${cnt.l2})`;
   $('#c-ambas').textContent = `(${cnt.ambas})`;
+  $('#c-ocultas').textContent = `(${ROWS.filter(r => r.oculta).length})`;
   $('#c-pend').textContent = `(${new Set(pendientes.map(p => p.actividad_id)).size})`;
   document.querySelectorAll('#filtros button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.f === filtro)));
   const lista = ROWS.filter(pasaFiltro);
@@ -808,8 +814,12 @@ function tarjeta(r) {
   if (asig0.length) notas.push(`<div><b>${T('asig_l')}</b> ${asig0.map(d => esc((personal[d] || {}).nombre || d)).join(', ')}</div>`);
 
   if (r.backlog) badges.unshift('<span class="badge warn">' + T('bl_badge') + (r.motivo ? ': ' + esc(r.motivo) : '') + '</span>');
+  if (r.oculta) badges.unshift('<span class="badge warn">Oculta' + (r.ocultaMotivo ? ': ' + esc(r.ocultaMotivo) : '') + '</span>');
   const btnBl = perfil && perfil.rol === 'Residente'
     ? `<button class="btn sec" data-bl="${r.id}" data-valor="${r.backlog ? '0' : '1'}">${T(r.backlog ? 'bl_restituir' : 'bl_pasar')}</button>` : '';
+  // Solo el Residente: ocultar una actividad que ya no va (reversible)
+  const btnOc = perfil && perfil.rol === 'Residente'
+    ? `<button class="btn sec" data-oc="${r.id}" data-valor="${r.oculta ? '0' : '1'}">${r.oculta ? 'Mostrar de nuevo' : 'Ocultar'}</button>` : '';
   // Solo el Residente con DNI 43888823: corregir el texto de la actividad
   const btnTxt = perfil && perfil.rol === 'Residente' && perfil.dni === '43888823'
     ? `<button class="btn sec" data-txt="${r.id}">Editar texto</button>` : '';
@@ -828,6 +838,7 @@ function tarjeta(r) {
       <div class="acciones">
         <button class="btn" data-edit="${r.id}">${T('proponer')}</button>
         ${btnBl}
+        ${btnOc}
         ${btnTxt}
       </div>
     </div>
@@ -995,6 +1006,7 @@ $('#grid').addEventListener('click', ev => {
   const e = ev.target.closest('[data-edit]'); if (e) abrir(e.dataset.edit);
   const bl = ev.target.closest('[data-bl]'); if (bl) cambiarBacklog(bl.dataset.bl, bl.dataset.valor === '1');
   const tx = ev.target.closest('[data-txt]'); if (tx) editarTexto(tx.dataset.txt);
+  const oc = ev.target.closest('[data-oc]'); if (oc) cambiarOculta(oc.dataset.oc, oc.dataset.valor === '1');
 });
 // Solo el Residente DNI 43888823: cambiar el texto de una actividad (la validación se hace en la base de datos)
 async function editarTexto(id) {
@@ -1002,6 +1014,14 @@ async function editarTexto(id) {
   const nuevo = prompt('Nuevo texto de la actividad:', act0 ? act0.actividad : '');
   if (nuevo === null) return;
   const { error } = await sb.rpc('editar_texto_actividad', { p_id: id, p_texto: nuevo });
+  if (error) { alert(error.message); return; }
+  await cargarTodo();
+}
+// Solo el Residente: ocultar o volver a mostrar una actividad (no borra nada)
+async function cambiarOculta(id, valor) {
+  let motivo = null;
+  if (valor) motivo = prompt('Motivo para ocultar (opcional):') || null;
+  const { error } = await sb.rpc('ocultar_actividad', { p_id: id, p_valor: valor, p_motivo: motivo });
   if (error) { alert(error.message); return; }
   await cargarTodo();
 }
@@ -1089,6 +1109,7 @@ async function enviar() {
 function exportarHerramientas() {
   const filas = [[T('csv_1'), T('csv_2'), 'OT SAP', T('csv_3'), T('csv_4'), T('csv_5')]];
   for (const r of ROWS) {
+    if (r.oculta) continue;
     const v = vista(r.id);
     const b = BASE[r.id] || {};
     for (const i of parseHerr(v.herr)) filas.push([r.activ || '', r.linea, b.ot || '', r.actividad, i.n, i.c]);

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="robots" content="noindex,nofollow">
-<meta name="app-version" content="2026-10-21 10:30 · v23">
+<meta name="app-version" content="2026-10-21 11:00 · v24">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Parada de planta Beijing · Actividades</title>
 <style>
@@ -206,6 +206,8 @@ textarea { min-height:64px; resize:vertical; }
 </style>
 </head>
 <body>
+<div id="arranque" style="padding:48px 16px;text-align:center;color:#5b6675;font-size:15px"><p style="margin:0">Cargando…</p></div>
+<script>setTimeout(function(){var a=document.getElementById("arranque");if(a)a.querySelector("p").textContent="Sigue cargando… revisa la conexión o pulsa Actualizar.";},12000);</script>
 
 <section class="login" id="login" hidden>
   <div style="text-align:right"><button type="button" class="btn-idioma idioma" aria-label="Idioma / 语言">中文</button></div>
@@ -310,7 +312,7 @@ textarea { min-height:64px; resize:vertical; }
 </dialog>
 
 <input type="file" id="fto-av-input" accept="image/*" capture="environment" hidden>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="vendor/supabase-js-2.45.4.umd.js"></script>
 <script>
 const SB_URL = 'https://kfkvjflkesxivpgnsjff.supabase.co';
 const SB_KEY = 'sb_publishable_gz2D9kx2sg701EfJzQOuZg_EDTMZfY0';
@@ -1405,7 +1407,7 @@ $('#btn-exp').addEventListener('click', exportarHerramientas);
 
 // ---------- Inicio ----------
 aplicarIdioma();
-cargarTodo();
+cargarTodo().finally(() => { const a = document.getElementById('arranque'); if (a) a.remove(); });
 </script>
 <div id="visor" hidden role="dialog" aria-modal="true" aria-label="Foto">
   <button type="button" id="visor-x" aria-label="Cerrar">✕</button>

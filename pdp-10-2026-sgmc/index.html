@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="robots" content="noindex,nofollow">
-<meta name="app-version" content="2026-10-21 09:00 · v21">
+<meta name="app-version" content="2026-10-21 10:00 · v22">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Parada de planta Beijing · Actividades</title>
 <style>
@@ -198,6 +198,10 @@ textarea { min-height:64px; resize:vertical; }
 .sug button:disabled { color:var(--gris); cursor:default; }
 .sug small { color:var(--gris); }
 .btn-idioma { border:1px solid var(--azul); background:#fff; color:var(--azul); border-radius:999px; padding:8px 14px; min-height:40px; font-size:14px; font-weight:600; cursor:pointer; }
+.curva-acc{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0}
+.curva-hint{font-size:12px;color:#6a7383}
+.av-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}
+.av-n{font-size:12px;color:#6a7383}
 </style>
 </head>
 <body>
@@ -231,6 +235,7 @@ textarea { min-height:64px; resize:vertical; }
       <button type="button" data-cl="2" aria-pressed="false">Línea 2</button>
       <button type="button" data-cl="total" aria-pressed="true">Total</button>
     </div>
+    <div class="curva-acc"><button type="button" id="btn-curva" class="btn sec">Calcular / actualizar curva</button> <span class="curva-hint">Se calcula solo al pulsar el botón.</span></div>
     <svg id="svg-curva" viewBox="0 0 600 300" role="img" aria-label="Curva S de avance"></svg>
     <div class="curva-res" id="curva-res"></div>
     <div class="curva-nota" id="curva-nota"></div>
@@ -303,6 +308,7 @@ textarea { min-height:64px; resize:vertical; }
   </form>
 </dialog>
 
+<input type="file" id="fto-av-input" accept="image/*" capture="environment" hidden>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
 const SB_URL = 'https://kfkvjflkesxivpgnsjff.supabase.co';
@@ -322,6 +328,10 @@ let perfil = null;
 let filtro = 'todas';
 let termino = '';
 let enviando = false;
+let FOTOS_AV = {};               // id -> [{id,data}] fotos de avance
+let verInicio = new Set();       // actividades donde se muestran las fotos de inicio
+let FOTO_AV_ID = null;
+let curvaActiva = false;         // la curva solo se calcula al pedirla
 
 const $ = s => document.querySelector(s);
 const VERSION = document.querySelector('meta[name="app-version"]').content;
@@ -761,6 +771,11 @@ async function cargarTodo() {
       hh_.data.forEach(e => (HIST_BY[e.actividad_id] = HIST_BY[e.actividad_id] || []).push({ t: Date.parse(e.creado_at), av: e.avance }));
     }
   } catch (e) { HIST_OK = false; }
+  FOTOS_AV = {};
+  try {
+    const fa = await sb.from('fotos_avance').select('id,actividad_id,data').order('id');
+    if (!fa.error && fa.data) fa.data.forEach(f => (FOTOS_AV[f.actividad_id] = FOTOS_AV[f.actividad_id] || []).push({ id: f.id, data: f.data }));
+  } catch (e) { FOTOS_AV = {}; }
   misPropuestas = mias.data || [];
   personal = {}; pers.data.forEach(p => personal[p.dni] = p);
   asignados = {}; asig.data.forEach(x => (asignados[x.actividad_id] = asignados[x.actividad_id] || []).push(x.dni));
@@ -820,7 +835,7 @@ function hhGanadasAt(rows, t, ahora) {
   }
   return s;
 }
-function renderCurva() {
+function dibujarCurva() {
   const svg = document.getElementById('svg-curva');
   if (!svg) return;
   const ahora = Math.min(Math.max(Date.now(), CURVA_INI), CURVA_FIN);
@@ -873,9 +888,15 @@ function renderCurva() {
     + (sin ? ` ${sin} actividad(es) sin fecha programada no entran en la curva.` : '')
     + (curvaLinea === 'total' ? '' : ' Las actividades de ambas líneas (1-2) solo aparecen en Total.');
 }
+function renderCurva() {
+  curvaActiva = true;
+  try { dibujarCurva(); }
+  catch (e) { document.getElementById('curva-nota').textContent = 'No se pudo calcular la curva: ' + e.message; }
+}
+document.getElementById('btn-curva').addEventListener('click', renderCurva);
 document.getElementById('curva-tabs').addEventListener('click', ev => {
   const b = ev.target.closest('button[data-cl]'); if (!b) return;
-  curvaLinea = b.dataset.cl; renderCurva();
+  curvaLinea = b.dataset.cl; if (curvaActiva) renderCurva();
 });
 // Orden visible: en proceso primero, luego pendientes, backlog y terminadas al final
 function grupoOrden(r) {
@@ -915,7 +936,6 @@ function render() {
   $('#c-ocultas').textContent = `(${ROWS.filter(r => r.oculta).length})`;
   $('#c-pend').textContent = `(${new Set(pendientes.map(p => p.actividad_id)).size})`;
   document.querySelectorAll('#filtros button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.f === filtro)));
-  renderCurva();
   const lista = ROWS.filter(pasaFiltro).sort((a, b) => grupoOrden(a) - grupoOrden(b) || a.n - b.n);
   $('#grid').innerHTML = lista.length ? lista.map(tarjeta).join('') : '<p class="vacio">' + T('no_act') + '</p>';
 }
@@ -930,7 +950,13 @@ function tarjeta(r) {
   const quitar = (tipo, clave) => esRes ? `<button class="quitar-foto" data-quitar="${tipo}" data-clave="${clave}" data-act="${r.id}" title="Quitar foto" aria-label="Quitar foto">×</button>` : '';
   let media = (r.fotos || []).map(x => `<div class="fw"><div class="ph p${x}"></div>${quitar('base', x)}</div>`).join('')
             + extra.map(f => `<div class="fw"><img class="ph" src="${f.data}" alt="${T('foto_alt')}">${quitar('extra', f.id)}</div>`).join('');
+  const avs = FOTOS_AV[r.id] || [];
+  if (avs.length && !verInicio.has(r.id)) {
+    const ult = avs[avs.length - 1];
+    media = `<div class="fw"><img class="ph" src="${ult.data}" alt="Foto de avance"></div>`;
+  }
   media = media ? `<div class="media">${media}</div>` : `<div class="media nofoto">${T('sin_foto')}</div>`;
+  const barAv = `<div class="av-bar">${avs.length ? `<button class="btn sec" data-verinicio="${r.id}">${verInicio.has(r.id) ? 'Ver última foto de avance' : 'Ver fotos de inicio'}</button> <span class="av-n">${avs.length} foto(s) de avance</span>` : ''}${puedeAvance() ? `<button class="btn sec" data-fotoav="${r.id}">📷 Subir foto de avance</button>` : ''}</div>`;
 
   const linea = r.linea === '1-2' ? T('lineas_fmt') : T('linea_fmt', { l: esc(r.linea) });
   const badges = [];
@@ -967,6 +993,7 @@ function tarjeta(r) {
     ? `<button class="btn sec" data-txt="${r.id}">Editar texto</button>` : '';
   return `<article class="card${r.backlog ? ' backlog' : ''}${r.avance >= 100 ? ' terminada' : ''}${r.rev && !r.noProg && !/No aparece/.test(r.rev) ? ' rev-cambio' : ''}">
     ${media}
+    ${barAv}
     <div class="info">
       ${r.avance >= 100 ? '<div class="sello">✔ TERMINADA · 100%</div>' : ''}
       <div class="head"><span class="num">N° ${dash(r.activ)}</span>${r.oculta ? '' : `<span class="int" title="Número interno de la fila">${esc(T('num_int'))} ${numInt[r.id] ?? '—'}</span>`}<span class="badges">${badges.join('')}</span></div>
@@ -1155,6 +1182,35 @@ $('#grid').addEventListener('click', ev => {
   const oc = ev.target.closest('[data-oc]'); if (oc) cambiarOculta(oc.dataset.oc, oc.dataset.valor === '1');
   const av = ev.target.closest('[data-avance]'); if (av) registrarAvance(av.dataset.avance, Number(av.dataset.val));
   const qf = ev.target.closest('[data-quitar]'); if (qf) quitarFoto(qf.dataset.quitar, qf.dataset.clave, qf.dataset.act);
+  const vi = ev.target.closest('[data-verinicio]'); if (vi) { const id = vi.dataset.verinicio; verInicio.has(id) ? verInicio.delete(id) : verInicio.add(id); render(); }
+  const fa = ev.target.closest('[data-fotoav]'); if (fa) { FOTO_AV_ID = fa.dataset.fotoav; $('#fto-av-input').click(); }
+});
+// Foto de avance: se reduce en el navegador antes de subirla
+function reducirImagen(file) {
+  return new Promise((res, rej) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const k = Math.min(1, 1280 / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      res(c.toDataURL('image/jpeg', 0.8));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('El archivo no es una imagen válida')); };
+    img.src = url;
+  });
+}
+$('#fto-av-input').addEventListener('change', async ev => {
+  const f = ev.target.files[0]; ev.target.value = '';
+  const id = FOTO_AV_ID; FOTO_AV_ID = null;
+  if (!f || !id) return;
+  try {
+    const data = await reducirImagen(f);
+    const { error } = await sb.rpc('registrar_foto_avance', { p_id: id, p_data: data });
+    if (error) { alert(error.message); return; }
+    await cargarTodo();
+  } catch (e) { alert('No se pudo subir la foto: ' + e.message); }
 });
 // Solo el Residente DNI 43888823: cambiar el texto de una actividad (la validación se hace en la base de datos)
 async function editarTexto(id) {

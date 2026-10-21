@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="robots" content="noindex,nofollow">
-<meta name="app-version" content="2026-10-21 10:00 · v22">
+<meta name="app-version" content="2026-10-21 10:30 · v23">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Parada de planta Beijing · Actividades</title>
 <style>
@@ -202,6 +202,7 @@ textarea { min-height:64px; resize:vertical; }
 .curva-hint{font-size:12px;color:#6a7383}
 .av-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}
 .av-n{font-size:12px;color:#6a7383}
+.card{content-visibility:auto;contain-intrinsic-size:auto 560px}
 </style>
 </head>
 <body>
@@ -730,66 +731,106 @@ async function comprobarVersion() {
 }
 $('#btn-refrescar').addEventListener('click', comprobarVersion);
 
-let canal = null;
-let refrescando = null;
-function refrescarPronto() { clearTimeout(refrescando); refrescando = setTimeout(cargarTodo, 400); }
 
+// Carga por partes: cada tabla tiene su función; así un cambio pequeño no vuelve a bajar todo
+async function cargarPerfil() {
+  const r = await sb.rpc('mi_perfil'); if (r.error) throw r.error;
+  perfil = r.data || {};
+}
+async function cargarActividades() {
+  const r = await sb.from('actividades').select('*').order('n'); if (r.error) throw r.error;
+  ROWS = r.data.map(a => ({ id: a.id, n: a.n, page: a.pagina, linea: a.linea, ot: a.ot, seis: a.seis, activ: a.activ, actividad: a.actividad, fotos: a.fotos || [], backlog: !!a.backlog, motivo: a.backlog_motivo || '', rev: a.rev_cambio || '', oculta: !!a.oculta, ocultaMotivo: a.oculta_motivo || '', avance: Number(a.avance) || 0, hh: Number(a.hh) || 0, progIni: a.prog_inicio ? Date.parse(a.prog_inicio) : null, progFin: a.prog_fin ? Date.parse(a.prog_fin) : null, noProg: (a.rev_cambio || '').startsWith('NO PROGRAMADA') }));
+  BASE = {}; r.data.forEach(a => BASE[a.id] = a);
+  act = BASE;
+}
+async function cargarFotos() {
+  const r = await sb.from('fotos_extra').select('id,actividad_id,data').order('id'); if (r.error) throw r.error;
+  fotosExtra = {}; r.data.forEach(f => (fotosExtra[f.actividad_id] = fotosExtra[f.actividad_id] || []).push({ id: f.id, data: f.data }));
+}
+async function cargarFotosAv() {
+  FOTOS_AV = {};
+  try {
+    const r = await sb.from('fotos_avance').select('id,actividad_id,data').order('id');
+    if (!r.error && r.data) r.data.forEach(f => (FOTOS_AV[f.actividad_id] = FOTOS_AV[f.actividad_id] || []).push({ id: f.id, data: f.data }));
+  } catch (e) { FOTOS_AV = {}; }
+}
+async function cargarPendientes(uid) {
+  const [pend, mias] = await Promise.all([
+    sb.from('propuestas').select('id,actividad_id,tipo,cambio,autor_user_id,autor_nombre,estado,creado_at,decidido_por,decidido_at,comentario_decision').eq('estado', 'pendiente').order('creado_at'),
+    sb.from('propuestas').select('id,actividad_id,tipo,estado,creado_at,decidido_at,comentario_decision').eq('autor_user_id', uid).order('creado_at', { ascending: false }).limit(20)
+  ]);
+  if (pend.error) throw pend.error; if (mias.error) throw mias.error;
+  pendientes = pend.data || []; misPropuestas = mias.data || [];
+}
+async function cargarPersonal() {
+  const r = await sb.from('personal').select('dni,nombre,area').eq('activo', true); if (r.error) throw r.error;
+  personal = {}; r.data.forEach(p => personal[p.dni] = p);
+}
+async function cargarAsignaciones() {
+  const r = await sb.from('asignaciones').select('actividad_id,dni'); if (r.error) throw r.error;
+  asignados = {}; r.data.forEach(x => (asignados[x.actividad_id] = asignados[x.actividad_id] || []).push(x.dni));
+}
+async function cargarHistorial() {
+  HIST_BY = {}; HIST_OK = false;
+  try {
+    const r = await sb.from('avance_historial').select('actividad_id,avance,creado_at').order('creado_at');
+    if (!r.error && r.data) {
+      HIST_OK = true;
+      r.data.forEach(e => (HIST_BY[e.actividad_id] = HIST_BY[e.actividad_id] || []).push({ t: Date.parse(e.creado_at), av: e.avance }));
+    }
+  } catch (e) { HIST_OK = false; }
+}
 async function cargarTodo() {
   const { data: sesion } = await sb.auth.getSession();
   if (!sesion.session) { $('#app').hidden = true; $('#login').hidden = false; return; }
   if (!ROWS.length) $('#grid').innerHTML = '<p class="vacio">' + T('cargando') + '</p>';
   const uid = sesion.session.user.id;
-  const [perf, acts, fx, pend, pers, asig] = await Promise.all([
-    sb.rpc('mi_perfil'),
-    sb.from('actividades').select('*').order('n'),
-    sb.from('fotos_extra').select('id,actividad_id,data').order('id'),
-    sb.from('propuestas').select('id,actividad_id,tipo,cambio,autor_user_id,autor_nombre,estado,creado_at,decidido_por,decidido_at,comentario_decision').eq('estado', 'pendiente').order('creado_at'),
-    sb.from('personal').select('dni,nombre,area').eq('activo', true),
-    sb.from('asignaciones').select('actividad_id,dni')
-  ]);
-  const mias = await sb.from('propuestas').select('id,actividad_id,tipo,estado,creado_at,decidido_at,comentario_decision').eq('autor_user_id', uid).order('creado_at', { ascending: false }).limit(20);
-  const fallo = perf.error || acts.error || fx.error || pend.error || pers.error || asig.error || mias.error;
-  if (fallo) {
+  try {
+    await Promise.all([cargarPerfil(), cargarActividades(), cargarFotos(), cargarFotosAv(), cargarPendientes(uid),
+                       cargarPersonal(), cargarAsignaciones(), cargarHistorial()]);
+  } catch (fallo) {
     const esquema = fallo.code === 'PGRST106' || /schema/i.test(fallo.message || '');
-    $('#l-err').textContent = esquema
-      ? T('err_schema')
-      : T('err_carga') + (fallo.message || 'error');
+    $('#l-err').textContent = esquema ? T('err_schema') : T('err_carga') + (fallo.message || 'error');
     $('#app').hidden = true; $('#login').hidden = false; return;
   }
-  perfil = perf.data;
   document.body.classList.toggle('solo-lectura', !(perfil && perfil.rol));
-  ROWS = acts.data.map(a => ({ id: a.id, n: a.n, page: a.pagina, linea: a.linea, ot: a.ot, seis: a.seis, activ: a.activ, actividad: a.actividad, fotos: a.fotos || [], backlog: !!a.backlog, motivo: a.backlog_motivo || '', rev: a.rev_cambio || '', oculta: !!a.oculta, ocultaMotivo: a.oculta_motivo || '', avance: Number(a.avance) || 0, hh: Number(a.hh) || 0, progIni: a.prog_inicio ? Date.parse(a.prog_inicio) : null, progFin: a.prog_fin ? Date.parse(a.prog_fin) : null, noProg: (a.rev_cambio || '').startsWith('NO PROGRAMADA') }));
-  BASE = {}; acts.data.forEach(a => BASE[a.id] = a);
-  act = BASE;
-  fotosExtra = {}; fx.data.forEach(f => (fotosExtra[f.actividad_id] = fotosExtra[f.actividad_id] || []).push({ id: f.id, data: f.data }));
-  pendientes = pend.data || [];
-  HIST_BY = {}; HIST_OK = false;
-  try {
-    const hh_ = await sb.from('avance_historial').select('actividad_id,avance,creado_at').order('creado_at');
-    if (!hh_.error && hh_.data) {
-      HIST_OK = true;
-      hh_.data.forEach(e => (HIST_BY[e.actividad_id] = HIST_BY[e.actividad_id] || []).push({ t: Date.parse(e.creado_at), av: e.avance }));
-    }
-  } catch (e) { HIST_OK = false; }
-  FOTOS_AV = {};
-  try {
-    const fa = await sb.from('fotos_avance').select('id,actividad_id,data').order('id');
-    if (!fa.error && fa.data) fa.data.forEach(f => (FOTOS_AV[f.actividad_id] = FOTOS_AV[f.actividad_id] || []).push({ id: f.id, data: f.data }));
-  } catch (e) { FOTOS_AV = {}; }
-  misPropuestas = mias.data || [];
-  personal = {}; pers.data.forEach(p => personal[p.dni] = p);
-  asignados = {}; asig.data.forEach(x => (asignados[x.actividad_id] = asignados[x.actividad_id] || []).push(x.dni));
   $('#login').hidden = true; $('#app').hidden = false;
   $('#usuario').textContent = perfil.rol ? `${perfil.nombre || perfil.dni} · ${perfil.rol}` : T('solo_ver');
   $('#panel-res').hidden = perfil.rol !== 'Residente';
   $('#f-ocultas').hidden = perfil.rol !== 'Residente';
   $('#btn-nueva').hidden = !puedeAvance();
   render(); renderPanel(); renderMias();
-  if (!canal) {
-    canal = sb.channel('pdp-cambios')
-      .on('postgres_changes', { event: '*', schema: 'pdp' }, refrescarPronto)
-      .subscribe();
-  }
+  suscribir();
+}
+// Cambios en vivo: solo se recarga la tabla que cambió (agrupado en 400 ms)
+let canal = null, refrescando = null;
+const cambiosPend = new Set();
+function suscribir() {
+  if (canal) return;
+  canal = sb.channel('pdp-cambios')
+    .on('postgres_changes', { event: '*', schema: 'pdp' }, p => refrescarPronto(p.table))
+    .subscribe();
+}
+function refrescarPronto(tabla) {
+  cambiosPend.add(tabla || 'todo');
+  clearTimeout(refrescando); refrescando = setTimeout(refrescarCambios, 400);
+}
+async function refrescarCambios() {
+  const t = new Set(cambiosPend); cambiosPend.clear();
+  if (t.has('todo')) return cargarTodo();
+  const { data: sesion } = await sb.auth.getSession();
+  if (!sesion.session) return cargarTodo();
+  const uid = sesion.session.user.id, tareas = [];
+  if (t.has('actividades')) tareas.push(cargarActividades());
+  if (t.has('fotos_extra')) tareas.push(cargarFotos());
+  if (t.has('fotos_avance')) tareas.push(cargarFotosAv());
+  if (t.has('propuestas')) tareas.push(cargarPendientes(uid));
+  if (t.has('personal')) tareas.push(cargarPersonal());
+  if (t.has('asignaciones')) tareas.push(cargarAsignaciones());
+  if (t.has('avance_historial')) tareas.push(cargarHistorial());
+  if (!tareas.length) return;
+  try { await Promise.all(tareas); } catch (e) { return cargarTodo(); }
+  render(); renderPanel(); renderMias();
 }
 
 function renderMias() {
@@ -949,11 +990,11 @@ function tarjeta(r) {
   const esRes = perfil && perfil.rol === 'Residente';
   const quitar = (tipo, clave) => esRes ? `<button class="quitar-foto" data-quitar="${tipo}" data-clave="${clave}" data-act="${r.id}" title="Quitar foto" aria-label="Quitar foto">×</button>` : '';
   let media = (r.fotos || []).map(x => `<div class="fw"><div class="ph p${x}"></div>${quitar('base', x)}</div>`).join('')
-            + extra.map(f => `<div class="fw"><img class="ph" src="${f.data}" alt="${T('foto_alt')}">${quitar('extra', f.id)}</div>`).join('');
+            + extra.map(f => `<div class="fw"><img class="ph" loading="lazy" decoding="async" src="${f.data}" alt="${T('foto_alt')}">${quitar('extra', f.id)}</div>`).join('');
   const avs = FOTOS_AV[r.id] || [];
   if (avs.length && !verInicio.has(r.id)) {
     const ult = avs[avs.length - 1];
-    media = `<div class="fw"><img class="ph" src="${ult.data}" alt="Foto de avance"></div>`;
+    media = `<div class="fw"><img class="ph" loading="lazy" decoding="async" src="${ult.data}" alt="Foto de avance"></div>`;
   }
   media = media ? `<div class="media">${media}</div>` : `<div class="media nofoto">${T('sin_foto')}</div>`;
   const barAv = `<div class="av-bar">${avs.length ? `<button class="btn sec" data-verinicio="${r.id}">${verInicio.has(r.id) ? 'Ver última foto de avance' : 'Ver fotos de inicio'}</button> <span class="av-n">${avs.length} foto(s) de avance</span>` : ''}${puedeAvance() ? `<button class="btn sec" data-fotoav="${r.id}">📷 Subir foto de avance</button>` : ''}</div>`;
@@ -1269,7 +1310,8 @@ async function cambiarBacklog(id, valor) {
   if (error) { alert(error.message); return; }
   await cargarTodo();
 }
-$('#buscar').addEventListener('input', ev => { termino = ev.target.value.trim().toLowerCase(); render(); });
+let tBusq = null;
+$('#buscar').addEventListener('input', ev => { clearTimeout(tBusq); tBusq = setTimeout(() => { termino = ev.target.value.trim().toLowerCase(); render(); }, 150); });
 $('#filtros').addEventListener('click', ev => {
   const b = ev.target.closest('button[data-f]'); if (!b) return;
   filtro = b.dataset.f; render();

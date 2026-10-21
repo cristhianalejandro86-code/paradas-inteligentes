@@ -3,211 +3,288 @@
 <head>
 <meta charset="utf-8">
 <meta name="robots" content="noindex,nofollow">
-<meta name="app-version" content="2026-10-21 11:00 · v24">
+<meta name="app-version" content="2026-10-21 14:00 · v26">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Parada de planta Beijing · Actividades</title>
+<title>Parada de planta Beijing · Control Integral v26</title>
 <style>
-:root { --azul:#0f3d6e; --gris:#5b6675; --borde:#cfd8e3; --fondo:#f4f7fb; --ok:#1b7f3b; --warn:#a15c00; --err:#b00020; }
+:root {
+  --azul:#0f3d6e; --azul-claro:#e8f0f8; --gris:#5b6675; --borde:#cfd8e3;
+  --fondo:#f4f7fb; --ok:#1b7f3b; --ok-bg:#e5f5ea; --warn:#a15c00; --warn-bg:#fff1dc;
+  --err:#b00020; --err-bg:#fde8ec; --seg:#0d6e6e; --seg-bg:#e0f4f4; --plan:#5b21b6; --plan-bg:#ede9fe;
+}
 * { box-sizing:border-box; }
 html,body { margin:0; }
-body { font-family: Arial, Helvetica, "PingFang SC", "Microsoft YaHei", sans-serif; color:#1a1a1a; background:#fff; padding:14px; max-width:1200px; margin:0 auto; font-size:15px; overflow-wrap:anywhere; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, Helvetica, "PingFang SC", "Microsoft YaHei", sans-serif; color:#1a1a1a; background:#f8fafc; padding:12px; max-width:1280px; margin:0 auto; font-size:15px; overflow-wrap:anywhere; }
 *, *::before, *::after { min-width:0; }
 [hidden] { display:none !important; }
+
+/* Candado estricto de rol: solo Residente puede ver Pasar a backlog, Ocultar, Editar texto y Quitar foto */
+body:not(.es-residente) [data-bl],
+body:not(.es-residente) [data-oc],
+body:not(.es-residente) [data-txt],
+body:not(.es-residente) .quitar-foto,
+body:not(.es-residente) .acciones-res,
+body:not(.es-residente) #f-ocultas,
+body:not(.es-residente) #panel-res { display:none !important; }
+
 h1 { font-size:21px; color:var(--azul); margin:0 0 4px; line-height:1.2; }
-h2 { font-size:17px; color:var(--azul); margin:0; }
-.sub { color:var(--gris); font-size:13px; margin-bottom:12px; }
-.ver { color:var(--gris); font-size:12px; margin:-8px 0 12px; }
-.barra { display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:13px; color:var(--gris); margin-bottom:10px; flex-wrap:wrap; }
-#usuario { overflow-wrap:anywhere; flex:1 1 180px; }
-.barra button { border:1px solid var(--borde); background:#fff; border-radius:6px; padding:10px 14px; min-height:44px; cursor:pointer; font-size:14px; }
-.kpis { display:grid; grid-template-columns: repeat(auto-fit, minmax(120px,1fr)); gap:8px; margin-bottom:12px; }
+h2 { font-size:16px; color:var(--azul); margin:0; }
+h3 { font-size:14px; color:var(--azul); margin:0; }
+.sub { color:var(--gris); font-size:13px; margin-bottom:10px; }
+.ver { color:var(--gris); font-size:12px; margin:-6px 0 10px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.perf-pill { display:inline-flex; align-items:center; gap:4px; background:#e5f5ea; color:var(--ok); font-weight:700; font-size:11px; padding:2px 8px; border-radius:999px; }
+.barra { display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:13px; color:var(--gris); margin-bottom:10px; flex-wrap:wrap; background:#fff; padding:8px 12px; border-radius:10px; border:1px solid var(--borde); }
+#usuario { overflow-wrap:anywhere; flex:1 1 180px; font-weight:600; color:#1e293b; }
+.barra button, .barra select { border:1px solid var(--borde); background:#fff; border-radius:6px; padding:7px 11px; min-height:38px; cursor:pointer; font-size:13px; font-weight:600; width:auto; }
+.barra button:hover { background:var(--fondo); }
+
+/* Panorama Ejecutivo (Gerencia / Residente / Roles) */
+.exec-wrap { border:1px solid #9aa9bd; border-radius:12px; padding:12px; margin-bottom:12px; background:#fff; box-shadow:0 1px 3px rgba(15,61,110,.06); }
+.exec-head { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+.exec-title { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.semaforo-pill { font-size:12px; font-weight:700; padding:4px 10px; border-radius:999px; display:inline-flex; align-items:center; gap:5px; }
+.semaforo-pill.ok { background:var(--ok-bg); color:var(--ok); }
+.semaforo-pill.warn { background:var(--warn-bg); color:var(--warn); }
+.semaforo-pill.err { background:var(--err-bg); color:var(--err); }
+.exec-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:8px; margin-bottom:10px; }
+.exec-card { border:1px solid var(--borde); border-radius:9px; padding:9px 11px; background:#fcfdff; cursor:pointer; text-align:left; transition:transform .1s, box-shadow .1s, border-color .1s; display:flex; flex-direction:column; gap:3px; }
+.exec-card:hover { border-color:var(--azul); box-shadow:0 2px 6px rgba(15,61,110,.1); }
+.exec-card.active { border-color:var(--azul); box-shadow:0 0 0 2px var(--azul); background:var(--azul-claro); }
+.exec-card .ec-top { display:flex; justify-content:space-between; align-items:center; font-size:11px; font-weight:700; text-transform:uppercase; color:var(--gris); }
+.exec-card .ec-val { font-size:20px; font-weight:800; color:var(--azul); line-height:1.1; }
+.exec-card .ec-sub { font-size:12px; color:#475569; }
+.exec-card.seg .ec-val { color:var(--seg); }
+.exec-card.plan .ec-val { color:var(--plan); }
+.exec-card.alerta .ec-val { color:var(--err); }
+.exec-card.ok .ec-val { color:var(--ok); }
+
+/* Comparativa por línea en Panorama */
+.lineas-bar { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:8px; margin-bottom:8px; }
+.lbar-card { border:1px solid #e2e8f0; border-radius:8px; padding:8px 10px; background:#f8fafc; font-size:12px; }
+.lbar-head { display:flex; justify-content:space-between; font-weight:700; margin-bottom:4px; color:#1e293b; }
+.dual-track { position:relative; height:10px; background:#e2e8f0; border-radius:999px; overflow:hidden; margin:4px 0; }
+.dual-plan { position:absolute; top:0; bottom:0; left:0; background:#94a3b8; opacity:.45; border-right:2px solid #334155; }
+.dual-real { position:absolute; top:0; bottom:0; left:0; background:var(--ok); border-radius:999px; }
+.dual-real.atraso { background:var(--err); }
+.dual-real.leve { background:var(--warn); }
+
+/* Bitácora en vivo y Matriz de Próxima Parada */
+.feed-box { border-top:1px solid #e2e8f0; padding-top:8px; margin-top:6px; }
+.feed-list { display:flex; flex-direction:column; gap:6px; max-height:210px; overflow:auto; margin-top:6px; }
+.feed-item { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; font-size:12px; padding:7px 9px; border-radius:7px; background:#f8fafc; border-left:4px solid var(--azul); }
+.feed-item.seg { border-left-color:var(--seg); background:#f2fbfb; }
+.feed-item.seg-err { border-left-color:var(--err); background:#fff5f6; }
+.feed-item.plan { border-left-color:var(--plan); background:#f8f5ff; }
+.feed-item.sup { border-left-color:var(--ok); background:#f3faf5; }
+.feed-item.leccion { border-left-color:#d97706; background:#fffbeb; }
+
+/* KPIs clásicos */
+.kpis { display:grid; grid-template-columns: repeat(auto-fit, minmax(118px,1fr)); gap:8px; margin-bottom:12px; }
 .kpi { border:1px solid var(--borde); border-radius:8px; padding:8px 10px; background:#fff; }
-.kpi .v { font-size:19px; font-weight:700; color:var(--azul); }
-.kpi .l { font-size:12px; color:var(--gris); text-transform:uppercase; letter-spacing:.03em; }
-.panel { border:1px solid #f3d28a; background:#fffaf0; border-radius:10px; padding:12px; margin-bottom:14px; }
+.kpi .v { font-size:18px; font-weight:700; color:var(--azul); }
+.kpi .l { font-size:11px; color:var(--gris); text-transform:uppercase; letter-spacing:.03em; }
+
+.panel { border:1px solid #f3d28a; background:#fffaf0; border-radius:10px; padding:12px; margin-bottom:12px; }
 .panel .item { border-top:1px solid #f0e2c0; padding:10px 0; display:flex; flex-direction:column; gap:6px; }
 .panel .item:first-of-type { border-top:0; }
 #panel-mias .item { border-top:1px solid #e6ebf2; }
 #panel-mias .item:first-of-type { border-top:0; }
-#buscar { font:inherit; font-size:15px; border:1px solid #aab6c6; border-radius:8px; padding:10px; width:100%; min-height:44px; }
+.busq-bar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+#buscar { font:inherit; font-size:15px; border:1px solid #aab6c6; border-radius:8px; padding:10px 12px; flex:1 1 240px; min-height:44px; background:#fff; }
 .panel .meta2 { font-size:12px; color:var(--gris); }
 .panel .valor { font-size:14px; white-space:pre-wrap; overflow-wrap:anywhere; background:#fff; border:1px solid var(--borde); border-radius:6px; padding:6px 8px; max-height:120px; overflow:auto; }
 .panel img.valor { max-height:160px; object-fit:contain; }
 .panel .valor.actual { background:#f7f9fc; color:#4a5566; max-height:80px; }
-.filtros { position:sticky; top:0; z-index:5; background:#fff; padding:8px 0; display:flex; gap:6px; flex-wrap:wrap; border-bottom:1px solid var(--borde); margin-bottom:12px; }
-.filtros button { border:1px solid var(--azul); background:#fff; color:var(--azul); border-radius:999px; padding:10px 14px; min-height:44px; font-size:15px; cursor:pointer; }
+
+.filtros { position:sticky; top:0; z-index:10; background:rgba(248,250,252,.96); backdrop-filter:blur(4px); padding:8px 0; display:flex; gap:6px; flex-wrap:wrap; border-bottom:1px solid var(--borde); margin-bottom:12px; }
+.filtros button { border:1px solid var(--azul); background:#fff; color:var(--azul); border-radius:999px; padding:7px 12px; min-height:38px; font-size:13px; font-weight:600; cursor:pointer; }
 .filtros button[aria-pressed="true"] { background:var(--azul); color:#fff; }
-.filtros button small { opacity:.8; font-size:12px; }
-.grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap:14px; }
+.filtros button.f-seg { border-color:var(--seg); color:var(--seg); }
+.filtros button.f-seg[aria-pressed="true"] { background:var(--seg); color:#fff; }
+.filtros button.f-plan { border-color:var(--plan); color:var(--plan); }
+.filtros button.f-plan[aria-pressed="true"] { background:var(--plan); color:#fff; }
+.filtros button.f-err { border-color:var(--err); color:var(--err); }
+.filtros button.f-err[aria-pressed="true"] { background:var(--err); color:#fff; }
+.filtros button.f-lec { border-color:#d97706; color:#b45309; }
+.filtros button.f-lec[aria-pressed="true"] { background:#d97706; color:#fff; }
+.filtros button small { opacity:.85; font-size:11px; }
+
+.grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap:14px; }
 .grid > * { min-width:0; }
-.card { border:1px solid #9aa9bd; border-radius:10px; overflow:hidden; background:#fff; display:flex; flex-direction:column; }
-.media { height:min(75vw, 300px); min-height:200px; background:#eef2f7; display:flex; gap:2px; align-items:stretch; justify-content:center; border-bottom:1px solid #9aa9bd; }
-.media.nofoto { align-items:center; color:#6a7383; font-style:italic; }
+.card { border:1px solid #9aa9bd; border-radius:11px; overflow:hidden; background:#fff; display:flex; flex-direction:column; content-visibility:auto; contain-intrinsic-size:auto 600px; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+.card.alerta-seg { border-color:var(--err); box-shadow:0 0 0 2px rgba(176,0,32,.2); }
+.card.alerta-int { border-color:var(--plan); box-shadow:0 0 0 2px rgba(91,33,182,.18); }
+.media { position:relative; height:min(68vw, 240px); min-height:185px; background:#eef2f7; display:flex; gap:2px; align-items:stretch; justify-content:center; border-bottom:1px solid #cfd8e3; }
+.media.nofoto { align-items:center; color:#6a7383; font-style:italic; height:110px; min-height:110px; }
 .fw { position:relative; flex:1 1 0; min-width:0; display:flex; }
 .fw > .ph, .fw > img.ph { flex:1 1 auto; width:100%; height:100%; }
-.quitar-foto { position:absolute; top:6px; right:6px; width:34px; height:34px; border-radius:50%; border:0; background:rgba(180,30,30,.92); color:#fff; font-size:22px; line-height:1; cursor:pointer; z-index:2; box-shadow:0 1px 4px rgba(0,0,0,.35); }
+.foto-tag { position:absolute; top:8px; left:8px; background:rgba(15,61,110,.88); color:#fff; font-size:11px; font-weight:700; padding:3px 8px; border-radius:999px; z-index:2; pointer-events:none; max-width:calc(100% - 52px); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.foto-tag.ultima { background:rgba(27,127,59,.92); }
+.archivo-btn { position:absolute; bottom:8px; right:8px; background:rgba(15,23,42,.84); color:#fff; border:1px solid rgba(255,255,255,.3); border-radius:999px; padding:5px 10px; font-size:12px; font-weight:600; cursor:pointer; z-index:2; }
+.quitar-foto { position:absolute; top:6px; right:6px; width:32px; height:32px; border-radius:50%; border:0; background:rgba(180,30,30,.92); color:#fff; font-size:20px; line-height:1; cursor:pointer; z-index:2; box-shadow:0 1px 4px rgba(0,0,0,.35); }
 .ph { flex:1 1 0; background-size:contain; background-position:center; background-repeat:no-repeat; background-color:#eef2f7; min-width:0; cursor:zoom-in; touch-action:manipulation; }
-#visor { position:fixed; inset:0; z-index:100; background:rgba(0,0,0,.94); display:flex; align-items:center; justify-content:center; padding:12px; cursor:zoom-out; }
+img.ph { width:100%; height:100%; object-fit:contain; display:block; background:#eef2f7; }
+
+#visor { position:fixed; inset:0; z-index:120; background:rgba(0,0,0,.94); display:flex; align-items:center; justify-content:center; padding:12px; cursor:zoom-out; }
 #visor[hidden] { display:none; }
 #visor img { max-width:100%; max-height:100%; width:auto; height:auto; object-fit:contain; touch-action:pinch-zoom; user-select:none; }
 #visor-x { position:fixed; top:10px; right:10px; width:44px; height:44px; border-radius:50%; border:0; background:rgba(255,255,255,.18); color:#fff; font-size:22px; cursor:pointer; }
-img.ph { width:100%; height:100%; object-fit:contain; display:block; }
+
 .info { padding:10px 12px 12px; display:flex; flex-direction:column; gap:6px; flex:1; }
-.head { display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
-.num { font-size:20px; font-weight:700; color:var(--azul); }
-.solo-lectura [data-edit], .solo-lectura [data-dec] { display:none !important; }
-.card.backlog { opacity:.55; border-style:dashed; }
+.head { display:flex; justify-content:space-between; align-items:baseline; gap:8px; flex-wrap:wrap; }
+.num { font-size:19px; font-weight:700; color:var(--azul); }
+.solo-lectura [data-edit],
+.solo-lectura [data-dec],
+.solo-lectura [data-op],
+.solo-lectura [data-avance],
+.solo-lectura [data-fotoav],
+.solo-lectura [data-levantar],
+.solo-lectura [data-arch-usar],
+.solo-lectura [data-arch-del],
+.solo-lectura #btn-rep-rapido,
+.solo-lectura #btn-nueva,
+.solo-lectura #arch-subir { display:none !important; }
+.card.backlog { opacity:.58; border-style:dashed; }
 .card.backlog .media { filter:grayscale(.7); }
 .card.rev-cambio { box-shadow:0 0 0 2px #7c3aed; }
 .int { font-size:12px; font-weight:700; color:#6a7383; background:#eef2f7; border-radius:999px; padding:2px 8px; white-space:nowrap; }
-.head { flex-wrap:wrap; }
 .badges { display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end; }
-.badge { font-size:12px; border-radius:999px; padding:2px 8px; background:#e8f0f8; color:var(--azul); white-space:nowrap; }
-.badge.ok { background:#e5f5ea; color:var(--ok); }
-.avance { height:8px; background:#e3e8ef; border-radius:999px; overflow:hidden; margin:6px 0 2px; }
+.badge { font-size:11px; font-weight:600; border-radius:999px; padding:2px 8px; background:#e8f0f8; color:var(--azul); white-space:nowrap; }
+.badge.ok { background:var(--ok-bg); color:var(--ok); }
+.badge.warn { background:var(--warn-bg); color:var(--warn); }
+.badge.err { background:var(--err-bg); color:var(--err); }
+.badge.seg { background:var(--seg-bg); color:var(--seg); }
+.badge.plan { background:var(--plan-bg); color:var(--plan); }
+
+/* Bloque Supervisión: Cómo está vs. Cómo debería estar + Horario Real y Técnicos */
+.vs-box { background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:7px 9px; font-size:12px; display:flex; flex-direction:column; gap:4px; }
+.vs-row { display:flex; justify-content:space-between; align-items:center; gap:6px; flex-wrap:wrap; }
+.vs-delta { font-weight:700; padding:1px 6px; border-radius:999px; font-size:11px; }
+.vs-delta.ok { background:var(--ok-bg); color:var(--ok); }
+.vs-delta.warn { background:var(--warn-bg); color:var(--warn); }
+.vs-delta.err { background:var(--err-bg); color:var(--err); }
+.vs-meta-exec { font-size:11px; color:#334155; display:flex; flex-direction:column; gap:2px; border-top:1px dashed #cbd5e1; padding-top:4px; margin-top:2px; }
+
+.avance { height:8px; background:#e3e8ef; border-radius:999px; overflow:hidden; margin:2px 0; position:relative; }
 .avance > div { height:100%; background:var(--ok); }
-.sello { display:inline-block; border:2px solid var(--ok); color:var(--ok); border-radius:6px; padding:2px 10px; font-weight:700; font-size:14px; letter-spacing:.5px; transform:rotate(-2deg); margin-bottom:6px; }
+.sello { display:inline-block; border:2px solid var(--ok); color:var(--ok); border-radius:6px; padding:2px 10px; font-weight:700; font-size:13px; letter-spacing:.5px; transform:rotate(-1.5deg); margin-bottom:4px; align-self:flex-start; }
 .card.terminada { border-color:var(--ok); }
-.curva-wrap { border:1px solid #9aa9bd; border-radius:10px; padding:12px; margin:12px 0; background:#fff; }
-.curva-wrap h2 { margin:0 0 6px; font-size:17px; color:var(--azul); }
+.card.terminada .act { color:#4b5563; }
+
+/* Alertas operativas dentro de la tarjeta (Seguridad / Planeamiento / Lección Próxima Parada) */
+.op-alerts { display:flex; flex-direction:column; gap:4px; }
+.op-pill { font-size:12px; padding:6px 8px; border-radius:7px; line-height:1.35; display:flex; justify-content:space-between; align-items:flex-start; gap:6px; }
+.op-pill.seg-ok { background:var(--seg-bg); color:#064e4e; border-left:3px solid var(--seg); }
+.op-pill.seg-warn { background:var(--err-bg); color:#7f1d1d; border-left:3px solid var(--err); }
+.op-pill.plan-int { background:var(--plan-bg); color:#3b0764; border-left:3px solid var(--plan); }
+.op-pill.lec-pdp { background:#fffbeb; color:#78350f; border-left:3px solid #d97706; }
+.op-pill button { border:0; background:rgba(255,255,255,.85); color:#1e293b; border-radius:4px; font-size:11px; font-weight:700; padding:2px 6px; cursor:pointer; flex-shrink:0; border:1px solid rgba(0,0,0,.1); }
+
+/* Botonera rápida de roles en cada tarjeta */
+.rol-bar { display:grid; grid-template-columns:repeat(3, 1fr); gap:5px; margin-top:2px; }
+.btn-rol { border:1px solid var(--borde); background:#f8fafc; border-radius:7px; padding:7px 4px; font-size:12px; font-weight:700; cursor:pointer; text-align:center; white-space:nowrap; transition:background .1s; }
+.btn-rol.seg { color:var(--seg); border-color:#99d6d6; background:#f2fbfb; }
+.btn-rol.plan { color:var(--plan); border-color:#c4b5fd; background:#f8f5ff; }
+.btn-rol.sup { color:var(--ok); border-color:#a7f3d0; background:#f2fbf5; }
+.btn-rol:hover { filter:brightness(.96); }
+
+/* Acciones principales limpias (nunca parten palabras) + Fila exclusiva de Residente */
+.acciones { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:auto; pt:4px; }
+.acciones .btn { white-space:nowrap; padding:9px 8px; font-size:13px; min-height:38px; }
+.acciones-res { display:flex; gap:5px; flex-wrap:wrap; padding-top:4px; border-top:1px dashed #e2e8f0; }
+.acciones-res .btn { flex:1 1 auto; padding:5px 8px; min-height:30px; font-size:11px; white-space:nowrap; background:#f8fafc; color:#475569; border:1px solid #cbd5e1; }
+.acciones-res .btn:hover { background:#e2e8f0; color:#0f172a; }
+
+.curva-wrap { border:1px solid #9aa9bd; border-radius:10px; padding:12px; margin:10px 0; background:#fff; }
+.curva-wrap h2 { margin:0 0 6px; font-size:16px; color:var(--azul); }
 .curva-tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px; }
-.curva-tabs button { border:1px solid var(--azul); background:#fff; color:var(--azul); border-radius:999px; padding:8px 14px; min-height:40px; cursor:pointer; font-size:14px; }
+.curva-tabs button { border:1px solid var(--azul); background:#fff; color:var(--azul); border-radius:999px; padding:6px 12px; min-height:36px; cursor:pointer; font-size:13px; font-weight:600; }
 .curva-tabs button[aria-pressed="true"] { background:var(--azul); color:#fff; }
 #svg-curva { width:100%; height:auto; display:block; }
-.curva-res { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px; margin-top:8px; font-size:13px; }
+.curva-res { display:grid; grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); gap:8px; margin-top:8px; font-size:13px; }
 .curva-res div { border:1px solid #d6dde8; border-radius:8px; padding:6px 8px; }
-.curva-res b { display:block; font-size:16px; color:var(--azul); }
+.curva-res b { display:block; font-size:15px; color:var(--azul); }
 .curva-nota { font-size:12px; color:var(--gris); margin-top:6px; }
-.card.terminada .act { color:#4b5563; }
-.badge.warn { background:#fff1dc; color:var(--warn); }
-.meta { display:flex; flex-wrap:wrap; gap:2px 12px; font-size:13px; color:#333; }
-.act { font-size:15px; font-weight:600; line-height:1.3; }
-.hh { display:grid; grid-template-columns:repeat(3,1fr); border-top:1px solid #d6dee9; padding-top:8px; text-align:center; }
-.hh span { display:block; font-size:12px; color:var(--gris); text-transform:uppercase; }
-.hh b { font-size:17px; }
-.hh b s { color:#9aa3af; font-weight:400; font-size:13px; margin-right:4px; }
+
+.meta { display:flex; flex-wrap:wrap; gap:2px 10px; font-size:12px; color:#333; }
+.act { font-size:14px; font-weight:600; line-height:1.32; color:#0f172a; }
+.hh { display:grid; grid-template-columns:repeat(3,1fr); border-top:1px solid #d6dee9; padding-top:6px; text-align:center; }
+.hh span { display:block; font-size:11px; color:var(--gris); text-transform:uppercase; }
+.hh b { font-size:16px; }
+.hh b s { color:#9aa3af; font-weight:400; font-size:12px; margin-right:4px; }
 .hh .tot b { color:var(--azul); }
-.notas { background:var(--fondo); border-radius:8px; padding:8px 10px; font-size:13px; line-height:1.4; display:flex; flex-direction:column; gap:4px; }
+.notas { background:var(--fondo); border-radius:8px; padding:7px 9px; font-size:12px; line-height:1.38; display:flex; flex-direction:column; gap:3px; }
 .notas div b { color:var(--azul); }
-.acciones { display:flex; gap:8px; margin-top:auto; }
-.btn { flex:1; border:0; background:var(--azul); color:#fff; border-radius:8px; padding:12px 10px; min-height:44px; font-size:15px; font-weight:600; cursor:pointer; }
+.btn { flex:1; border:0; background:var(--azul); color:#fff; border-radius:8px; padding:9px 10px; min-height:40px; font-size:13px; font-weight:600; cursor:pointer; }
 .btn.sec { background:#fff; color:var(--azul); border:1px solid var(--azul); }
-.btn.ok { background:var(--ok); }
+.btn.ok { background:var(--ok); color:#fff; }
 .btn.no { background:#fff; color:var(--err); border:1px solid var(--err); }
 .btn:disabled { opacity:.5; cursor:default; }
-.vacio { color:var(--gris); padding:24px 0; }
-dialog { border:0; border-radius:12px; padding:0; width:min(560px, calc(100vw - 24px)); max-height:calc(100vh - 24px); box-shadow:0 10px 40px rgba(0,0,0,.3); }
-dialog::backdrop { background:rgba(15,30,50,.5); }
-form.dlg { padding:16px; display:flex; flex-direction:column; gap:10px; }
-form.dlg .ref { font-size:13px; color:var(--gris); margin-top:-6px; }
+.vacio { color:var(--gris); padding:24px 0; text-align:center; }
+
+dialog { border:0; border-radius:12px; padding:0; width:min(650px, calc(100vw - 18px)); max-height:calc(100vh - 18px); box-shadow:0 12px 42px rgba(0,0,0,.32); }
+dialog::backdrop { background:rgba(15,30,50,.55); }
+form.dlg, .dlg-box { padding:16px; display:flex; flex-direction:column; gap:10px; overflow-y:auto; max-height:calc(100vh - 24px); }
+form.dlg .ref, .dlg-box .ref { font-size:13px; color:var(--gris); margin-top:-4px; }
 label { display:flex; flex-direction:column; gap:4px; font-size:13px; font-weight:600; color:#333; }
 label span.opc { font-weight:400; color:var(--gris); }
-textarea, input[type=number], input[type=text], input[type=password], input[type=file] { font:inherit; font-size:15px; font-weight:400; border:1px solid #aab6c6; border-radius:8px; padding:9px 10px; width:100%; }
-textarea { min-height:64px; resize:vertical; }
+textarea, input[type=number], input[type=text], input[type=password], input[type=file], input[type=datetime-local], select { font:inherit; font-size:14px; font-weight:400; border:1px solid #aab6c6; border-radius:8px; padding:8px 10px; width:100%; background:#fff; }
+textarea { min-height:58px; resize:vertical; }
 .fila { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px; }
+.fila-3 { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:8px; }
 .err { color:var(--err); font-size:13px; min-height:1em; }
-.botones { display:flex; gap:8px; justify-content:flex-end; }
-.botones .btn { flex:0 0 auto; padding:11px 16px; }
-.login { max-width:360px; margin:40px auto; border:1px solid var(--borde); border-radius:12px; padding:20px; display:flex; flex-direction:column; gap:12px; }
+.botones { display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; }
+.botones .btn { flex:0 0 auto; padding:10px 16px; }
+.login { max-width:380px; margin:36px auto; border:1px solid var(--borde); border-radius:12px; padding:20px; display:flex; flex-direction:column; gap:12px; background:#fff; }
 .login p { margin:0; font-size:13px; color:var(--gris); }
-.p10{background-image:url(fotos/10.jpg)}
-.p11{background-image:url(fotos/11.jpg)}
-.p12{background-image:url(fotos/12.jpg)}
-.p13{background-image:url(fotos/13.jpg)}
-.p14{background-image:url(fotos/14.jpg)}
-.p15{background-image:url(fotos/15.jpg)}
-.p16{background-image:url(fotos/16.jpg)}
-.p17{background-image:url(fotos/17.jpg)}
-.p18{background-image:url(fotos/18.jpg)}
-.p19{background-image:url(fotos/19.jpg)}
-.p20{background-image:url(fotos/20.jpg)}
-.p21{background-image:url(fotos/21.jpg)}
-.p22{background-image:url(fotos/22.jpg)}
-.p23{background-image:url(fotos/23.jpg)}
-.p30{background-image:url(fotos/30.jpg)}
-.p31{background-image:url(fotos/31.jpg)}
-.p32{background-image:url(fotos/32.jpg)}
-.p33{background-image:url(fotos/33.jpg)}
-.p34{background-image:url(fotos/34.jpg)}
-.p35{background-image:url(fotos/35.jpg)}
-.p36{background-image:url(fotos/36.jpg)}
-.p37{background-image:url(fotos/37.jpg)}
-.p41{background-image:url(fotos/41.jpg)}
-.p42{background-image:url(fotos/42.jpg)}
-.p43{background-image:url(fotos/43.jpg)}
-.p44{background-image:url(fotos/44.jpg)}
-.p45{background-image:url(fotos/45.jpg)}
-.p47{background-image:url(fotos/47.jpg)}
-.p48{background-image:url(fotos/48.jpg)}
-.p49{background-image:url(fotos/49.jpg)}
-.p50{background-image:url(fotos/50.jpg)}
-.p51{background-image:url(fotos/51.jpg)}
-.p52{background-image:url(fotos/52.jpg)}
-.p56{background-image:url(fotos/56.jpg)}
-.p57{background-image:url(fotos/57.jpg)}
-.p58{background-image:url(fotos/58.jpg)}
-.p59{background-image:url(fotos/59.jpg)}
-.p60{background-image:url(fotos/60.jpg)}
-.p64{background-image:url(fotos/64.jpg)}
-.p65{background-image:url(fotos/65.jpg)}
-.p66{background-image:url(fotos/66.jpg)}
-.p67{background-image:url(fotos/67.jpg)}
-.p68{background-image:url(fotos/68.jpg)}
-.p72{background-image:url(fotos/72.jpg)}
-.p73{background-image:url(fotos/73.jpg)}
-.p74{background-image:url(fotos/74.jpg)}
-.p75{background-image:url(fotos/75.jpg)}
-.p76{background-image:url(fotos/76.jpg)}
-.p77{background-image:url(fotos/77.jpg)}
-.p78{background-image:url(fotos/78.jpg)}
-.p82{background-image:url(fotos/82.jpg)}
-.p83{background-image:url(fotos/83.jpg)}
-.p84{background-image:url(fotos/84.jpg)}
-.p85{background-image:url(fotos/85.jpg)}
-.p86{background-image:url(fotos/86.jpg)}
-.p87{background-image:url(fotos/87.jpg)}
-.p88{background-image:url(fotos/88.jpg)}
-.p89{background-image:url(fotos/89.jpg)}
-.p90{background-image:url(fotos/90.jpg)}
-.p91{background-image:url(fotos/91.jpg)}
-.p92{background-image:url(fotos/92.jpg)}
-.p93{background-image:url(fotos/93.jpg)}
-.p94{background-image:url(fotos/94.jpg)}
-.p95{background-image:url(fotos/95.jpg)}
-.p99{background-image:url(fotos/99.jpg)}
-.p100{background-image:url(fotos/100.jpg)}
-.p101{background-image:url(fotos/101.jpg)}
-.p102{background-image:url(fotos/102.jpg)}
-.p103{background-image:url(fotos/103.jpg)}
-.p104{background-image:url(fotos/104.jpg)}
-.p105{background-image:url(fotos/105.jpg)}
-.p106{background-image:url(fotos/106.jpg)}
-.p111{background-image:url(fotos/111.jpg)}
-.p112{background-image:url(fotos/112.jpg)}
-.p113{background-image:url(fotos/113.jpg)}
 .chg { color:#6a1b9a; font-weight:700; }
-.lbl { font-size:14px; font-weight:600; color:#1a1a1a; }
+.lbl { font-size:13px; font-weight:700; color:#0f3d6e; margin-top:2px; }
+.sub-bloque { border:1px solid #dbe3ee; border-radius:9px; padding:10px; background:#f8fafc; display:flex; flex-direction:column; gap:8px; }
+.sub-bloque.leccion { border-color:#fcd34d; background:#fffbeb; }
 .herr-fila { display:grid; grid-template-columns:minmax(0,1fr) 84px auto; gap:6px; align-items:center; }
-.herr-fila input { font:inherit; font-size:15px; border:1px solid #aab6c6; border-radius:8px; padding:8px; min-height:44px; min-width:0; width:100%; }
-.herr-fila .x { border:1px solid var(--err); background:#fff; color:var(--err); border-radius:8px; min-height:44px; min-width:44px; font-size:18px; cursor:pointer; }
+.herr-fila input { font:inherit; font-size:14px; border:1px solid #aab6c6; border-radius:8px; padding:7px; min-height:38px; min-width:0; width:100%; }
+.herr-fila .x, .tec-fila .x { border:1px solid var(--err); background:#fff; color:var(--err); border-radius:8px; min-height:38px; min-width:38px; font-size:18px; cursor:pointer; }
+.tec-fila { display:grid; grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) auto; gap:6px; align-items:center; }
 .chips { display:flex; flex-wrap:wrap; gap:6px; }
-.chip { background:#e8f0f8; color:var(--azul); border-radius:999px; padding:6px 10px; font-size:14px; display:inline-flex; align-items:center; gap:6px; }
-.chip button { border:0; background:none; color:var(--err); font-size:16px; cursor:pointer; padding:0 2px; min-height:28px; }
-.sug { border:1px solid #aab6c6; border-radius:8px; background:#fff; max-height:220px; overflow:auto; }
-.sug button { display:block; width:100%; text-align:left; border:0; border-bottom:1px solid var(--borde); background:#fff; padding:10px; min-height:44px; font-size:14px; cursor:pointer; }
+.chip { background:#e8f0f8; color:var(--azul); border-radius:999px; padding:5px 10px; font-size:13px; display:inline-flex; align-items:center; gap:6px; }
+.chip button { border:0; background:none; color:var(--err); font-size:16px; cursor:pointer; padding:0 2px; min-height:24px; }
+.sug { border:1px solid #aab6c6; border-radius:8px; background:#fff; max-height:200px; overflow:auto; }
+.sug button { display:block; width:100%; text-align:left; border:0; border-bottom:1px solid var(--borde); background:#fff; padding:9px; min-height:40px; font-size:14px; cursor:pointer; }
 .sug button:disabled { color:var(--gris); cursor:default; }
 .sug small { color:var(--gris); }
-.btn-idioma { border:1px solid var(--azul); background:#fff; color:var(--azul); border-radius:999px; padding:8px 14px; min-height:40px; font-size:14px; font-weight:600; cursor:pointer; }
-.curva-acc{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0}
-.curva-hint{font-size:12px;color:#6a7383}
-.av-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}
-.av-n{font-size:12px;color:#6a7383}
-.card{content-visibility:auto;contain-intrinsic-size:auto 560px}
+.btn-idioma { border:1px solid var(--azul); background:#fff; color:var(--azul); border-radius:999px; padding:6px 12px; min-height:36px; font-size:13px; font-weight:600; cursor:pointer; }
+.curva-acc { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:6px 0; }
+.curva-hint { font-size:12px; color:#6a7383; }
+.av-bar { display:flex; flex-wrap:wrap; gap:5px; align-items:center; padding:6px 10px; background:#f8fafc; border-bottom:1px solid #e2e8f0; }
+.av-n { font-size:11px; color:#475569; font-weight:600; }
+
+/* Galería de archivo de fotos */
+.arch-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:10px; max-height:60vh; overflow:auto; padding:4px 0; }
+.arch-item { border:1px solid var(--borde); border-radius:8px; overflow:hidden; background:#f8fafc; display:flex; flex-direction:column; position:relative; }
+.arch-item.actual { border:2px solid var(--ok); }
+.arch-item img { width:100%; height:130px; object-fit:contain; background:#eef2f7; cursor:zoom-in; }
+.arch-meta { padding:6px 8px; font-size:11px; color:#334155; display:flex; justify-content:space-between; align-items:center; gap:4px; }
+
+/* Checkboxes de verificación en campo */
+.chk-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:6px; }
+.chk-item { display:flex; align-items:center; gap:7px; padding:7px 9px; border:1px solid var(--borde); border-radius:8px; background:#fff; font-weight:600; font-size:12px; cursor:pointer; }
+.chk-item input { width:16px; height:16px; margin:0; flex-shrink:0; }
+
+/* Botones rápidos de porcentaje */
+.pct-btns { display:grid; grid-template-columns:repeat(6, 1fr); gap:6px; }
+.pct-btns button { border:1px solid var(--azul); background:#fff; color:var(--azul); border-radius:7px; padding:8px 4px; font-weight:700; font-size:13px; cursor:pointer; }
+.pct-btns button.act { background:var(--azul); color:#fff; }
+
+/* Toast de notificación ágil */
+#toast-wrap { position:fixed; bottom:16px; right:16px; z-index:200; display:flex; flex-direction:column; gap:8px; max-width:340px; pointer-events:none; }
+.toast { background:#0f172a; color:#fff; padding:10px 14px; border-radius:9px; font-size:13px; font-weight:600; box-shadow:0 6px 20px rgba(0,0,0,.25); pointer-events:auto; }
+.toast.ok { background:var(--ok); }
+.toast.err { background:var(--err); }
 </style>
 </head>
 <body>
-<div id="arranque" style="padding:48px 16px;text-align:center;color:#5b6675;font-size:15px"><p style="margin:0">Cargando…</p></div>
-<script>setTimeout(function(){var a=document.getElementById("arranque");if(a)a.querySelector("p").textContent="Sigue cargando… revisa la conexión o pulsa Actualizar.";},12000);</script>
+<div id="arranque" style="padding:48px 16px;text-align:center;color:#5b6675;font-size:15px"><p style="margin:0">Cargando sistema de Parada de Planta (v26)…</p></div>
+<div id="toast-wrap" aria-live="polite"></div>
 
 <section class="login" id="login" hidden>
   <div style="text-align:right"><button type="button" class="btn-idioma idioma" aria-label="Idioma / 语言">中文</button></div>
@@ -219,30 +296,105 @@ textarea { min-height:64px; resize:vertical; }
     <div class="err" id="l-err"></div>
     <button class="btn" type="submit" id="l-btn" data-i18n="entrar">Entrar</button>
   </form>
-  <button class="btn sec" type="button" id="l-invitado" data-i18n="entrar_inv" style="margin-top:10px">Entrar como invitado (solo ver) · 以访客身份进入（仅查看）</button>
+  <button class="btn sec" type="button" id="l-invitado" data-i18n="entrar_inv" style="margin-top:6px">Entrar como invitado (solo ver) · 以访客身份进入（仅查看）</button>
+  <button class="btn sec" type="button" id="l-demo" style="font-size:12px;border-style:dashed">⚡ Modo simulación inmediata (Demo en vivo sin red)</button>
 </section>
 
 <div id="app" hidden>
   <h1 data-i18n="app_h1">Parada de planta · Planta Magnética Beijing</h1>
-  <div class="sub"><span data-i18n="sub">Programación preliminar Octubre 2026 (REV. 21) · Los cambios los revisa el residente antes de publicarse</span> · <span class="chg" data-i18n="morado">Morado</span> = <span data-i18n="sub_leyenda">horas o personal corregidos y aprobados</span></div>
-  <div class="ver" id="ver"></div>
+  <div class="sub"><span data-i18n="sub">Programación preliminar Octubre 2026 (REV. 21) · Control Integral: Seguridad, Planeamiento, Supervisión, Residente y Gerencia</span> · <span class="chg" data-i18n="morado">Morado</span> = <span data-i18n="sub_leyenda">horas o personal corregidos y aprobados</span></div>
+  <div class="ver"><span id="ver"></span> <span class="perf-pill" id="perf-stat">⚡ Carga ultra-rápida activa</span></div>
   <div class="barra">
     <span id="usuario"></span>
-    <span><button class="btn-idioma idioma" type="button" aria-label="Idioma / 语言">中文</button> <button id="btn-refrescar" type="button" data-i18n="refrescar">Actualizar</button> <button id="btn-salir" type="button" data-i18n="salir">Salir</button></span>
+    <span style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      <label id="wrap-vista-rol" hidden style="flex-direction:row;align-items:center;gap:4px;font-size:12px;margin:0" title="Cambiar vista de rol (solo visible en Simulación o para el Residente)">
+        <span>Vista Rol:</span>
+        <select id="sel-vista-rol" aria-label="Cambiar rol activo">
+          <option value="auto">Automático (Perfil SGMC)</option>
+          <option value="Supervisor">👷 Supervisor (Sin botones Residente)</option>
+          <option value="Planificador">📐 Planificador (Sin botones Residente)</option>
+          <option value="SupervisorSeguridad">🛡️ Seguridad SSOMA (Sin botones Residente)</option>
+          <option value="Residente">👑 Residente (Control total)</option>
+          <option value="Invitado">👀 Invitado (Solo lectura)</option>
+        </select>
+      </label>
+      <button class="btn-idioma idioma" type="button" aria-label="Idioma / 语言">中文</button>
+      <button id="btn-toggle-exec" type="button">📊 Panorama Gerencial</button>
+      <button id="btn-refrescar" type="button" data-i18n="refrescar">Actualizar</button>
+      <button id="btn-salir" type="button" data-i18n="salir">Salir</button>
+    </span>
   </div>
 
+  <!-- PANORAMA EJECUTIVO: RESIDENTE, GERENCIA, SEGURIDAD, PLANEAMIENTO Y SUPERVISIÓN -->
+  <section class="exec-wrap" id="panel-ejecutivo">
+    <div class="exec-head">
+      <div class="exec-title">
+        <h2>📊 Panorama Ejecutivo en Tiempo Real · Residente y Gerencia</h2>
+        <span class="semaforo-pill ok" id="sem-global">🟢 Calculando estado…</span>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button type="button" class="btn sec" id="btn-rep-rapido" style="padding:6px 10px;min-height:34px;font-size:12px">+ Registrar Avance / Reporte de Campo</button>
+        <button type="button" class="btn sec" id="btn-exp-gerencial" style="padding:6px 10px;min-height:34px;font-size:12px">📥 Exportar Todo + Lecciones Próxima Parada (Excel)</button>
+      </div>
+    </div>
+
+    <div class="exec-grid" id="exec-kpis">
+      <button type="button" class="exec-card" data-ef="todas">
+        <div class="ec-top"><span>Avance Real vs. Debería</span><span>👷 Supervisión</span></div>
+        <div class="ec-val" id="ek-av-real">0.0%</div>
+        <div class="ec-sub" id="ek-av-plan">Meta a esta hora: 0.0%</div>
+      </button>
+      <button type="button" class="exec-card alerta" data-ef="atrasadas">
+        <div class="ec-top"><span>Atrasadas vs. Plan</span><span>⏱ Desviación</span></div>
+        <div class="ec-val" id="ek-atrasadas">0</div>
+        <div class="ec-sub" id="ek-atrasadas-sub">Debajo de lo que deberían llevar</div>
+      </button>
+      <button type="button" class="exec-card plan" data-ef="interferencias">
+        <div class="ec-top"><span>Interferencias / Faltantes</span><span>📐 Planeamiento</span></div>
+        <div class="ec-val" id="ek-interf">0</div>
+        <div class="ec-sub" id="ek-interf-sub">Restricciones y cuellos de botella</div>
+      </button>
+      <button type="button" class="exec-card seg" data-ef="seguridad">
+        <div class="ec-top"><span>Seguridad en Campo</span><span>🛡️ SSOMA</span></div>
+        <div class="ec-val" id="ek-seg">0</div>
+        <div class="ec-sub" id="ek-seg-sub">0 constancias · 0 alertas abiertas</div>
+      </button>
+      <button type="button" class="exec-card" data-ef="lecciones" style="border-color:#fcd34d">
+        <div class="ec-top"><span style="color:#b45309">Próxima Parada</span><span>🧠 Lecciones</span></div>
+        <div class="ec-val" id="ek-lecciones" style="color:#b45309">0</div>
+        <div class="ec-sub" id="ek-lecciones-sub">Mejoras y herramientas faltantes</div>
+      </button>
+      <button type="button" class="exec-card ok" data-ef="terminadas">
+        <div class="ec-top"><span>Estado de Actividades</span><span>✔ Ejecución</span></div>
+        <div class="ec-val" id="ek-term">0 / 0</div>
+        <div class="ec-sub" id="ek-term-sub">0 en ejecución · 0 sin iniciar</div>
+      </button>
+    </div>
+
+    <div class="lineas-bar" id="exec-lineas"></div>
+
+    <div class="feed-box">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+        <h3>📡 Bitácora en Vivo: Avance Detallado, Técnicos, Herramientas Faltantes, Interferencias y Seguridad</h3>
+        <button type="button" class="barra-btn" id="btn-toggle-feed" style="border:1px solid var(--borde);background:#fff;border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer">Mostrar / ocultar bitácora</button>
+      </div>
+      <div class="feed-list" id="feed-list"></div>
+    </div>
+  </section>
+
   <section class="curva-wrap" id="panel-curva">
-    <h2>Curva S · avance vs horas hombre</h2>
+    <h2>Curva S · avance real vs. programado (Horas Hombre)</h2>
     <div class="curva-tabs" id="curva-tabs">
       <button type="button" data-cl="1" aria-pressed="false">Línea 1</button>
       <button type="button" data-cl="2" aria-pressed="false">Línea 2</button>
       <button type="button" data-cl="total" aria-pressed="true">Total</button>
     </div>
-    <div class="curva-acc"><button type="button" id="btn-curva" class="btn sec">Calcular / actualizar curva</button> <span class="curva-hint">Se calcula solo al pulsar el botón.</span></div>
+    <div class="curva-acc"><button type="button" id="btn-curva" class="btn sec">Calcular / actualizar curva</button> <span class="curva-hint">Cálculo instantáneo bajo demanda para no ralentizar la lista.</span></div>
     <svg id="svg-curva" viewBox="0 0 600 300" role="img" aria-label="Curva S de avance"></svg>
     <div class="curva-res" id="curva-res"></div>
     <div class="curva-nota" id="curva-nota"></div>
   </section>
+
   <div class="kpis">
     <div class="kpi"><div class="v" id="k-act">–</div><div class="l" data-i18n="k_act">Actividades</div></div>
     <div class="kpi"><div class="v" id="k-hor">–</div><div class="l" data-i18n="k_hor">Horas</div></div>
@@ -264,21 +416,33 @@ textarea { min-height:64px; resize:vertical; }
     <div id="lista-mias"></div>
   </section>
 
-  <input id="buscar" type="search" data-i18n-ph="ph_buscar" placeholder="Buscar por N°, OT, equipo o texto" data-i18n-aria="aria_buscar" aria-label="Buscar actividades" style="margin-bottom:10px">
+  <div class="busq-bar">
+    <input id="buscar" type="search" data-i18n-ph="ph_buscar" placeholder="Buscar por N°, OT, equipo, técnico, herramienta, interferencia o texto" data-i18n-aria="aria_buscar" aria-label="Buscar actividades">
+  </div>
 
-  <nav class="filtros" id="filtros" aria-label="Filtrar por línea">
+  <nav class="filtros" id="filtros" aria-label="Filtrar actividades">
     <button data-f="todas" aria-pressed="true"><span data-i18n="f_todas">Todas</span> <small id="c-todas"></small></button>
     <button data-f="l1" aria-pressed="false"><span data-i18n="f_l1">Línea 1</span> <small id="c-l1"></small></button>
     <button data-f="l2" aria-pressed="false"><span data-i18n="f_l2">Línea 2</span> <small id="c-l2"></small></button>
     <button data-f="ambas" aria-pressed="false"><span data-i18n="f_ambas">Ambas líneas (1-2)</span> <small id="c-ambas"></small></button>
+    <button data-f="atrasadas" class="f-err" aria-pressed="false">⏱ Atrasadas vs. Plan <small id="c-atrasadas"></small></button>
+    <button data-f="interferencias" class="f-plan" aria-pressed="false">🚧 Interferencias / Faltantes <small id="c-interferencias"></small></button>
+    <button data-f="seguridad" class="f-seg" aria-pressed="false">🛡️ Seguridad Campo <small id="c-seguridad"></small></button>
+    <button data-f="lecciones" class="f-lec" aria-pressed="false">🧠 Próxima Parada <small id="c-lecciones"></small></button>
+    <button data-f="en_proceso" aria-pressed="false">⚙️ En ejecución <small id="c-enproceso"></small></button>
+    <button data-f="terminadas" aria-pressed="false">✔ Terminadas <small id="c-terminadas"></small></button>
     <button data-f="pend" aria-pressed="false"><span data-i18n="f_pend">Con pendientes</span> <small id="c-pend"></small></button>
     <button data-f="ocultas" aria-pressed="false" id="f-ocultas" hidden>Ocultas <small id="c-ocultas"></small></button>
   </nav>
 
-  <div class="barra"><button type="button" class="btn sec" id="btn-exp" style="flex:0 0 auto" data-i18n="exp">Exportar herramientas y equipos (Excel)</button> <button type="button" class="btn sec" id="btn-nueva" style="flex:0 0 auto" hidden>+ Actividad no programada</button></div>
+  <div class="barra">
+    <button type="button" class="btn sec" id="btn-exp" style="flex:0 0 auto" data-i18n="exp">Exportar herramientas y equipos (Excel)</button>
+    <button type="button" class="btn sec" id="btn-nueva" style="flex:0 0 auto" hidden>+ Actividad no programada</button>
+  </div>
   <main class="grid" id="grid"></main>
 </div>
 
+<!-- MODAL ORIGINAL: PROPONER CAMBIO (conserva todos los IDs para compatibilidad total) -->
 <dialog id="dlg">
   <form id="form" class="dlg" method="dialog" novalidate>
     <h2 id="f-titulo">Proponer cambio</h2>
@@ -301,7 +465,7 @@ textarea { min-height:64px; resize:vertical; }
     <div class="sug" id="f-sug" hidden></div>
     <div class="chips" id="f-chips"></div>
     <div class="opc" id="f-ya"></div>
-    <label><span data-i18n="foto_add">Agregar foto</span> <span class="opc" data-i18n="opcional">(opcional)</span>
+    <label><span data-i18n="foto_add">Agregar foto (será la foto principal y archivará las anteriores)</span> <span class="opc" data-i18n="opcional">(opcional)</span>
       <input id="f-foto" type="file" accept="image/*" capture="environment"></label>
     <div class="err" id="f-err"></div>
     <div class="botones">
@@ -311,40 +475,379 @@ textarea { min-height:64px; resize:vertical; }
   </form>
 </dialog>
 
+<!-- MODAL OPERATIVO INTEGRAL: AVANCE DETALLADO (SUPERVISIÓN), PLANEAMIENTO Y SEGURIDAD -->
+<dialog id="dlg-op">
+  <div class="dlg-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+      <h2 id="op-titulo">Registro Integral de Avance y Control de Campo</h2>
+      <button type="button" class="btn sec" id="op-cerrar-x" style="flex:0 0 auto;padding:4px 10px;min-height:32px">✕</button>
+    </div>
+    <div class="ref" id="op-ref"></div>
+
+    <label id="op-sel-act-wrap" hidden>
+      <span>Seleccionar actividad</span>
+      <select id="op-sel-act"></select>
+    </label>
+
+    <div class="curva-tabs" id="op-tabs" style="margin-bottom:2px">
+      <button type="button" data-optab="supervision" aria-pressed="true">👷 Avance Detallado / Supervisión</button>
+      <button type="button" data-optab="planeamiento" aria-pressed="false">📐 Planeamiento / Interferencias</button>
+      <button type="button" data-optab="seguridad" aria-pressed="false">🛡️ Seguridad SSOMA (Campo)</button>
+    </div>
+
+    <!-- PESTAÑA PRINCIPAL: AVANCE DETALLADO (TIEMPOS, PASE, TÉCNICOS+CARGO, HERRAMIENTAS, INTERFERENCIAS, PRÓXIMA PARADA) -->
+    <div id="op-pane-supervision" style="display:flex;flex-direction:column;gap:10px">
+      <div class="vs-box" id="sup-vs-preview" style="padding:10px"></div>
+
+      <!-- 1. PORCENTAJE Y ESTADO DE PASE -->
+      <div class="sub-bloque">
+        <div class="lbl">1. Avance Físico Real (%) y Estado del Pase / Entrega</div>
+        <div class="pct-btns" id="sup-pct-btns">
+          <button type="button" data-pct="0">0%</button>
+          <button type="button" data-pct="25">25%</button>
+          <button type="button" data-pct="50">50%</button>
+          <button type="button" data-pct="75">75%</button>
+          <button type="button" data-pct="90">90%</button>
+          <button type="button" data-pct="100">100% ✔</button>
+        </div>
+        <div class="fila-3">
+          <label><span>Avance exacto (0–100%)</span>
+            <input type="number" id="sup-avance" min="0" max="100" step="1" value="0">
+          </label>
+          <label><span>Situación en campo</span>
+            <select id="sup-estado">
+              <option value="normal">⚙️ En ejecución normal</option>
+              <option value="adelantada">🚀 Adelantada respecto al plan</option>
+              <option value="lenta">⏳ Ritmo lento / Dificultad técnica</option>
+              <option value="detenida">🛑 Detenida por restricción</option>
+              <option value="terminada">✔ Trabajo concluido y entregado</option>
+            </select>
+          </label>
+          <label><span>Estado del Pase / Entrega de área</span>
+            <select id="sup-pase">
+              <option value="Pase conforme y a tiempo">✅ Pase a tiempo (Área liberada)</option>
+              <option value="Demora en pase de Operaciones">⏳ Demora en pase de Operaciones (Limpieza/Drenaje)</option>
+              <option value="Demora en Bloqueo LOTOTO">🔒 Demora en Bloqueo LOTOTO / Sala Eléctrica</option>
+              <option value="Pase de turno a siguiente guardia">🔄 Pase de turno (Continúa guardia entrante)</option>
+              <option value="Equipo entregado a Operaciones OK">✔ Equipo entregado a Operaciones (Prueba OK)</option>
+            </select>
+          </label>
+        </div>
+
+        <!-- HORA DE INICIO Y HORA FINAL -->
+        <div class="fila">
+          <label>
+            <span style="display:flex;justify-content:space-between;align-items:center">
+              <span>⏱ Hora de Inicio Real</span>
+              <button type="button" id="btn-hora-ini-now" style="border:0;background:#e8f0f8;color:var(--azul);border-radius:4px;font-size:11px;font-weight:700;padding:2px 6px;cursor:pointer">Marcar Ahora</button>
+            </span>
+            <input type="datetime-local" id="sup-hora-ini">
+          </label>
+          <label>
+            <span style="display:flex;justify-content:space-between;align-items:center">
+              <span>🏁 Hora Final Real / Cierre</span>
+              <button type="button" id="btn-hora-fin-now" style="border:0;background:#e5f5ea;color:var(--ok);border-radius:4px;font-size:11px;font-weight:700;padding:2px 6px;cursor:pointer">Marcar Ahora</button>
+            </span>
+            <input type="datetime-local" id="sup-hora-fin">
+          </label>
+        </div>
+      </div>
+
+      <!-- 2. CUADRILLA EJECUTORA: NOMBRE DE LOS TÉCNICOS Y CARGO -->
+      <div class="sub-bloque">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+          <div class="lbl" style="margin:0">2. Técnicos Ejecutores y Cargo / Especialidad</div>
+          <button type="button" class="btn sec" id="sup-tec-add" style="flex:0 0 auto;padding:4px 10px;min-height:30px;font-size:12px">+ Agregar técnico</button>
+        </div>
+        <datalist id="dl-personal"></datalist>
+        <div id="sup-tec-lista" style="display:flex;flex-direction:column;gap:6px"></div>
+      </div>
+
+      <!-- 3. OBSERVACIONES DE HERRAMIENTAS, EQUIPOS E INTERFERENCIAS -->
+      <div class="sub-bloque">
+        <div class="lbl">3. Herramientas, Equipos, Interferencias y Observaciones del Trabajo</div>
+        <div class="fila">
+          <label><span>🔧 Observación de Herramientas / Qué herramienta faltó o falló</span>
+            <textarea id="sup-obs-herr" placeholder="Ej. Se retiró tecle cadena 3T en mal estado; faltó llave de golpe 2-1/4 y segundo equipo de oxicorte…"></textarea>
+          </label>
+          <label><span>🚧 Interferencias / Cuellos de botella / Pase en el frente</span>
+            <textarea id="sup-obs-interf" placeholder="Ej. Espera de 45 min por puente grúa 463-013 ocupado en L1; interferencia con desmontaje de tubería superior…"></textarea>
+          </label>
+        </div>
+        <label><span>📝 Detalle general del avance ejecutado (Cómo está vs. Cómo debería estar)</span>
+          <textarea id="sup-detalle" placeholder="Ej. Se completó desmontaje de válvula y limpieza de bridas al 50%, queda montaje de válvula nueva y torqueo…"></textarea>
+        </label>
+      </div>
+
+      <!-- 4. MAPEO PARA LA SIGUIENTE PARADA DE PLANTA (LECCIONES APRENDIDAS) -->
+      <div class="sub-bloque leccion">
+        <div class="lbl" style="color:#92400e">4. 🧠 Mapeo para la Siguiente Parada (Qué gestionar / Qué fallas y cuellos de botella evitar)</div>
+        <div class="chk-grid">
+          <label class="chk-item"><input type="checkbox" id="lec-prearmar"> <span>Pre-armar / pre-fabricar antes</span></label>
+          <label class="chk-item"><input type="checkbox" id="lec-andamio"> <span>Armar andamios previo a parada</span></label>
+          <label class="chk-item"><input type="checkbox" id="lec-herr"> <span>Comprar / alquilar más herramientas</span></label>
+          <label class="chk-item"><input type="checkbox" id="lec-hh"> <span>Ajustar HH o N° de técnicos en plan</span></label>
+          <label class="chk-item"><input type="checkbox" id="lec-grua"> <span>Separar turno de puente grúa</span></label>
+          <label class="chk-item"><input type="checkbox" id="lec-rep"> <span>Auditar repuestos/pernería 48h antes</span></label>
+        </div>
+        <label><span>📌 Recomendación clave para la próxima parada de planta</span>
+          <textarea id="sup-leccion" placeholder="Ej. Para la siguiente parada: dejar andamio instalado 1 día antes, asignar 2 tecles de 5T exclusivos y programar 5 técnicos en vez de 3…"></textarea>
+        </label>
+      </div>
+    </div>
+
+    <!-- PESTAÑA 2: PLANEAMIENTO (INTERFERENCIAS, FALTANTES, RETRASOS) -->
+    <div id="op-pane-planeamiento" hidden style="display:flex;flex-direction:column;gap:10px">
+      <div class="fila">
+        <label><span>Estado de Restricción / Qué falta o retrasa</span>
+          <select id="plan-tipo">
+            <option value="grua">🏗️ En espera de Puente Grúa / Maniobra</option>
+            <option value="repuesto">⚙️ Falta Repuesto / Material / Consumible</option>
+            <option value="andamio">🧱 Falta Andamio / Plataforma / Acceso</option>
+            <option value="bloqueo">🔒 Pendiente Bloqueo Eléctrico / LOTOTO / Operaciones</option>
+            <option value="personal">👷 Falta Personal / Especialidad técnica</option>
+            <option value="interferencia">🔄 Interferencia con otra actividad / Frente</option>
+            <option value="herramienta">🔧 Falta Herramienta especial / Equipo</option>
+            <option value="liberado">✅ Sin restricciones (Frente 100% liberado)</option>
+          </select>
+        </label>
+        <label><span>Impacto estimado (Horas de atraso)</span>
+          <input type="number" id="plan-horas" min="0" max="99" step="0.5" value="0">
+        </label>
+      </div>
+      <div class="chk-grid">
+        <label class="chk-item"><input type="checkbox" id="plan-critica"> <span>🔥 Marcar en Ruta Crítica</span></label>
+        <label class="chk-item"><input type="checkbox" id="plan-alerta" checked> <span>🚨 Mostrar alerta activa en tarjeta y gerencia</span></label>
+      </div>
+      <label><span>Detalle de qué falta, qué retrasa el avance o interferencia</span>
+        <textarea id="plan-detalle" placeholder="Ej. Falta puente grúa por maniobra en Molino L1; requiere grúa por 1.5h y pernos M24…"></textarea>
+      </label>
+      <label><span>Responsable / Acción de destrabe</span> <span class="opc">(opcional)</span>
+        <input type="text" id="plan-accion" placeholder="Ej. Coordinado con logística y supervisión de grúa para las 14:30">
+      </label>
+    </div>
+
+    <!-- PESTAÑA 3: SEGURIDAD (SSOMA) -->
+    <div id="op-pane-seguridad" hidden style="display:flex;flex-direction:column;gap:10px">
+      <div class="fila">
+        <label><span>Tipo de reporte de Seguridad</span>
+          <select id="seg-tipo">
+            <option value="inspeccion_ok">✅ Constancia de Inspección en Campo (Conforme)</option>
+            <option value="acto_subestandar">⚠️ Acto Subestándar detectado</option>
+            <option value="condicion_subestandar">🔶 Condición Subestándar detectada</option>
+            <option value="paralizacion">🛑 Riesgo Crítico / Paralización temporal</option>
+          </select>
+        </label>
+        <label><span>Nivel de Riesgo / Estado</span>
+          <select id="seg-nivel">
+            <option value="verificado">🟢 Verificado en campo (Controlado)</option>
+            <option value="media">🟡 Riesgo Medio (Corregido en el acto)</option>
+            <option value="alta">🔴 Riesgo Alto / Observación abierta</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="lbl">Constancia de verificación presencial en campo:</div>
+      <div class="chk-grid">
+        <label class="chk-item"><input type="checkbox" id="seg-chk-campo" checked> <span>Inspector presente en punto</span></label>
+        <label class="chk-item"><input type="checkbox" id="seg-chk-petar" checked> <span>PETAR / IPERC firmado en sitio</span></label>
+        <label class="chk-item"><input type="checkbox" id="seg-chk-lototo" checked> <span>Bloqueo LOTOTO verificado</span></label>
+        <label class="chk-item"><input type="checkbox" id="seg-chk-epp" checked> <span>EPP específico y área demarcada</span></label>
+      </div>
+
+      <label><span>Observación de campo / Acto o condición encontrada</span>
+        <textarea id="seg-detalle" placeholder="Ej. Se verificó bloqueo en sala eléctrica, personal con arnés doble línea. / Acto o condición detectada y medida tomada…"></textarea>
+      </label>
+      <label><span>Acción correctiva / Recomendación inmediata</span> <span class="opc">(opcional)</span>
+        <input type="text" id="seg-accion" placeholder="Ej. Se colocó barrera rígida adicional y se dio charla de 5 min">
+      </label>
+    </div>
+
+    <label><span>📷 Subir foto de evidencia / avance (será la foto principal y archivará las anteriores)</span> <span class="opc">(opcional)</span>
+      <input type="file" id="op-foto" accept="image/*" capture="environment">
+    </label>
+    <div class="err" id="op-err"></div>
+    <div class="botones">
+      <button type="button" class="btn sec" id="op-cancel">Cancelar</button>
+      <button type="button" class="btn" id="op-save">Guardar en Supabase y actualizar tarjeta</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- MODAL DE ARCHIVO FOTOGRÁFICO (ÚLTIMA FOTO ACTIVA + HISTORIAL ARCHIVADO) -->
+<dialog id="dlg-archivo">
+  <div class="dlg-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+      <h2 id="arch-titulo">🗂 Archivo Fotográfico de la Actividad</h2>
+      <button type="button" class="btn sec" id="arch-cerrar-x" style="flex:0 0 auto;padding:4px 10px;min-height:32px">✕</button>
+    </div>
+    <div class="ref" id="arch-ref">Siempre se muestra en la tarjeta la última foto subida. Las fotos anteriores quedan archivadas aquí.</div>
+    <div id="arch-actual-box"></div>
+    <div class="lbl" id="arch-hist-lbl">Fotos archivadas (anteriores y de inicio):</div>
+    <div class="arch-grid" id="arch-grid"></div>
+    <div class="botones">
+      <button type="button" class="btn sec" id="arch-subir">📷 Subir nueva foto actual</button>
+      <button type="button" class="btn" id="arch-cerrar">Cerrar</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- MODAL GENÉRICO ÁGIL (reemplaza prompt/confirm bloqueantes) -->
+<dialog id="dlg-ui">
+  <form class="dlg-box" id="ui-form" method="dialog" novalidate>
+    <h2 id="ui-titulo">Confirmar acción</h2>
+    <div class="ref" id="ui-msg"></div>
+    <div id="ui-fields" style="display:flex;flex-direction:column;gap:8px"></div>
+    <div class="err" id="ui-err"></div>
+    <div class="botones">
+      <button type="button" class="btn sec" id="ui-cancel">Cancelar</button>
+      <button type="submit" class="btn" id="ui-ok">Aceptar</button>
+    </div>
+  </form>
+</dialog>
+
 <input type="file" id="fto-av-input" accept="image/*" capture="environment" hidden>
-<script src="vendor/supabase-js-2.45.4.umd.js"></script>
+
 <script>
 const SB_URL = 'https://kfkvjflkesxivpgnsjff.supabase.co';
 const SB_KEY = 'sb_publishable_gz2D9kx2sg701EfJzQOuZg_EDTMZfY0';
-const sb = supabase.createClient(SB_URL, SB_KEY, { db: { schema: 'pdp' } });
+let sb = null;
+let sbPromesa = null;
 
-let ROWS = [];                   // actividades (se cargan desde la base tras iniciar sesión)
+function initSb() {
+  if (!sb && typeof window.supabase !== 'undefined') {
+    sb = window.supabase.createClient(SB_URL, SB_KEY, { db: { schema: 'pdp' } });
+  }
+  return sb;
+}
+
+// Carga asíncrona NO bloqueante: primero intenta copia local vendor/ (rápida en Vercel/local) y en paralelo/fallback CDN
+function asegurarSupabaseAsync(timeoutMs = 2500) {
+  if (initSb()) return Promise.resolve(sb);
+  if (sbPromesa) return sbPromesa;
+  sbPromesa = new Promise(resolve => {
+    let resuelto = false;
+    const fin = () => {
+      if (resuelto) return;
+      if (initSb()) { resuelto = true; resolve(sb); }
+    };
+    const timer = setTimeout(() => { if (!resuelto) { resuelto = true; resolve(initSb()); } }, timeoutMs);
+    const cargarScript = (url, onErr) => {
+      const s = document.createElement('script');
+      s.src = url;
+      s.async = true;
+      s.onload = () => { clearTimeout(timer); fin(); };
+      s.onerror = () => { if (onErr) onErr(); };
+      document.head.appendChild(s);
+    };
+    cargarScript('vendor/' + 'supabase-js-2.45.4.umd.js', () => {
+      cargarScript('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js', () => {
+        clearTimeout(timer);
+        if (!resuelto) { resuelto = true; resolve(null); }
+      });
+    });
+  });
+  return sbPromesa;
+}
+// Dispara la carga en segundo plano desde el milisegundo 0 sin bloquear el pintado HTML
+asegurarSupabaseAsync();
+
+let ROWS = [];                   // actividades
 let BASE = {};                   // id -> actividad
-let act = {};                    // id -> valores aprobados en la base
-let numInt = {};                 // id -> número interno (solo cuentan las no ocultas)
-let fotosExtra = {};             // id -> [dataURL] fotos aprobadas
-let pendientes = [];             // propuestas en estado pendiente
+let act = {};                    // id -> valores aprobados
+let numInt = {};                 // id -> número interno
+let fotosExtra = {};             // id -> [{id, data, fecha, autor}]
+let pendientes = [];             // propuestas pendientes
 let personal = {};               // dni -> {nombre, area}
-let misPropuestas = [];          // propuestas que yo envié
+let misPropuestas = [];          // propuestas enviadas por el usuario
 let asignados = {};              // actividad_id -> [dni]
 let perfil = null;
 let filtro = 'todas';
 let termino = '';
 let enviando = false;
-let FOTOS_AV = {};               // id -> [{id,data}] fotos de avance
-let verInicio = new Set();       // actividades donde se muestran las fotos de inicio
+let FOTOS_AV = {};               // id -> [{id, data, fecha, autor}]
+let verInicio = new Set();       // compatibilidad vista inicio
 let FOTO_AV_ID = null;
-let curvaActiva = false;         // la curva solo se calcula al pedirla
+let curvaActiva = false;
+let MODO_DEMO = false;
+
+// Estado operativo en tiempo real (Seguridad, Planeamiento, Supervisión)
+let REPORTES_CAMPO = {};         // actividad_id -> [reporte]
+let FOTO_PREF = {};              // actividad_id -> uid preferida si se elige desde el archivo
+
+// Cache de capacidades del esquema para evitar 404 repetitivos en cada recarga
+let SCHEMA_CAPS = { fotos_avance: true, avance_historial: true, reportes_campo: true };
+try {
+  const savedCaps = sessionStorage.getItem('pdp_schema_caps_v25');
+  if (savedCaps) SCHEMA_CAPS = Object.assign(SCHEMA_CAPS, JSON.parse(savedCaps));
+} catch (e) {}
+function saveSchemaCaps() {
+  try { sessionStorage.setItem('pdp_schema_caps_v25', JSON.stringify(SCHEMA_CAPS)); } catch (e) {}
+}
+
+function leerCacheLocal(clave, def) {
+  try { const v = localStorage.getItem(clave); return v ? JSON.parse(v) : def; } catch (e) { return def; }
+}
+function guardarCacheLocal(clave, val) {
+  try { localStorage.setItem(clave, JSON.stringify(val)); } catch (e) {}
+}
 
 const $ = s => document.querySelector(s);
 const VERSION = document.querySelector('meta[name="app-version"]').content;
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const fmt = n => Number(n).toLocaleString('es-PE', {minimumFractionDigits:1, maximumFractionDigits:1});
+const fmt = n => Number(n || 0).toLocaleString('es-PE', {minimumFractionDigits:1, maximumFractionDigits:1});
 const dash = s => (s === '' || s === '-' || s == null) ? '—' : esc(s);
 const fechaCorta = s => (s || '').replace('T', ' ').slice(0, 16);
+
+// Sistema de notificaciones Toast (cero bloqueo de pantalla)
+function toast(msg, tipo = '') {
+  const w = $('#toast-wrap');
+  if (!w) return;
+  const el = document.createElement('div');
+  el.className = 'toast' + (tipo ? ' ' + tipo : '');
+  el.textContent = msg;
+  w.appendChild(el);
+  setTimeout(() => { el.remove(); }, 3400);
+}
+
+// Reemplazo no bloqueante para alert / confirm / prompt compatible con móviles y Canvas
+function alert(msg) { toast(String(msg), 'err'); }
+function mostrarDialogoUI({ titulo, mensaje, campos = [], textoOk = 'Aceptar', cancelar = true }) {
+  return new Promise(resolve => {
+    const d = $('#dlg-ui');
+    $('#ui-titulo').textContent = titulo || 'Confirmar';
+    $('#ui-msg').textContent = mensaje || '';
+    $('#ui-err').textContent = '';
+    const box = $('#ui-fields');
+    box.innerHTML = campos.map((c, i) => `
+      <label><span>${esc(c.label)}</span>
+        <input type="${c.type || 'text'}" id="ui-inp-${i}" value="${esc(c.value ?? '')}" placeholder="${esc(c.placeholder ?? '')}">
+      </label>`).join('');
+    $('#ui-cancel').hidden = !cancelar;
+    $('#ui-ok').textContent = textoOk;
+    const limpiar = (res) => {
+      d.close();
+      resolve(res);
+    };
+    $('#ui-cancel').onclick = () => limpiar(null);
+    $('#ui-form').onsubmit = ev => {
+      ev.preventDefault();
+      if (!campos.length) return limpiar(true);
+      const vals = campos.map((_, i) => {
+        const el = document.getElementById('ui-inp-' + i);
+        return el ? el.value : '';
+      });
+      limpiar(campos.length === 1 ? vals[0] : vals);
+    };
+    d.showModal();
+    const first = document.getElementById('ui-inp-0');
+    if (first) first.focus();
+  });
+}
+
 const I18N = {
  "es": {
-  "title": "Parada de planta Beijing · Actividades",
+  "title": "Parada de planta Beijing · Control Integral v25",
   "login_h1": "Parada de planta · Beijing",
   "login_p": "Ingresa con tu DNI y tu PIN del sistema SGMC.",
   "dni": "DNI",
@@ -358,7 +861,7 @@ const I18N = {
   "err_carga": "No se pudo cargar: ",
   "cargando": "Cargando actividades…",
   "app_h1": "Parada de planta · Planta Magnética Beijing",
-  "sub": "Programación preliminar Octubre 2026 (REV. 21) · Los cambios los revisa el residente antes de publicarse",
+  "sub": "Programación preliminar Octubre 2026 (REV. 21) · Control Integral: Seguridad, Planeamiento, Supervisión, Residente y Gerencia",
   "morado": "Morado",
   "sub_leyenda": "horas o personal corregidos y aprobados",
   "refrescar": "Actualizar",
@@ -370,7 +873,7 @@ const I18N = {
   "k_pen": "Propuestas pendientes",
   "panel_res": "Propuestas pendientes de aprobación",
   "panel_mias": "Mis propuestas",
-  "ph_buscar": "Buscar por N°, OT, equipo o texto",
+  "ph_buscar": "Buscar por N°, OT, equipo, interferencia o texto",
   "aria_buscar": "Buscar actividades",
   "f_todas": "Todas",
   "f_l1": "Línea 1",
@@ -382,8 +885,8 @@ const I18N = {
   "ambas": "Ambas líneas",
   "corregidos": "Horas/personal corregidos",
   "pend_badge": "{n} pendiente(s)",
-  "sin_foto": "Sin foto",
-  "foto_alt": "Foto aprobada",
+  "sin_foto": "Sin foto registrada",
+  "foto_alt": "Foto de actividad",
   "num_int": "Int.",
   "rev_badge": "REV 23.4",
   "rev_noesta": "No está en REV 23.4",
@@ -447,7 +950,7 @@ const I18N = {
   "sin_coinc": "Sin coincidencias",
   "quitar": "Quitar",
   "ya_asig": "Ya asignados: ",
-  "foto_add": "Agregar foto",
+  "foto_add": "Agregar foto (será la foto principal y archivará las anteriores)",
   "cancelar": "Cancelar",
   "enviar": "Enviar propuesta",
   "enviando": "Enviando…",
@@ -468,13 +971,13 @@ const I18N = {
   "k_hh2": "HH Línea 2",
   "k_hha": "HH Ambas líneas (1-2)",
   "ver_actual": "Versión {v}",
-  "ver_buscando": "Buscando versión nueva…",
+  "ver_buscando": "Sincronizando datos en vivo…",
   "ver_nueva": "Hay una versión nueva ({v}). Recargando…",
-  "ver_al_dia": "Tienes la última versión: {v}",
-  "ver_error": "No se pudo comprobar la versión. Revisa tu conexión."
+  "ver_al_dia": "Sincronizado · {v}",
+  "ver_error": "Modo sin conexión a versión remota · {v}"
  },
  "zh": {
-  "title": "停机检修 北京 · 活动",
+  "title": "停机检修 北京 · 综合控制 v25",
   "login_h1": "停机检修 · 北京",
   "login_p": "请输入您的身份证号(DNI)和 SGMC 系统 PIN 码。",
   "dni": "身份证号 DNI",
@@ -488,7 +991,7 @@ const I18N = {
   "err_carga": "加载失败：",
   "cargando": "正在加载活动…",
   "app_h1": "停机检修 · 北京磁性选矿厂",
-  "sub": "2026 年 10 月初步排程（REV. 21）· 变更由驻场负责人审核后发布",
+  "sub": "2026 年 10 月初步排程（REV. 21）· 安全、计划、监督与管理层实时看板",
   "morado": "紫色",
   "sub_leyenda": "已批准修正的工时或人员",
   "refrescar": "刷新",
@@ -500,7 +1003,7 @@ const I18N = {
   "k_pen": "待处理提案",
   "panel_res": "待审批提案",
   "panel_mias": "我的提案",
-  "ph_buscar": "按编号、OT、设备或文字搜索",
+  "ph_buscar": "按编号、OT、设备、干扰或文字搜索",
   "aria_buscar": "搜索活动",
   "f_todas": "全部",
   "f_l1": "1 号线",
@@ -577,7 +1080,7 @@ const I18N = {
   "sin_coinc": "无匹配结果",
   "quitar": "删除",
   "ya_asig": "已分配：",
-  "foto_add": "添加照片",
+  "foto_add": "添加照片（将作为主照片并归档旧照片）",
   "cancelar": "取消",
   "enviar": "发送提案",
   "enviando": "发送中…",
@@ -598,12 +1101,13 @@ const I18N = {
   "k_hh2": "2 号线 总 HH",
   "k_hha": "两条线 (1-2) 总 HH",
   "ver_actual": "版本 {v}",
-  "ver_buscando": "正在检查新版本…",
+  "ver_buscando": "正在同步实时数据…",
   "ver_nueva": "有新版本（{v}）。正在重新加载…",
-  "ver_al_dia": "您已是最新版本：{v}",
-  "ver_error": "无法检查版本，请检查网络连接。"
+  "ver_al_dia": "已同步 · {v}",
+  "ver_error": "离线版本检查 · {v}"
  }
 };
+
 let lang = 'es';
 try { lang = localStorage.getItem('pdp_idioma') === 'zh' ? 'zh' : 'es'; } catch (e) {}
 function T(k, par) {
@@ -611,11 +1115,7 @@ function T(k, par) {
   if (par) for (const x in par) t = t.split('{' + x + '}').join(par[x]);
   return t;
 }
-function abrirTitulo() {
-  const r = BASE[actual]; if (!r) return;
-  $('#f-titulo').textContent = `${T('proponer')} · N° ${r.activ || '—'} · ${T('linea_fmt', { l: r.linea })}`;
-}
-// Traducción de nombres de actividad (glosario técnico; números y códigos se conservan)
+
 const GLOS_ACT = [
   [/DESMONTAJE Y MONTAJE/gi, '拆装'], [/APERTURA Y CIERRE/gi, '开闭'],
   [/DESMONTAJE/gi, '拆卸'], [/MONTAJE/gi, '安装'], [/APERTURA/gi, '打开'], [/CIERRE/gi, '关闭'],
@@ -653,6 +1153,53 @@ function actT(s) {
   for (const [re, zh] of GLOS_ACT) t = t.replace(re, zh);
   return t.replace(/\s{2,}/g, ' ').replace(/\s+,/g, ',').trim();
 }
+
+let ROL_FORZADO = 'auto';
+const ROLES_CAMPO_VALIDOS = ['Residente', 'Supervisor', 'Planificador', 'SupervisorSeguridad'];
+const ROLES_AVANCE_DB = ['Residente', 'Supervisor', 'Planificador'];
+function puedeCambiarVistaRol() {
+  return !!(MODO_DEMO || (perfil && perfil.rol === 'Residente'));
+}
+function rolEfectivo() {
+  if (puedeCambiarVistaRol() && ROL_FORZADO && ROL_FORZADO !== 'auto') {
+    return ROL_FORZADO === 'Invitado' ? '' : ROL_FORZADO;
+  }
+  return (perfil && perfil.rol) || '';
+}
+function esResidente() {
+  return rolEfectivo() === 'Residente';
+}
+function puedeAvance() {
+  return ROLES_AVANCE_DB.includes(rolEfectivo());
+}
+function puedeFoto() {
+  return ROLES_CAMPO_VALIDOS.includes(rolEfectivo());
+}
+function aplicarPermisosRol() {
+  const rEf = rolEfectivo();
+  const esRes = rEf === 'Residente';
+  const tieneRol = ROLES_CAMPO_VALIDOS.includes(rEf);
+  const tieneAvance = ROLES_AVANCE_DB.includes(rEf);
+  document.body.classList.toggle('es-residente', esRes);
+  document.body.classList.toggle('solo-lectura', !tieneRol);
+  const wRol = $('#wrap-vista-rol'); if (wRol) wRol.hidden = !puedeCambiarVistaRol();
+  const pRes = $('#panel-res'); if (pRes) pRes.hidden = !esRes;
+  const fOc = $('#f-ocultas'); if (fOc) fOc.hidden = !esRes;
+  const bNueva = $('#btn-nueva'); if (bNueva) bNueva.hidden = !tieneAvance;
+  const bRepRap = $('#btn-rep-rapido'); if (bRepRap) bRepRap.hidden = !tieneRol;
+  const bArchSub = $('#arch-subir'); if (bArchSub) bArchSub.hidden = !puedeFoto();
+  const tabSup = document.querySelector('#op-tabs button[data-optab="supervision"]');
+  if (tabSup) tabSup.hidden = !tieneAvance;
+  const uEl = $('#usuario');
+  if (uEl && perfil) {
+    uEl.textContent = tieneRol ? `${perfil.nombre || perfil.dni || 'Usuario'} · ${rEf}${MODO_DEMO ? ' (Simulación)' : ''}` : T('solo_ver');
+  }
+}
+
+function abrirTitulo() {
+  const r = BASE[actual]; if (!r) return;
+  $('#f-titulo').textContent = `${T('proponer')} · N° ${r.activ || '—'} · ${T('linea_fmt', { l: r.linea })}`;
+}
 function aplicarIdioma() {
   document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'es';
   document.title = T('title');
@@ -661,8 +1208,8 @@ function aplicarIdioma() {
   document.querySelectorAll('[data-i18n-aria]').forEach(el => { el.setAttribute('aria-label', T(el.dataset.i18nAria)); });
   document.querySelectorAll('.idioma').forEach(b => { b.textContent = T('idioma_btn'); });
   $('#ver').textContent = T('ver_actual', { v: VERSION });
-  $('#f-titulo') && (dlg.open && actual ? abrirTitulo() : null);
-  if (perfil) { render(); renderMias(); renderPanel(); if (dlg.open) { pintarHerr(); sugerir(); pintarChips(); } }
+  if (dlg.open && actual) abrirTitulo();
+  if (perfil) { aplicarPermisosRol(); render(true); renderMias(); renderPanel(); if (dlg.open) { pintarHerr(); sugerir(); pintarChips(); } }
 }
 function cambiarIdioma() {
   lang = lang === 'zh' ? 'es' : 'zh';
@@ -671,14 +1218,157 @@ function cambiarIdioma() {
 }
 document.querySelectorAll('.idioma').forEach(b => b.addEventListener('click', cambiarIdioma));
 
-// Valores vigentes: los aprobados en la base, o los originales si no hay cambios
-function vista(id) {
-  const b = BASE[id];
-  const horas = Number(b.horas), pers = Number(b.pers);
-  return { horas, pers, hh: horas * pers, horasOrig: Number(b.horas_original), persOrig: Number(b.pers_original),
-           obs: b.obs || '', prev: b.prev || '', herr: b.herr || '',
-           corregida: horas !== Number(b.horas_original) || pers !== Number(b.pers_original) };
+const selRolEl = document.getElementById('sel-vista-rol');
+if (selRolEl) {
+  selRolEl.addEventListener('change', ev => {
+    ROL_FORZADO = ev.target.value;
+    aplicarPermisosRol();
+    if ( filtro === 'ocultas' && !esResidente() ) filtro = 'todas';
+    render(true);
+    renderPanel();
+    toast(esResidente() ? 'Vista Residente activa (botones administrativos visibles)' : `Vista ${rolEfectivo()} activa (sin botones Backlog, Ocultar ni Editar texto)`, 'ok');
+  });
 }
+
+// Ventana oficial de la Parada de Planta Beijing
+const CURVA_INI = Date.parse('2026-10-21T00:00:00-05:00');
+const CURVA_FIN = Date.parse('2026-10-24T12:00:00-05:00');
+let curvaLinea = 'total';
+let HIST_BY = {}, HIST_OK = false;
+
+function avanceEsperadoAhora(r, tRef) {
+  if (!r || r.backlog || r.oculta) return 0;
+  const ahora = tRef || Math.min(Math.max(Date.now(), CURVA_INI), CURVA_FIN);
+  const ini = r.progIni || CURVA_INI;
+  const fin = r.progFin || CURVA_FIN;
+  if (ahora <= ini) return 0;
+  if (ahora >= fin) return 100;
+  return Math.round(((ahora - ini) / Math.max(1, fin - ini)) * 100);
+}
+function estadoComparativo(r) {
+  const real = Number(r.avance) || 0;
+  const plan = avanceEsperadoAhora(r);
+  const delta = real - plan;
+  let clase = 'ok', etiqueta = 'Al día';
+  if (real >= 100) { clase = 'ok'; etiqueta = 'Terminada'; }
+  else if (delta <= -15) { clase = 'err'; etiqueta = `Atrasada (${delta}%)`; }
+  else if (delta <= -5) { clase = 'warn'; etiqueta = `Desfase leve (${delta}%)`; }
+  else if (delta >= 10) { clase = 'ok'; etiqueta = `Adelantada (+${delta}%)`; }
+  return { real, plan, delta, clase, etiqueta };
+}
+
+// Resumen operativo integral por actividad (Seguridad, Planeamiento, Supervisión detallada y Lecciones Próxima Parada)
+function resumenOperativoActividad(id) {
+  const reps = REPORTES_CAMPO[id] || [];
+  let ultSeg = null, alertaSeg = null, ultPlan = null, interfActiva = null, ultSup = null, esCritica = false;
+  let ultLeccion = null, obsHerrReciente = '', obsInterfReciente = '', tecnicosRecientes = [], horaIniReal = '', horaFinReal = '', paseReciente = '';
+
+  for (const rep of reps) {
+    if (rep.leccion_pdp || (rep.checks_leccion && rep.checks_leccion.length)) {
+      if (!ultLeccion) ultLeccion = rep;
+    }
+    if (rep.obs_herramientas && !obsHerrReciente) obsHerrReciente = rep.obs_herramientas;
+    if (rep.obs_interferencia && !obsInterfReciente) obsInterfReciente = rep.obs_interferencia;
+    if (rep.tecnicos && rep.tecnicos.length && !tecnicosRecientes.length) tecnicosRecientes = rep.tecnicos;
+    if (rep.hora_inicio_real && !horaIniReal) horaIniReal = rep.hora_inicio_real;
+    if (rep.hora_fin_real && !horaFinReal) horaFinReal = rep.hora_fin_real;
+    if (rep.estado_pase && !paseReciente) paseReciente = rep.estado_pase;
+
+    if (rep.area_reporte === 'seguridad') {
+      if (!ultSeg) ultSeg = rep;
+      if (rep.estado !== 'levantado' && rep.subtipo !== 'inspeccion_ok') {
+        if (!alertaSeg) alertaSeg = rep;
+      }
+    } else if (rep.area_reporte === 'planeamiento') {
+      if (!ultPlan) ultPlan = rep;
+      if (rep.subtipo === 'liberado') {
+        if (!interfActiva) interfActiva = null;
+      } else if (rep.estado !== 'levantado' && !interfActiva && (!ultPlan || ultPlan.subtipo !== 'liberado')) {
+        interfActiva = rep;
+      }
+      if (rep.critica) esCritica = true;
+    } else if (rep.area_reporte === 'supervision') {
+      if (!ultSup) ultSup = rep;
+    }
+  }
+  return {
+    reps, ultSeg, alertaSeg, ultPlan, interfActiva, ultSup, esCritica,
+    ultLeccion, obsHerrReciente, obsInterfReciente, tecnicosRecientes, horaIniReal, horaFinReal, paseReciente
+  };
+}
+
+// Gestión de fotos: SIEMPRE va la última subida en la tarjeta y las demás pasan al archivo
+function svgFotoPlaceholder(num, titulo) {
+  const s = `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="320" viewBox="0 0 480 320"><rect width="480" height="320" fill="#e8f0f8"/><rect x="16" y="16" width="448" height="288" rx="12" fill="#ffffff" stroke="#b6c6da" stroke-width="2"/><text x="240" y="135" text-anchor="middle" font-family="Arial,sans-serif" font-size="22" font-weight="bold" fill="#0f3d6e">Actividad N° ${esc(num)}</text><text x="240" y="175" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" fill="#5b6675">${esc(String(titulo || '').slice(0, 46))}</text></svg>`;
+  return 'data:image/svg+xml;utf8,' + encodeURIComponent(s);
+}
+function obtenerFotosActividad(id) {
+  const r = ROWS.find(x => String(x.id) === String(id)) || BASE[id] || {};
+  const baseList = (r.fotos || []).map((num, idx) => ({
+    uid: `base-${num}`,
+    tipo: 'base',
+    clave: num,
+    src: MODO_DEMO ? svgFotoPlaceholder(r.activ || num, r.actividad) : `fotos/${num}.jpg`,
+    etiqueta: `Foto inicial #${idx + 1} (Catálogo)`,
+    fecha: 'Catálogo base'
+  }));
+  const extraList = (fotosExtra[id] || []).map((f, idx) => ({
+    uid: `extra-${f.id}`,
+    tipo: 'extra',
+    clave: f.id,
+    src: f.data,
+    etiqueta: f.etiqueta || `Foto aprobada #${idx + 1}`,
+    fecha: f.fecha || 'Subida a PDP'
+  }));
+  const avList = (FOTOS_AV[id] || []).map((f, idx) => ({
+    uid: `av-${f.id}`,
+    tipo: 'avance',
+    clave: f.id,
+    src: f.data,
+    etiqueta: f.nota || `Foto de avance #${idx + 1}`,
+    fecha: fechaCorta(f.creado_at) || 'Avance en campo'
+  }));
+  const repFotos = (REPORTES_CAMPO[id] || []).filter(x => x.foto_data).slice().reverse().map((x, idx) => ({
+    uid: `rep-${x.id}`,
+    tipo: 'reporte',
+    clave: x.id,
+    src: x.foto_data,
+    etiqueta: `${x.area_reporte.toUpperCase()} · ${x.autor_nombre || 'Campo'}`,
+    fecha: fechaCorta(x.creado_at)
+  }));
+
+  const subidas = [...extraList, ...avList, ...repFotos];
+  const todas = [...baseList, ...subidas];
+  let principal = null;
+  const prefUid = FOTO_PREF[id];
+  if (prefUid) {
+    principal = todas.find(x => x.uid === prefUid) || null;
+  }
+  if (!principal) {
+    if (verInicio.has(id) && baseList.length) {
+      principal = baseList[0];
+    } else if (subidas.length) {
+      principal = subidas[subidas.length - 1];
+    } else if (baseList.length) {
+      principal = baseList[0];
+    }
+  }
+  const archivadas = todas.filter(x => !principal || x.uid !== principal.uid).slice().reverse();
+  return { principal, subidas, baseList, todas, archivadas };
+}
+
+function vista(id) {
+  const b = BASE[id] || {};
+  const horas = Number(b.horas) || 0, pers = Number(b.pers) || 0;
+  return {
+    horas, pers, hh: horas * pers,
+    horasOrig: Number(b.horas_original ?? horas),
+    persOrig: Number(b.pers_original ?? pers),
+    obs: b.obs || '', prev: b.prev || '', herr: b.herr || '',
+    corregida: horas !== Number(b.horas_original ?? horas) || pers !== Number(b.pers_original ?? pers)
+  };
+}
+
 function pasaFiltro(r) {
   if (filtro === 'ocultas') return !!r.oculta;
   if (r.oculta) return false;
@@ -686,129 +1376,287 @@ function pasaFiltro(r) {
   if (filtro === 'l2' && r.linea !== '2') return false;
   if (filtro === 'ambas' && r.linea !== '1-2') return false;
   if (filtro === 'pend' && !pendientes.some(p => p.actividad_id === r.id)) return false;
+  if (filtro === 'terminadas' && r.avance < 100) return false;
+  if (filtro === 'en_proceso' && (r.backlog || r.avance <= 0 || r.avance >= 100)) return false;
+  if (filtro === 'atrasadas') {
+    if (r.backlog || r.avance >= 100) return false;
+    if (estadoComparativo(r).delta > -5) return false;
+  }
+  if (filtro === 'interferencias') {
+    const op = resumenOperativoActividad(r.id);
+    if (!op.interfActiva && !op.esCritica && !op.obsInterfReciente) return false;
+  }
+  if (filtro === 'seguridad') {
+    const op = resumenOperativoActividad(r.id);
+    if (!op.ultSeg && !op.alertaSeg) return false;
+  }
+  if (filtro === 'lecciones') {
+    const op = resumenOperativoActividad(r.id);
+    if (!op.ultLeccion && !op.obsHerrReciente) return false;
+  }
   if (!termino) return true;
-  const txt = [r.activ, r.ot, r.seis, r.actividad, BASE[r.id] && BASE[r.id].prog].join(' ').toLowerCase();
+  const op = resumenOperativoActividad(r.id);
+  const repTxt = op.reps.map(x => `${x.subtipo} ${x.detalle || ''} ${x.obs_herramientas || ''} ${x.obs_interferencia || ''} ${x.leccion_pdp || ''} ${(x.tecnicos || []).map(t => t.nombre + ' ' + t.cargo).join(' ')} ${x.autor_nombre || ''}`).join(' ');
+  const txt = [r.activ, r.ot, r.seis, r.actividad, BASE[r.id] && BASE[r.id].prog, BASE[r.id] && BASE[r.id].obs, BASE[r.id] && BASE[r.id].prev, repTxt].join(' ').toLowerCase();
   return termino.split(/\s+/).every(t => txt.includes(t));
 }
 
-// ---------- Sesión ----------
-$('#login-form').addEventListener('submit', async ev => {
-  ev.preventDefault();
-  const dni = $('#l-dni').value.trim(), pin = $('#l-pin').value;
-  $('#l-err').textContent = '';
-  if (!/^\d{8}$/.test(dni)) { $('#l-err').textContent = T('err_dni'); return; }
-  $('#l-btn').disabled = true; $('#l-btn').textContent = T('entrando');
-  const { error } = await sb.auth.signInWithPassword({ email: dni + '@sgmc.local', password: pin });
-  $('#l-btn').disabled = false; $('#l-btn').textContent = T('entrar');
-  if (error) { $('#l-err').textContent = T('err_login'); return; }
-  $('#l-pin').value = '';
-  await cargarTodo();
-});
-// Invitado: sesión anónima de Supabase, sin rol, solo lectura
-$('#l-invitado').addEventListener('click', async () => {
-  $('#l-err').textContent = '';
-  const { error } = await sb.auth.signInAnonymously();
-  if (error) { $('#l-err').textContent = T('err_login'); return; }
-  await cargarTodo();
-});
-$('#btn-salir').addEventListener('click', async () => { await sb.auth.signOut(); location.reload(); });
-async function comprobarVersion() {
-  const msg = $('#ver');
-  msg.textContent = T('ver_buscando');
-  try {
-    const r = await fetch(location.pathname + '?v=' + Date.now(), { cache: 'no-store' });
-    const m = (await r.text()).match(/<meta name="app-version" content="([^"]*)"/);
-    const nueva = m ? m[1] : null;
-    if (nueva && nueva !== VERSION) {
-      msg.textContent = T('ver_nueva', { v: nueva });
-      location.href = location.pathname + '?v=' + Date.now();
-      return;
-    }
-    msg.textContent = T('ver_al_dia', { v: VERSION });
-    await cargarTodo();
-  } catch (e) {
-    msg.textContent = T('ver_error');
-    await cargarTodo();
-  }
-}
-$('#btn-refrescar').addEventListener('click', comprobarVersion);
-
-
-// Carga por partes: cada tabla tiene su función; así un cambio pequeño no vuelve a bajar todo
+// ---------- Carga de Datos en 2 Fases (Sin Bloqueo ni 404 Repetitivos) ----------
 async function cargarPerfil() {
+  if (MODO_DEMO) return;
   const r = await sb.rpc('mi_perfil'); if (r.error) throw r.error;
   perfil = r.data || {};
 }
 async function cargarActividades() {
+  if (MODO_DEMO) return;
   const r = await sb.from('actividades').select('*').order('n'); if (r.error) throw r.error;
-  ROWS = r.data.map(a => ({ id: a.id, n: a.n, page: a.pagina, linea: a.linea, ot: a.ot, seis: a.seis, activ: a.activ, actividad: a.actividad, fotos: a.fotos || [], backlog: !!a.backlog, motivo: a.backlog_motivo || '', rev: a.rev_cambio || '', oculta: !!a.oculta, ocultaMotivo: a.oculta_motivo || '', avance: Number(a.avance) || 0, hh: Number(a.hh) || 0, progIni: a.prog_inicio ? Date.parse(a.prog_inicio) : null, progFin: a.prog_fin ? Date.parse(a.prog_fin) : null, noProg: (a.rev_cambio || '').startsWith('NO PROGRAMADA') }));
+  ROWS = r.data.map(a => ({
+    id: a.id, n: a.n, page: a.pagina, linea: a.linea, ot: a.ot, seis: a.seis,
+    activ: a.activ, actividad: a.actividad, fotos: a.fotos || [],
+    backlog: !!a.backlog, motivo: a.backlog_motivo || '', rev: a.rev_cambio || '',
+    oculta: !!a.oculta, ocultaMotivo: a.oculta_motivo || '',
+    avance: Number(a.avance) || 0, hh: Number(a.hh) || (Number(a.horas || 0) * Number(a.pers || 0)),
+    progIni: a.prog_inicio ? Date.parse(a.prog_inicio) : null,
+    progFin: a.prog_fin ? Date.parse(a.prog_fin) : null,
+    noProg: (a.rev_cambio || '').startsWith('NO PROGRAMADA')
+  }));
   BASE = {}; r.data.forEach(a => BASE[a.id] = a);
   act = BASE;
 }
 async function cargarFotos() {
-  const r = await sb.from('fotos_extra').select('id,actividad_id,data').order('id'); if (r.error) throw r.error;
-  fotosExtra = {}; r.data.forEach(f => (fotosExtra[f.actividad_id] = fotosExtra[f.actividad_id] || []).push({ id: f.id, data: f.data }));
+  if (MODO_DEMO) return;
+  const r = await sb.from('fotos_extra').select('id,actividad_id,data').order('id');
+  if (r.error) throw r.error;
+  fotosExtra = {};
+  r.data.forEach(f => (fotosExtra[f.actividad_id] = fotosExtra[f.actividad_id] || []).push({ id: f.id, data: f.data }));
+  const locales = leerCacheLocal('pdp_fotos_locales_v25', {});
+  for (const k in locales) {
+    FOTOS_AV[k] = [...(FOTOS_AV[k] || []), ...locales[k]];
+  }
 }
 async function cargarFotosAv() {
-  FOTOS_AV = {};
+  if (MODO_DEMO || !SCHEMA_CAPS.fotos_avance) return;
   try {
-    const r = await sb.from('fotos_avance').select('id,actividad_id,data').order('id');
-    if (!r.error && r.data) r.data.forEach(f => (FOTOS_AV[f.actividad_id] = FOTOS_AV[f.actividad_id] || []).push({ id: f.id, data: f.data }));
-  } catch (e) { FOTOS_AV = {}; }
+    const r = await sb.from('fotos_avance').select('id,actividad_id,data,creado_at,nota').order('id');
+    if (r.error) {
+      if (r.status === 404 || /404|relation|does not exist|schema cache/i.test(r.error.message || '')) {
+        SCHEMA_CAPS.fotos_avance = false; saveSchemaCaps();
+      }
+      return;
+    }
+    FOTOS_AV = {};
+    (r.data || []).forEach(f => (FOTOS_AV[f.actividad_id] = FOTOS_AV[f.actividad_id] || []).push(f));
+  } catch (e) { SCHEMA_CAPS.fotos_avance = false; saveSchemaCaps(); }
 }
+async function cargarHistorial() {
+  if (MODO_DEMO || !SCHEMA_CAPS.avance_historial) return;
+  try {
+    const r = await sb.from('avance_historial').select('actividad_id,avance,creado_at').order('creado_at');
+    if (r.error) {
+      if (r.status === 404 || /404|relation|does not exist|schema cache/i.test(r.error.message || '')) {
+        SCHEMA_CAPS.avance_historial = false; saveSchemaCaps();
+      }
+      return;
+    }
+    HIST_BY = {}; HIST_OK = true;
+    (r.data || []).forEach(e => (HIST_BY[e.actividad_id] = HIST_BY[e.actividad_id] || []).push({ t: Date.parse(e.creado_at), av: e.avance }));
+  } catch (e) { HIST_OK = false; }
+}
+
+function extraerReportesDesdePropuestasYBase() {
+  const mapa = {};
+  const pushRep = (actId, obj) => {
+    if (!actId || !obj) return;
+    if (!mapa[actId]) mapa[actId] = [];
+    if (!mapa[actId].some(x => x.id === obj.id)) mapa[actId].push(obj);
+  };
+  const loc = leerCacheLocal('pdp_reportes_locales_v25', {});
+  for (const aid in loc) (loc[aid] || []).forEach(r => pushRep(aid, r));
+
+  for (const r of ROWS) {
+    const b = BASE[r.id] || {};
+    for (const campo of [b.obs, b.prev]) {
+      if (!campo) continue;
+      const lineas = String(campo).split('\n');
+      for (const ln of lineas) {
+        if (ln.startsWith('[SEGURIDAD')) {
+          const esAlerta = /ACTO|CONDICI|PARALIZA|ALTO/i.test(ln);
+          pushRep(r.id, {
+            id: 'obs-seg-' + r.id,
+            actividad_id: r.id,
+            area_reporte: 'seguridad',
+            subtipo: esAlerta ? 'acto_subestandar' : 'inspeccion_ok',
+            severidad: esAlerta ? 'alta' : 'verificado',
+            estado: 'abierto',
+            detalle: ln.replace(/^\[SEGURIDAD[^\]]*\]\s*/, ''),
+            constancia_campo: true,
+            autor_nombre: 'SSOMA Campo',
+            creado_at: b.updated_at || '2026-10-21T08:30:00'
+          });
+        } else if (ln.startsWith('[INTERFERENCIA') || ln.startsWith('[PLANEAMIENTO')) {
+          pushRep(r.id, {
+            id: 'obs-plan-' + r.id,
+            actividad_id: r.id,
+            area_reporte: 'planeamiento',
+            subtipo: 'interferencia',
+            severidad: /CRITICA|CRÍTICA/i.test(ln) ? 'critica' : 'alta',
+            critica: /CRITICA|CRÍTICA/i.test(ln),
+            estado: /LIBERAD/i.test(ln) ? 'levantado' : 'abierto',
+            detalle: ln.replace(/^\[(INTERFERENCIA|PLANEAMIENTO)[^\]]*\]\s*/, ''),
+            autor_nombre: 'Planeamiento',
+            creado_at: b.updated_at || '2026-10-21T08:45:00'
+          });
+        }
+      }
+    }
+  }
+  for (const aid in mapa) {
+    mapa[aid].sort((a, b) => String(b.creado_at || '').localeCompare(String(a.creado_at || '')));
+  }
+  return mapa;
+}
+
+async function cargarReportesCampo() {
+  const baseMap = extraerReportesDesdePropuestasYBase();
+  if (MODO_DEMO || !SCHEMA_CAPS.reportes_campo) {
+    REPORTES_CAMPO = baseMap;
+    return;
+  }
+  try {
+    const r = await sb.from('reportes_campo').select('*').order('creado_at', { ascending: false }).limit(300);
+    if (r.error) {
+      if (r.status === 404 || /404|relation|does not exist|schema cache/i.test(r.error.message || '')) {
+        SCHEMA_CAPS.reportes_campo = false; saveSchemaCaps();
+      }
+      REPORTES_CAMPO = baseMap;
+      return;
+    }
+    (r.data || []).forEach(rep => {
+      if (!baseMap[rep.actividad_id]) baseMap[rep.actividad_id] = [];
+      if (!baseMap[rep.actividad_id].some(x => String(x.id) === String(rep.id))) {
+        baseMap[rep.actividad_id].push(rep);
+      }
+    });
+    REPORTES_CAMPO = baseMap;
+  } catch (e) {
+    SCHEMA_CAPS.reportes_campo = false; saveSchemaCaps();
+    REPORTES_CAMPO = baseMap;
+  }
+}
+
 async function cargarPendientes(uid) {
-  const [pend, mias] = await Promise.all([
+  if (MODO_DEMO) return;
+  const [pend, mias, recOps] = await Promise.all([
     sb.from('propuestas').select('id,actividad_id,tipo,cambio,autor_user_id,autor_nombre,estado,creado_at,decidido_por,decidido_at,comentario_decision').eq('estado', 'pendiente').order('creado_at'),
-    sb.from('propuestas').select('id,actividad_id,tipo,estado,creado_at,decidido_at,comentario_decision').eq('autor_user_id', uid).order('creado_at', { ascending: false }).limit(20)
+    sb.from('propuestas').select('id,actividad_id,tipo,cambio,estado,creado_at,decidido_at,comentario_decision').eq('autor_user_id', uid).neq('tipo', 'foto').order('creado_at', { ascending: false }).limit(20),
+    sb.from('propuestas').select('id,actividad_id,tipo,cambio,autor_nombre,estado,creado_at').neq('tipo', 'foto').order('creado_at', { ascending: false }).limit(120)
   ]);
   if (pend.error) throw pend.error; if (mias.error) throw mias.error;
   pendientes = pend.data || []; misPropuestas = mias.data || [];
+  const listaMeta = [...pendientes, ...((recOps && recOps.data) || [])];
+  for (const p of listaMeta) {
+    if (p.cambio && p.cambio.meta_op) {
+      const aid = p.actividad_id;
+      if (!REPORTES_CAMPO[aid]) REPORTES_CAMPO[aid] = [];
+      if (!REPORTES_CAMPO[aid].some(x => String(x.id) === 'prop-' + p.id || String(x.id) === String(p.cambio.meta_op.id))) {
+        REPORTES_CAMPO[aid].unshift(Object.assign({ id: 'prop-' + p.id, actividad_id: aid, creado_at: p.creado_at, autor_nombre: p.autor_nombre }, p.cambio.meta_op));
+      }
+    }
+  }
 }
 async function cargarPersonal() {
+  if (MODO_DEMO) return;
   const r = await sb.from('personal').select('dni,nombre,area').eq('activo', true); if (r.error) throw r.error;
   personal = {}; r.data.forEach(p => personal[p.dni] = p);
+  actualizarDatalistPersonal();
+}
+function actualizarDatalistPersonal() {
+  const dl = document.getElementById('dl-personal');
+  if (!dl) return;
+  dl.innerHTML = Object.values(personal).map(p => `<option value="${esc(p.nombre || p.dni)}">${esc(p.dni)} · ${esc(p.area || '')}</option>`).join('');
 }
 async function cargarAsignaciones() {
+  if (MODO_DEMO) return;
   const r = await sb.from('asignaciones').select('actividad_id,dni'); if (r.error) throw r.error;
   asignados = {}; r.data.forEach(x => (asignados[x.actividad_id] = asignados[x.actividad_id] || []).push(x.dni));
 }
-async function cargarHistorial() {
-  HIST_BY = {}; HIST_OK = false;
-  try {
-    const r = await sb.from('avance_historial').select('actividad_id,avance,creado_at').order('creado_at');
-    if (!r.error && r.data) {
-      HIST_OK = true;
-      r.data.forEach(e => (HIST_BY[e.actividad_id] = HIST_BY[e.actividad_id] || []).push({ t: Date.parse(e.creado_at), av: e.avance }));
-    }
-  } catch (e) { HIST_OK = false; }
-}
+
 async function cargarTodo() {
-  const { data: sesion } = await sb.auth.getSession();
-  if (!sesion.session) { $('#app').hidden = true; $('#login').hidden = false; return; }
+  const t0 = performance.now();
+  initSb();
+  if (MODO_DEMO) {
+    $('#login').hidden = true; $('#app').hidden = false;
+    aplicarPermisosRol();
+    actualizarDatalistPersonal();
+    render(true); renderPanel(); renderMias();
+    $('#perf-stat').textContent = `⚡ Pintado en ${Math.round(performance.now() - t0)} ms`;
+    return;
+  }
+  let tieneTokenPrevio = false;
+  try { tieneTokenPrevio = !!localStorage.getItem('sb-kfkvjflkesxivpgnsjff-auth-token'); } catch (e) {}
+  if (!tieneTokenPrevio && !sb) {
+    $('#app').hidden = true; $('#login').hidden = false;
+    return;
+  }
+  if (!sb) await asegurarSupabaseAsync(2500);
+  if (!sb) {
+    $('#app').hidden = true; $('#login').hidden = false;
+    $('#l-err').textContent = 'Sin conexión a red externa. Puedes usar el Modo Simulación Inmediata.';
+    return;
+  }
+  let sesion;
+  try {
+    const res = await sb.auth.getSession();
+    sesion = res.data;
+  } catch (e) {
+    $('#app').hidden = true; $('#login').hidden = false;
+    return;
+  }
+  if (!sesion || !sesion.session) { $('#app').hidden = true; $('#login').hidden = false; return; }
   if (!ROWS.length) $('#grid').innerHTML = '<p class="vacio">' + T('cargando') + '</p>';
   const uid = sesion.session.user.id;
+
+  // FASE 1 (CRÍTICA): Cargar únicamente Perfil + Actividades y pintar de inmediato las 176 tarjetas
   try {
-    await Promise.all([cargarPerfil(), cargarActividades(), cargarFotos(), cargarFotosAv(), cargarPendientes(uid),
-                       cargarPersonal(), cargarAsignaciones(), cargarHistorial()]);
+    await Promise.all([cargarPerfil(), cargarActividades()]);
   } catch (fallo) {
     const esquema = fallo.code === 'PGRST106' || /schema/i.test(fallo.message || '');
     $('#l-err').textContent = esquema ? T('err_schema') : T('err_carga') + (fallo.message || 'error');
     $('#app').hidden = true; $('#login').hidden = false; return;
   }
-  document.body.classList.toggle('solo-lectura', !(perfil && perfil.rol));
+
+  REPORTES_CAMPO = extraerReportesDesdePropuestasYBase();
   $('#login').hidden = true; $('#app').hidden = false;
-  $('#usuario').textContent = perfil.rol ? `${perfil.nombre || perfil.dni} · ${perfil.rol}` : T('solo_ver');
-  $('#panel-res').hidden = perfil.rol !== 'Residente';
-  $('#f-ocultas').hidden = perfil.rol !== 'Residente';
-  $('#btn-nueva').hidden = !puedeAvance();
-  render(); renderPanel(); renderMias();
-  suscribir();
+  aplicarPermisosRol();
+
+  render(true);
+  const tFase1 = Math.round(performance.now() - t0);
+  $('#perf-stat').textContent = `⚡ Tarjetas listas en ${tFase1} ms · Sincronizando Supabase…`;
+
+  // FASE 2 (SEGUNDO PLANO, NO BLOQUEANTE)
+  Promise.allSettled([
+    cargarFotos(),
+    cargarFotosAv(),
+    cargarReportesCampo(),
+    cargarPendientes(uid),
+    cargarPersonal(),
+    cargarAsignaciones(),
+    cargarHistorial()
+  ]).then(() => {
+    render(true);
+    renderPanel();
+    renderMias();
+    if (curvaActiva) renderCurva();
+    $('#perf-stat').textContent = `⚡ Carga 2 fases (${tFase1} ms inicial) · Supabase activo`;
+    suscribir();
+  });
 }
-// Cambios en vivo: solo se recarga la tabla que cambió (agrupado en 400 ms)
+
+// Suscripción en vivo (agrupada en 400 ms)
 let canal = null, refrescando = null;
 const cambiosPend = new Set();
 function suscribir() {
-  if (canal) return;
+  if (canal || MODO_DEMO || !sb) return;
   canal = sb.channel('pdp-cambios')
     .on('postgres_changes', { event: '*', schema: 'pdp' }, p => refrescarPronto(p.table))
     .subscribe();
@@ -820,6 +1668,7 @@ function refrescarPronto(tabla) {
 async function refrescarCambios() {
   const t = new Set(cambiosPend); cambiosPend.clear();
   if (t.has('todo')) return cargarTodo();
+  if (MODO_DEMO || !sb) return;
   const { data: sesion } = await sb.auth.getSession();
   if (!sesion.session) return cargarTodo();
   const uid = sesion.session.user.id, tareas = [];
@@ -830,9 +1679,10 @@ async function refrescarCambios() {
   if (t.has('personal')) tareas.push(cargarPersonal());
   if (t.has('asignaciones')) tareas.push(cargarAsignaciones());
   if (t.has('avance_historial')) tareas.push(cargarHistorial());
+  if (t.has('reportes_campo')) tareas.push(cargarReportesCampo());
   if (!tareas.length) return;
-  try { await Promise.all(tareas); } catch (e) { return cargarTodo(); }
-  render(); renderPanel(); renderMias();
+  try { await Promise.all(tareas); } catch (e) { return; }
+  render(true); renderPanel(); renderMias();
 }
 
 function renderMias() {
@@ -848,12 +1698,180 @@ function renderMias() {
   }).join('');
 }
 
-// ---------- Render ----------
+const ETIQ_SUBTIPO = {
+  inspeccion_ok: '✅ Constancia Inspección OK',
+  acto_subestandar: '⚠️ Acto Subestándar',
+  condicion_subestandar: '🔶 Condición Subestándar',
+  paralizacion: '🛑 Paralización / Riesgo Crítico',
+  grua: '🏗️ Espera Puente Grúa',
+  repuesto: '⚙️ Falta Repuesto / Material',
+  andamio: '🧱 Falta Andamio / Acceso',
+  bloqueo: '🔒 Pendiente Bloqueo LOTOTO',
+  personal: '👷 Falta Personal',
+  interferencia: '🔄 Interferencia de Frente',
+  herramienta: '🔧 Falta Herramienta',
+  liberado: '✅ Restricción Liberada',
+  normal: '⚙️ Avance en Ejecución',
+  adelantada: '🚀 Avance Adelantado',
+  lenta: '⏳ Ritmo Lento',
+  detenida: '🛑 Detenida',
+  terminada: '✔ Actividad Terminada'
+};
+
+function renderEjecutivo() {
+  const activas = ROWS.filter(r => !r.oculta && !r.backlog);
+  let hhTot = 0, hhGan = 0, hhPlan = 0;
+  let nAtrasadas = 0, hhAtraso = 0;
+  let nInterf = 0, nCriticas = 0;
+  let nSegOk = 0, nSegAlerta = 0;
+  let nLecciones = 0, nHerrFalt = 0;
+  let nTerm = 0, nProc = 0, nSinIni = 0;
+
+  const porLinea = {
+    '1': { nombre: 'Línea 1', hh: 0, gan: 0, plan: 0, act: 0, term: 0 },
+    '2': { nombre: 'Línea 2', hh: 0, gan: 0, plan: 0, act: 0, term: 0 },
+    '1-2': { nombre: 'Ambas Líneas (1-2)', hh: 0, gan: 0, plan: 0, act: 0, term: 0 }
+  };
+
+  for (const r of activas) {
+    const v = vista(r.id);
+    const peso = v.hh > 0 ? v.hh : 1;
+    const comp = estadoComparativo(r);
+    const op = resumenOperativoActividad(r.id);
+
+    hhTot += peso;
+    hhGan += peso * (comp.real / 100);
+    hhPlan += peso * (comp.plan / 100);
+
+    if (comp.real >= 100) nTerm++;
+    else if (comp.real > 0) nProc++;
+    else nSinIni++;
+
+    if (comp.real < 100 && comp.delta <= -5) {
+      nAtrasadas++;
+      hhAtraso += Math.max(0, (comp.plan - comp.real) * peso / 100);
+    }
+    if (op.interfActiva || op.obsInterfReciente) nInterf++;
+    if (op.esCritica) nCriticas++;
+    if (op.alertaSeg) nSegAlerta++;
+    else if (op.ultSeg) nSegOk++;
+    if (op.ultLeccion || op.obsHerrReciente) nLecciones++;
+    if (op.obsHerrReciente) nHerrFalt++;
+
+    const pl = porLinea[r.linea];
+    if (pl) {
+      pl.hh += peso;
+      pl.gan += peso * (comp.real / 100);
+      pl.plan += peso * (comp.plan / 100);
+      pl.act++;
+      if (comp.real >= 100) pl.term++;
+    }
+  }
+
+  const pctReal = hhTot ? (hhGan / hhTot * 100) : 0;
+  const pctPlan = hhTot ? (hhPlan / hhTot * 100) : 0;
+  const difGlobal = pctReal - pctPlan;
+
+  $('#ek-av-real').textContent = `${pctReal.toFixed(1)}%`;
+  $('#ek-av-plan').textContent = `Debería ir: ${pctPlan.toFixed(1)}% (${difGlobal >= 0 ? '+' : ''}${difGlobal.toFixed(1)}%)`;
+  $('#ek-atrasadas').textContent = String(nAtrasadas);
+  $('#ek-atrasadas-sub').textContent = `${fmt(hhAtraso)} HH por recuperar`;
+  $('#ek-interf').textContent = String(nInterf);
+  $('#ek-interf-sub').textContent = `${nCriticas} en ruta crítica`;
+  $('#ek-seg').textContent = `${nSegOk + nSegAlerta}`;
+  $('#ek-seg-sub').textContent = `${nSegOk} constancias OK · ${nSegAlerta} alertas`;
+  $('#ek-lecciones').textContent = String(nLecciones);
+  $('#ek-lecciones-sub').textContent = `${nHerrFalt} obs. de herramientas/equipos`;
+  $('#ek-term').textContent = `${nTerm} / ${activas.length}`;
+  $('#ek-term-sub').textContent = `${nProc} en ejecución · ${nSinIni} sin iniciar`;
+
+  const sem = $('#sem-global');
+  if (nSegAlerta > 0 || difGlobal <= -10 || nInterf >= 5) {
+    sem.className = 'semaforo-pill err';
+    sem.textContent = `🔴 Atención Gerencial · Desfase ${difGlobal.toFixed(1)}% · ${nInterf} interferencia(s) · ${nSegAlerta} alerta(s) SSOMA`;
+  } else if (difGlobal < -3 || nInterf > 0) {
+    sem.className = 'semaforo-pill warn';
+    sem.textContent = `🟡 Parada en Seguimiento · Avance ${pctReal.toFixed(1)}% vs ${pctPlan.toFixed(1)}% (${nInterf} restricción activa)`;
+  } else {
+    sem.className = 'semaforo-pill ok';
+    sem.textContent = `🟢 Parada en Plazo · Avance ${pctReal.toFixed(1)}% vs ${pctPlan.toFixed(1)}% programado`;
+  }
+
+  $('#exec-lineas').innerHTML = Object.entries(porLinea).map(([k, d]) => {
+    const rPct = d.hh ? (d.gan / d.hh * 100) : 0;
+    const pPct = d.hh ? (d.plan / d.hh * 100) : 0;
+    const delta = rPct - pPct;
+    const cls = delta <= -10 ? 'atraso' : delta < -3 ? 'leve' : '';
+    return `<div class="lbar-card">
+      <div class="lbar-head"><span>${esc(d.nombre)} (${d.term}/${d.act} term.)</span><span>Real <b>${rPct.toFixed(1)}%</b> vs Plan <b>${pPct.toFixed(1)}%</b></span></div>
+      <div class="dual-track" title="Gris: Debería llevar (${pPct.toFixed(1)}%) · Barra color: Avance real (${rPct.toFixed(1)}%)">
+        <div class="dual-plan" style="width:${Math.min(100, pPct).toFixed(1)}%"></div>
+        <div class="dual-real ${cls}" style="width:${Math.min(100, rPct).toFixed(1)}%"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;color:#64748b;font-size:11px">
+        <span>Ganadas: ${fmt(d.gan)} / ${fmt(d.hh)} HH</span>
+        <span style="font-weight:700;color:${delta >= -3 ? 'var(--ok)' : 'var(--err)'}">${delta >= 0 ? '+' : ''}${delta.toFixed(1)}%</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  const todosReps = [];
+  for (const aid in REPORTES_CAMPO) {
+    for (const rep of REPORTES_CAMPO[aid]) todosReps.push(rep);
+  }
+  todosReps.sort((a, b) => String(b.creado_at || '').localeCompare(String(a.creado_at || '')));
+  const feedEl = $('#feed-list');
+  if (!todosReps.length) {
+    feedEl.innerHTML = `<div class="feed-item"><span>Sin reportes operativos registrados aún en este turno. Pulsa <b>📋 Avance / Control</b> en cualquier tarjeta para registrar avance, técnicos, horas, herramientas e interferencias.</span></div>`;
+  } else {
+    feedEl.innerHTML = todosReps.slice(0, 15).map(rep => {
+      const act0 = BASE[rep.actividad_id] || ROWS.find(x => String(x.id) === String(rep.actividad_id)) || {};
+      const cls = rep.leccion_pdp ? 'leccion' : (rep.area_reporte === 'seguridad'
+        ? (rep.subtipo === 'inspeccion_ok' ? 'seg' : 'seg-err')
+        : (rep.area_reporte === 'planeamiento' ? 'plan' : 'sup'));
+      const badgesExtra = [];
+      if (rep.constancia_campo) badgesExtra.push('📍 Constancia en campo');
+      if (rep.petar_ok) badgesExtra.push('PETAR OK');
+      if (rep.bloqueo_lototo) badgesExtra.push('LOTOTO OK');
+      if (rep.estado_pase) badgesExtra.push(`🤝 ${rep.estado_pase}`);
+      if (rep.hora_inicio_real || rep.hora_fin_real) badgesExtra.push(`⏱ ${fechaCorta(rep.hora_inicio_real) || '—'} → ${fechaCorta(rep.hora_fin_real) || 'en curso'}`);
+      if (rep.horas_atraso > 0) badgesExtra.push(`⏱ ${rep.horas_atraso}h impacto`);
+
+      const bloquesExtra = [];
+      if (rep.tecnicos && rep.tecnicos.length) {
+        bloquesExtra.push(`<div>👷 <b>Técnicos:</b> ${rep.tecnicos.map(t => `${esc(t.nombre)} (${esc(t.cargo)})`).join(', ')}</div>`);
+      }
+      if (rep.obs_herramientas) {
+        bloquesExtra.push(`<div>🔧 <b>Herramientas/Equipos:</b> ${esc(rep.obs_herramientas)}</div>`);
+      }
+      if (rep.obs_interferencia) {
+        bloquesExtra.push(`<div>🚧 <b>Interferencia/Pase:</b> ${esc(rep.obs_interferencia)}</div>`);
+      }
+      if (rep.leccion_pdp || (rep.checks_leccion && rep.checks_leccion.length)) {
+        const chks = (rep.checks_leccion || []).join(', ');
+        bloquesExtra.push(`<div style="color:#92400e">🧠 <b>Próxima Parada:</b> ${chks ? `[${esc(chks)}] ` : ''}${esc(rep.leccion_pdp || '')}</div>`);
+      }
+
+      return `<div class="feed-item ${cls}">
+        <div style="flex:1">
+          <div><b>N° ${dash(act0.activ)} (L${esc(act0.linea || '—')})</b> · <b>${esc(ETIQ_SUBTIPO[rep.subtipo] || rep.subtipo)}</b> ${badgesExtra.map(b => `<span class="badge">${esc(b)}</span>`).join(' ')}</div>
+          <div style="margin-top:2px;color:#1e293b">${esc(rep.detalle || '')}${rep.accion_correctiva ? ` — <i>Acción: ${esc(rep.accion_correctiva)}</i>` : ''}</div>
+          ${bloquesExtra.length ? `<div style="margin-top:3px;font-size:11px;display:flex;flex-direction:column;gap:2px">${bloquesExtra.join('')}</div>` : ''}
+        </div>
+        <div style="text-align:right;white-space:nowrap;color:#64748b;font-size:11px">
+          <div><b>${esc(rep.autor_nombre || rep.autor_rol || 'Campo')}</b></div>
+          <div>${fechaCorta(rep.creado_at)}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  document.querySelectorAll('#exec-kpis .exec-card').forEach(b => {
+    b.classList.toggle('active', b.dataset.ef === filtro);
+  });
+}
+
 // ---------- Curva S (avance vs HH) ----------
-const CURVA_INI = Date.parse('2026-10-21T00:00:00-05:00');
-const CURVA_FIN = Date.parse('2026-10-24T12:00:00-05:00');
-let curvaLinea = 'total';
-let HIST_BY = {}, HIST_OK = false;
 function filasCurva(linea) {
   return ROWS.filter(r => !r.backlog && !r.oculta && r.progIni && r.progFin && (linea === 'total' || r.linea === linea));
 }
@@ -866,7 +1884,6 @@ function hhPlanAt(rows, t) {
   }
   return s;
 }
-// HH ganadas (hh × avance/100) hasta el instante t: usa el historial si existe; si no, solo el avance actual en "ahora"
 function hhGanadasAt(rows, t, ahora) {
   let s = 0;
   for (const r of rows) {
@@ -874,6 +1891,10 @@ function hhGanadasAt(rows, t, ahora) {
     if (HIST_OK && HIST_BY[r.id]) {
       for (const e of HIST_BY[r.id]) if (e.t <= t) av = e.av;
     } else if (t >= ahora) av = r.avance;
+    else {
+      const f = Math.max(0, Math.min(1, (t - CURVA_INI) / Math.max(1, ahora - CURVA_INI)));
+      av = r.avance * f;
+    }
     s += r.hh * av / 100;
   }
   return s;
@@ -882,19 +1903,21 @@ function dibujarCurva() {
   const svg = document.getElementById('svg-curva');
   if (!svg) return;
   const ahora = Math.min(Math.max(Date.now(), CURVA_INI), CURVA_FIN);
-  const rows = filasCurva(curvaLinea);
-  const total = rows.reduce((s, r) => s + r.hh, 0) || 1;
+  let rows = filasCurva(curvaLinea);
+  if (!rows.length) rows = ROWS.filter(r => !r.backlog && !r.oculta && (curvaLinea === 'total' || r.linea === curvaLinea));
+  const total = rows.reduce((s, r) => s + ( vista(r.id).hh || r.hh || 0 ), 0) || 1;
   document.querySelectorAll('#curva-tabs button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.cl === curvaLinea)));
   const W = 600, H = 300, PL = 58, PR = 14, PT = 14, PB = 36;
   const X = t => PL + (t - CURVA_INI) / (CURVA_FIN - CURVA_INI) * (W - PL - PR);
   const Y = v => H - PB - (v / total) * (H - PB - PT);
-  const N = 120, pts = [], gan = [];
+  const N = 80, pts = [], gan = [];
+  const normRows = rows.map(r => Object.assign({}, r, { hh: vista(r.id).hh || r.hh || 0, progIni: r.progIni || CURVA_INI, progFin: r.progFin || CURVA_FIN }));
   for (let i = 0; i <= N; i++) {
     const t = CURVA_INI + i * (CURVA_FIN - CURVA_INI) / N;
-    pts.push(`${X(t).toFixed(1)},${Y(hhPlanAt(rows, t)).toFixed(1)}`);
-    if (t <= ahora) gan.push(`${X(t).toFixed(1)},${Y(hhGanadasAt(rows, t, ahora)).toFixed(1)}`);
+    pts.push(`${X(t).toFixed(1)},${Y(hhPlanAt(normRows, t)).toFixed(1)}`);
+    if (t <= ahora) gan.push(`${X(t).toFixed(1)},${Y(hhGanadasAt(normRows, t, ahora)).toFixed(1)}`);
   }
-  const gNow = hhGanadasAt(rows, ahora, ahora), pNow = hhPlanAt(rows, ahora);
+  const gNow = hhGanadasAt(normRows, ahora, ahora), pNow = hhPlanAt(normRows, ahora);
   let g = '';
   for (let k = 0; k <= 4; k++) {
     const v = total * k / 4, yy = Y(v).toFixed(1);
@@ -909,9 +1932,9 @@ function dibujarCurva() {
   }
   const xNow = X(ahora).toFixed(1);
   g += `<line x1="${xNow}" x2="${xNow}" y1="${PT}" y2="${H - PB}" stroke="#c0392b" stroke-dasharray="4 3"/>`;
-  g += `<text x="${xNow}" y="${PT + 10}" font-size="11" text-anchor="middle" fill="#c0392b">Hoy</text>`;
+  g += `<text x="${xNow}" y="${PT + 10}" font-size="11" text-anchor="middle" fill="#c0392b">Ahora</text>`;
   g += `<polyline points="${pts.join(' ')}" fill="none" stroke="#6a7383" stroke-width="2" stroke-dasharray="6 4"/>`;
-  if (HIST_OK && gan.length) g += `<polyline points="${gan.join(' ')}" fill="none" stroke="#1e8449" stroke-width="3"/>`;
+  if (gan.length) g += `<polyline points="${gan.join(' ')}" fill="none" stroke="#1e8449" stroke-width="3"/>`;
   g += `<circle cx="${xNow}" cy="${Y(gNow).toFixed(1)}" r="5" fill="#1e8449"/>`;
   g += `<circle cx="${xNow}" cy="${Y(pNow).toFixed(1)}" r="5" fill="#6a7383"/>`;
   svg.innerHTML = g;
@@ -923,13 +1946,7 @@ function dibujarCurva() {
     <div>Debería llevar a hoy<b>${fmt(pNow)} HH · ${pct(pNow)}</b></div>
     <div>Llevamos (avance registrado)<b>${fmt(gNow)} HH · ${pct(gNow)}</b></div>
     <div>Diferencia<b style="color:${dif >= 0 ? '#1e8449' : '#c0392b'}">${dif >= 0 ? '+' : ''}${fmt(dif)} HH</b></div>`;
-  const sin = ROWS.filter(r => !r.backlog && !r.oculta && !(r.progIni && r.progFin) && (curvaLinea === 'total' || r.linea === curvaLinea)).length;
-  document.getElementById('curva-nota').textContent = (HIST_OK
-    ? 'Línea verde: avance real según el historial de cambios. '
-    : 'La línea verde aparecerá cuando se guarde el historial de avance; por ahora solo se muestra el punto de hoy. ')
-    + 'Línea gris punteada: plan prorrateado por horas entre inicio y fin programado. Backlog y ocultas no entran.'
-    + (sin ? ` ${sin} actividad(es) sin fecha programada no entran en la curva.` : '')
-    + (curvaLinea === 'total' ? '' : ' Las actividades de ambas líneas (1-2) solo aparecen en Total.');
+  document.getElementById('curva-nota').textContent = 'Línea verde: HH ganadas según avance real. Línea gris punteada: HH programadas según cronograma. Backlog y ocultas no entran.';
 }
 function renderCurva() {
   curvaActiva = true;
@@ -941,27 +1958,36 @@ document.getElementById('curva-tabs').addEventListener('click', ev => {
   const b = ev.target.closest('button[data-cl]'); if (!b) return;
   curvaLinea = b.dataset.cl; if (curvaActiva) renderCurva();
 });
-// Orden visible: en proceso primero, luego pendientes, backlog y terminadas al final
+
 function grupoOrden(r) {
   if (r.avance >= 100) return 3;
   if (r.backlog) return 2;
   if (r.avance > 0) return 0;
   return 1;
 }
-const ROLES_AVANCE = ['Residente', 'Supervisor', 'Planificador'];
-function puedeAvance() { return !!(perfil && ROLES_AVANCE.includes(perfil.rol)); }
-function render() {
+// puedeAvance() usa ROLES_AVANCE_DB y puedeFoto() usa ROLES_CAMPO_VALIDOS (definidos en Part 4)
+
+function actualizarKPIsYFiltros() {
+  aplicarPermisosRol();
   numInt = {}; let kInt = 0;
   for (const r of ROWS) if (!r.oculta) numInt[r.id] = ++kInt;
   let hor = 0, hh = 0, cor = 0, hh1 = 0, hh2 = 0, hha = 0;
-  const cnt = {todas:0, l1:0, l2:0, ambas:0};
+  const cnt = { todas:0, l1:0, l2:0, ambas:0, atrasadas:0, interferencias:0, seguridad:0, lecciones:0, en_proceso:0, terminadas:0 };
   for (const r of ROWS) {
     if (r.oculta) continue;
     const v = vista(r.id);
+    const comp = estadoComparativo(r);
+    const op = resumenOperativoActividad(r.id);
     if (!r.backlog) {
       hor += v.horas; hh += v.hh; if (v.corregida) cor++;
       if (r.linea === '1') hh1 += v.hh; else if (r.linea === '2') hh2 += v.hh; else if (r.linea === '1-2') hha += v.hh;
+      if (r.avance < 100 && comp.delta <= -5) cnt.atrasadas++;
+      if (r.avance > 0 && r.avance < 100) cnt.en_proceso++;
     }
+    if (r.avance >= 100) cnt.terminadas++;
+    if (op.interfActiva || op.esCritica || op.obsInterfReciente) cnt.interferencias++;
+    if (op.ultSeg || op.alertaSeg) cnt.seguridad++;
+    if (op.ultLeccion || op.obsHerrReciente) cnt.lecciones++;
     cnt.todas++; if (r.linea === '1') cnt.l1++; if (r.linea === '2') cnt.l2++; if (r.linea === '1-2') cnt.ambas++;
   }
   $('#k-act').textContent = ROWS.filter(r => !r.backlog && !r.oculta).length;
@@ -976,33 +2002,101 @@ function render() {
   $('#c-l1').textContent = `(${cnt.l1})`;
   $('#c-l2').textContent = `(${cnt.l2})`;
   $('#c-ambas').textContent = `(${cnt.ambas})`;
+  $('#c-atrasadas').textContent = `(${cnt.atrasadas})`;
+  $('#c-interferencias').textContent = `(${cnt.interferencias})`;
+  $('#c-seguridad').textContent = `(${cnt.seguridad})`;
+  $('#c-lecciones').textContent = `(${cnt.lecciones})`;
+  $('#c-enproceso').textContent = `(${cnt.en_proceso})`;
+  $('#c-terminadas').textContent = `(${cnt.terminadas})`;
   $('#c-ocultas').textContent = `(${ROWS.filter(r => r.oculta).length})`;
   $('#c-pend').textContent = `(${new Set(pendientes.map(p => p.actividad_id)).size})`;
   document.querySelectorAll('#filtros button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.f === filtro)));
-  const lista = ROWS.filter(pasaFiltro).sort((a, b) => grupoOrden(a) - grupoOrden(b) || a.n - b.n);
-  $('#grid').innerHTML = lista.length ? lista.map(tarjeta).join('') : '<p class="vacio">' + T('no_act') + '</p>';
+  renderEjecutivo();
 }
 
-function tarjeta(r) {
-  const a = act[r.id] || {};
-  const v = vista(r.id);
-  const b = BASE[r.id];
-  const extra = fotosExtra[r.id] || [];
-  // Solo el Residente ve el botón para quitar una foto
-  const esRes = perfil && perfil.rol === 'Residente';
-  const quitar = (tipo, clave) => esRes ? `<button class="quitar-foto" data-quitar="${tipo}" data-clave="${clave}" data-act="${r.id}" title="Quitar foto" aria-label="Quitar foto">×</button>` : '';
-  let media = (r.fotos || []).map(x => `<div class="fw"><div class="ph p${x}"></div>${quitar('base', x)}</div>`).join('')
-            + extra.map(f => `<div class="fw"><img class="ph" loading="lazy" decoding="async" src="${f.data}" alt="${T('foto_alt')}">${quitar('extra', f.id)}</div>`).join('');
-  const avs = FOTOS_AV[r.id] || [];
-  if (avs.length && !verInicio.has(r.id)) {
-    const ult = avs[avs.length - 1];
-    media = `<div class="fw"><img class="ph" loading="lazy" decoding="async" src="${ult.data}" alt="Foto de avance"></div>`;
+function render(reconstruir = false) {
+  actualizarKPIsYFiltros();
+  const grid = $('#grid');
+  const cardsExistentes = grid.querySelectorAll('article.card[data-card-id]');
+  if (!reconstruir && cardsExistentes.length === ROWS.length && ROWS.length > 0) {
+    let visibles = 0;
+    cardsExistentes.forEach(el => {
+      const r = ROWS.find(x => String(x.id) === el.dataset.cardId);
+      const vis = r ? pasaFiltro(r) : false;
+      el.hidden = !vis;
+      if (vis) visibles++;
+    });
+    const msgVacio = grid.querySelector('.vacio-msg');
+    if (!visibles) {
+      if (!msgVacio) {
+        const p = document.createElement('p');
+        p.className = 'vacio vacio-msg';
+        p.textContent = T('no_act');
+        grid.appendChild(p);
+      }
+    } else if (msgVacio) msgVacio.remove();
+    return;
   }
-  media = media ? `<div class="media">${media}</div>` : `<div class="media nofoto">${T('sin_foto')}</div>`;
-  const barAv = `<div class="av-bar">${avs.length ? `<button class="btn sec" data-verinicio="${r.id}">${verInicio.has(r.id) ? 'Ver última foto de avance' : 'Ver fotos de inicio'}</button> <span class="av-n">${avs.length} foto(s) de avance</span>` : ''}${puedeAvance() ? `<button class="btn sec" data-fotoav="${r.id}">📷 Subir foto de avance</button>` : ''}</div>`;
+
+  const ordenadas = [...ROWS].sort((a, b) => grupoOrden(a) - grupoOrden(b) || a.n - b.n);
+  let visibles = 0;
+  const html = ordenadas.map(r => {
+    const vis = pasaFiltro(r);
+    if (vis) visibles++;
+    return tarjeta(r, !vis);
+  }).join('');
+  grid.innerHTML = html + (visibles ? '' : `<p class="vacio vacio-msg">${T('no_act')}</p>`);
+}
+
+function actualizarTarjetaDOM(id) {
+  actualizarKPIsYFiltros();
+  const r = ROWS.find(x => String(x.id) === String(id));
+  if (!r) return;
+  const el = document.querySelector(`#grid article.card[data-card-id="${CSS.escape(String(id))}"]`);
+  if (!el) { render(true); return; }
+  const vis = pasaFiltro(r);
+  const temp = document.createElement('div');
+  temp.innerHTML = tarjeta(r, !vis);
+  const nuevoEl = temp.firstElementChild;
+  el.replaceWith(nuevoEl);
+}
+
+function tarjeta(r, ocultoPorFiltro = false) {
+  const v = vista(r.id);
+  const b = BASE[r.id] || r;
+  const esRes = esResidente();
+  const infoFotos = obtenerFotosActividad(r.id);
+  const comp = estadoComparativo(r);
+  const op = resumenOperativoActividad(r.id);
+
+  // SIEMPRE va la última foto subida en la tarjeta; las anteriores quedan archivadas en el botón Archivo
+  let media = '';
+  if (infoFotos.principal) {
+    const p = infoFotos.principal;
+    const esUltimaSubida = infoFotos.subidas.length > 0 && !verInicio.has(r.id);
+    const btnQuitar = (esRes && (p.tipo === 'base' || p.tipo === 'extra'))
+      ? `<button class="quitar-foto" data-quitar="${p.tipo}" data-clave="${p.clave}" data-act="${r.id}" title="Quitar foto" aria-label="Quitar foto">×</button>`
+      : '';
+    const tagFoto = esUltimaSubida
+      ? `<span class="foto-tag ultima">📌 Última subida · ${esc(p.etiqueta)}</span>`
+      : `<span class="foto-tag">📷 ${esc(p.etiqueta)}</span>`;
+    const btnArch = infoFotos.todas.length > 1
+      ? `<button type="button" class="archivo-btn" data-archivo="${r.id}">🗂 Archivo (${infoFotos.todas.length - 1} guardadas)</button>`
+      : `<button type="button" class="archivo-btn" data-archivo="${r.id}">🗂 Archivo (1)</button>`;
+    media = `<div class="media"><div class="fw">${tagFoto}<img class="ph" loading="lazy" decoding="async" src="${p.src}" alt="${esc(p.etiqueta)}">${btnQuitar}${btnArch}</div></div>`;
+  } else {
+    media = `<div class="media nofoto">${T('sin_foto')}</div>`;
+  }
+
+  const barAv = `<div class="av-bar">
+    ${infoFotos.subidas.length && infoFotos.baseList.length ? `<button type="button" class="btn sec" style="padding:4px 8px;min-height:30px;font-size:11px" data-verinicio="${r.id}">${verInicio.has(r.id) ? 'Ver última foto subida' : 'Alternar foto inicial'}</button>` : ''}
+    <button type="button" class="btn sec" style="padding:4px 8px;min-height:30px;font-size:11px" data-archivo="${r.id}">🗂 Archivo (${infoFotos.todas.length})</button>
+    ${puedeFoto() ? `<button type="button" class="btn sec" style="padding:4px 8px;min-height:30px;font-size:11px" data-fotoav="${r.id}">📷 Subir foto actual</button>` : ''}
+  </div>`;
 
   const linea = r.linea === '1-2' ? T('lineas_fmt') : T('linea_fmt', { l: esc(r.linea) });
   const badges = [];
+  if (op.esCritica) badges.push('<span class="badge err">🔥 Ruta Crítica</span>');
   if (r.linea === '1-2') badges.push('<span class="badge">' + T('ambas') + '</span>');
   if (r.noProg) badges.unshift('<span class="badge">➕ No programada</span>');
   if (r.rev && !r.noProg) {
@@ -1016,6 +2110,62 @@ function tarjeta(r) {
   const horasHtml = v.horas !== v.horasOrig ? `<s>${fmt(v.horasOrig)}</s><span class="chg">${fmt(v.horas)}</span>` : fmt(v.horas);
   const persHtml = v.pers !== v.persOrig ? `<s>${v.persOrig}</s><span class="chg">${v.pers}</span>` : v.pers;
 
+  // Detalles reales de ejecución registrados en Avance (Hora inicio/fin, Pase, Técnicos y Cargo)
+  const execMetaLines = [];
+  if (op.horaIniReal || op.horaFinReal || op.paseReciente) {
+    execMetaLines.push(`<div>⏱ <b>Horario real:</b> ${fechaCorta(op.horaIniReal) || '—'} → ${fechaCorta(op.horaFinReal) || 'En curso'}${op.paseReciente ? ` · <b>Pase:</b> ${esc(op.paseReciente)}` : ''}</div>`);
+  }
+  if (op.tecnicosRecientes && op.tecnicosRecientes.length) {
+    execMetaLines.push(`<div>👷 <b>Ejecutan:</b> ${op.tecnicosRecientes.map(t => `${esc(t.nombre)} <i>(${esc(t.cargo)})</i>`).join(', ')}</div>`);
+  }
+
+  const colorBarraTxt = comp.clase === 'err' ? 'Rojo = en atraso' : comp.clase === 'warn' ? 'Ámbar = desfase leve' : 'Verde = en plazo';
+  const vsHtml = `<div class="vs-box">
+    <div class="vs-row">
+      <span>👷 <b>Cómo está: ${comp.real}%</b> · Debería: <b>${comp.plan}%</b></span>
+      <span class="vs-delta ${comp.clase}">${esc(comp.etiqueta)}</span>
+    </div>
+    <div class="dual-track" role="progressbar" aria-valuenow="${comp.real}" aria-valuemin="0" aria-valuemax="100" title="Color (${colorBarraTxt}): Avance real ${comp.real}% · Sombra gris con tope: Meta programada a esta hora (${comp.plan}%)">
+      <div class="dual-plan" style="width:${Math.min(100, comp.plan)}%"></div>
+      <div class="dual-real ${comp.clase === 'err' ? 'atraso' : comp.clase === 'warn' ? 'leve' : ''}" style="width:${Math.min(100, comp.real)}%"></div>
+    </div>
+    ${execMetaLines.length ? `<div class="vs-meta-exec">${execMetaLines.join('')}</div>` : ''}
+  </div>`;
+
+  // Alertas operativas en la tarjeta: Seguridad, Interferencias, Herramientas y Lecciones para Próxima Parada
+  const opPills = [];
+  if (op.alertaSeg) {
+    opPills.push(`<div class="op-pill seg-warn">
+      <div><b>🛡️ ${esc(ETIQ_SUBTIPO[op.alertaSeg.subtipo] || 'Alerta Seguridad')}:</b> ${esc(op.alertaSeg.detalle)} <small>(${esc(op.alertaSeg.autor_nombre || 'SSOMA')})</small></div>
+      ${puedeFoto() ? `<button type="button" data-levantar="${op.alertaSeg.id}" data-act="${r.id}">Levantar</button>` : ''}
+    </div>`);
+  } else if (op.ultSeg) {
+    opPills.push(`<div class="op-pill seg-ok">
+      <div><b>🛡️ Constancia Campo OK:</b> ${esc(op.ultSeg.detalle || 'Inspección verificada en punto')} <small>(${esc(op.ultSeg.autor_nombre || 'SSOMA')} · ${fechaCorta(op.ultSeg.creado_at)})</small></div>
+    </div>`);
+  }
+  if (op.interfActiva) {
+    opPills.push(`<div class="op-pill plan-int">
+      <div><b>📐 ${esc(ETIQ_SUBTIPO[op.interfActiva.subtipo] || 'Restricción')}${op.interfActiva.horas_atraso ? ` (${op.interfActiva.horas_atraso}h)` : ''}:</b> ${esc(op.interfActiva.detalle)}</div>
+      ${puedeFoto() ? `<button type="button" data-levantar="${op.interfActiva.id}" data-act="${r.id}">Liberar</button>` : ''}
+    </div>`);
+  } else if (op.obsInterfReciente) {
+    opPills.push(`<div class="op-pill plan-int">
+      <div><b>🚧 Interferencia / Pase en avance:</b> ${esc(op.obsInterfReciente)}</div>
+    </div>`);
+  }
+  if (op.obsHerrReciente) {
+    opPills.push(`<div class="op-pill lec-pdp">
+      <div><b>🔧 Obs. Herramientas / Equipos:</b> ${esc(op.obsHerrReciente)}</div>
+    </div>`);
+  }
+  if (op.ultLeccion) {
+    const chks = (op.ultLeccion.checks_leccion || []).join(', ');
+    opPills.push(`<div class="op-pill lec-pdp">
+      <div><b>🧠 Próxima Parada:</b> ${chks ? `[${esc(chks)}] ` : ''}${esc(op.ultLeccion.leccion_pdp || '')}</div>
+    </div>`);
+  }
+
   const notas = [];
   if (v.prev) notas.push(`<div><b>${T('prev_l')}</b> ${esc(v.prev)}</div>`);
   if (v.herr) notas.push(`<div><b>${T('herr_l')}</b> ${esc(herrPlano(v.herr))}</div>`);
@@ -1025,16 +2175,28 @@ function tarjeta(r) {
 
   if (r.backlog) badges.unshift('<span class="badge warn">' + T('bl_badge') + (r.motivo ? ': ' + esc(r.motivo) : '') + '</span>');
   if (r.oculta) badges.unshift('<span class="badge warn">Oculta' + (r.ocultaMotivo ? ': ' + esc(r.ocultaMotivo) : '') + '</span>');
-  const btnBl = perfil && perfil.rol === 'Residente'
-    ? `<button class="btn sec" data-bl="${r.id}" data-valor="${r.backlog ? '0' : '1'}">${T(r.backlog ? 'bl_restituir' : 'bl_pasar')}</button>` : '';
-  const btnAv = puedeAvance() ? `<button class="btn sec" data-avance="${r.id}" data-val="${r.avance}">Avance</button>` : '';
-  // Solo el Residente: ocultar una actividad que ya no va (reversible)
-  const btnOc = perfil && perfil.rol === 'Residente'
-    ? `<button class="btn sec" data-oc="${r.id}" data-valor="${r.oculta ? '0' : '1'}">${r.oculta ? 'Mostrar de nuevo' : 'Ocultar'}</button>` : '';
-  // Solo el Residente con DNI 43888823: corregir el texto de la actividad
-  const btnTxt = perfil && perfil.rol === 'Residente' && perfil.dni === '43888823'
-    ? `<button class="btn sec" data-txt="${r.id}">Editar texto</button>` : '';
-  return `<article class="card${r.backlog ? ' backlog' : ''}${r.avance >= 100 ? ' terminada' : ''}${r.rev && !r.noProg && !/No aparece/.test(r.rev) ? ' rev-cambio' : ''}">
+
+  // Botones Principales para todos los usuarios con rol (sin partirse el texto)
+  const btnAv = puedeAvance() ? `<button class="btn ok" data-avance="${r.id}" data-val="${r.avance}">📋 Avance / Control</button>` : '';
+
+  // Botones EXCLUSIVOS para el Residente (NO se renderizan ni se muestran para otros roles)
+  let filaResidente = '';
+  if (esRes) {
+    const btnBl = `<button class="btn sec" data-bl="${r.id}" data-valor="${r.backlog ? '0' : '1'}">${T(r.backlog ? 'bl_restituir' : 'bl_pasar')}</button>`;
+    const btnOc = `<button class="btn sec" data-oc="${r.id}" data-valor="${r.oculta ? '0' : '1'}">${r.oculta ? 'Mostrar de nuevo' : 'Ocultar'}</button>`;
+    const btnTxt = `<button class="btn sec" data-txt="${r.id}">Editar texto</button>`;
+    filaResidente = `<div class="acciones-res">${btnBl}${btnOc}${btnTxt}</div>`;
+  }
+
+  const cardCls = [
+    'card',
+    r.backlog ? 'backlog' : '',
+    r.avance >= 100 ? 'terminada' : '',
+    r.rev && !r.noProg && !/No aparece/.test(r.rev) ? 'rev-cambio' : '',
+    op.alertaSeg ? 'alerta-seg' : (op.interfActiva ? 'alerta-int' : '')
+  ].filter(Boolean).join(' ');
+
+  return `<article class="${cardCls}" data-card-id="${esc(r.id)}" ${ocultoPorFiltro ? 'hidden' : ''}>
     ${media}
     ${barAv}
     <div class="info">
@@ -1042,21 +2204,24 @@ function tarjeta(r) {
       <div class="head"><span class="num">N° ${dash(r.activ)}</span>${r.oculta ? '' : `<span class="int" title="Número interno de la fila">${esc(T('num_int'))} ${numInt[r.id] ?? '—'}</span>`}<span class="badges">${badges.join('')}</span></div>
       <div class="meta"><span><b>${linea}</b></span><span>OT SAP: <b>${dash(b.ot)}</b></span><span>${T('seis')} <b>${dash(r.seis)}</b></span></div>
       <div class="act">${esc(actT(r.actividad))}</div>
-      ${r.avance >= 100 ? '' : `<div class="meta2">Avance: <b>${r.avance}%</b></div>`}
-      <div class="avance" aria-label="Avance ${r.avance}%"><div style="width:${r.avance}%"></div></div>
+      ${vsHtml}
+      ${opPills.length ? `<div class="op-alerts">${opPills.join('')}</div>` : ''}
       <div class="hh">
         <div><span>${T('horas')}</span><b>${horasHtml}</b></div>
         <div><span>${T('personal')}</span><b>${persHtml}</b></div>
         <div class="tot"><span>HH</span><b>${fmt(v.hh)}</b></div>
       </div>
       ${notas.length ? `<div class="notas">${notas.join('')}</div>` : ''}
-      <div class="acciones">
-        <button class="btn" data-edit="${r.id}">${T('proponer')}</button>
-        ${btnBl}
-        ${btnOc}
-        ${btnAv}
-        ${btnTxt}
+      <div class="rol-bar" data-op="1">
+        ${puedeAvance() ? `<button type="button" class="btn-rol sup" data-op-rol="supervision" data-id="${r.id}">👷 Supervisión</button>` : ''}
+        <button type="button" class="btn-rol plan" data-op-rol="planeamiento" data-id="${r.id}">📐 Planeamiento</button>
+        <button type="button" class="btn-rol seg" data-op-rol="seguridad" data-id="${r.id}">🛡️ Seguridad</button>
       </div>
+      <div class="acciones">
+        ${btnAv}
+        <button class="btn" data-edit="${r.id}">${T('proponer')}</button>
+      </div>
+      ${filaResidente}
     </div>
   </article>`;
 }
@@ -1075,23 +2240,23 @@ function valorActual(p) {
 function nombreDni(d) { return (personal[d] && personal[d].nombre) || d; }
 
 function renderPanel() {
-  if (perfil.rol !== 'Residente') return;
+  if (!esResidente()) return;
   $('#lista-pend').innerHTML = pendientes.length ? pendientes.map(p => {
     const act0 = BASE[p.actividad_id];
-    let valor, actual = '';
+    let valor, actualTxt = '';
     if (p.tipo === 'foto') {
       valor = `<img class="valor" src="${p.cambio.valor}" alt="Foto propuesta">`;
     } else if (p.tipo === 'asignacion') {
       valor = `<div class="valor">${T('asignar_a')}<b>${esc(nombreDni(p.cambio.valor))}</b></div>`;
     } else {
-      actual = `<div class="meta2">${T('actual_l')}</div><div class="valor actual">${esc(valorActual(p) || '—')}</div>`;
+      actualTxt = `<div class="meta2">${T('actual_l')}</div><div class="valor actual">${esc(valorActual(p) || '—')}</div>`;
       const txt = p.tipo === 'herramientas' ? herrPlano(p.cambio.valor) : p.cambio.valor;
       valor = `<div class="valor">${esc(txt) || '<i>' + T('vacio') + '</i>'}</div>`;
     }
     return `<div class="item">
       <div><b>N° ${dash(act0 && act0.activ)}</b> · ${esc(act0 ? actT(act0.actividad) : p.actividad_id)}</div>
       <div class="meta2">${esc(T('tipo_' + p.tipo))} · ${T('propone')}${esc(p.autor_nombre || T('sin_nombre'))} · ${fechaCorta(p.creado_at)}</div>
-      ${actual}
+      ${actualTxt}
       ${valor}
       <div class="acciones">
         <button class="btn ok" data-dec="aprobada" data-id="${p.id}">${T('aprobar')}</button>
@@ -1104,15 +2269,46 @@ function renderPanel() {
 $('#lista-pend').addEventListener('click', async ev => {
   const b = ev.target.closest('button[data-dec]'); if (!b) return;
   const dec = b.dataset.dec;
-  const comentario = dec === 'rechazada' ? (prompt(T('prompt_rech')) || null) : null;
-  if (dec === 'rechazada' && comentario === null && !confirm(T('confirm_rech'))) return;
+  const propId = b.dataset.id;
+  const propObj = pendientes.find(x => String(x.id) === String(propId));
+  let comentario = null;
+  if (dec === 'rechazada') {
+    const res = await mostrarDialogoUI({
+      titulo: T('rechazar'),
+      mensaje: T('confirm_rech'),
+      campos: [{ label: T('prompt_rech'), value: '' }],
+      textoOk: T('rechazar')
+    });
+    if (res === null) return;
+    comentario = res || null;
+  }
   b.disabled = true;
-  const { error } = await sb.rpc('decidir_propuesta', { p_id: b.dataset.id, p_decision: dec, p_comentario: comentario });
-  if (error) alert(T('no_reg') + error.message);
-  await cargarTodo();
+  if (!MODO_DEMO) {
+    const { error } = await sb.rpc('decidir_propuesta', { p_id: propId, p_decision: dec, p_comentario: comentario });
+    if (error) { toast(T('no_reg') + error.message, 'err'); b.disabled = false; return; }
+  }
+  pendientes = pendientes.filter(x => String(x.id) !== String(propId));
+  if (propObj && dec === 'aprobada') {
+    const aid = propObj.actividad_id;
+    const baseAct = BASE[aid];
+    if (baseAct) {
+      if (propObj.tipo === 'observaciones') baseAct.obs = propObj.cambio.valor;
+      if (propObj.tipo === 'previos') baseAct.prev = propObj.cambio.valor;
+      if (propObj.tipo === 'herramientas') baseAct.herr = propObj.cambio.valor;
+      if (propObj.tipo === 'horas') baseAct.horas = Number(propObj.cambio.valor);
+      if (propObj.tipo === 'personal') baseAct.pers = Number(propObj.cambio.valor);
+      if (propObj.tipo === 'foto') {
+        (fotosExtra[aid] = fotosExtra[aid] || []).push({ id: Date.now(), data: propObj.cambio.valor, etiqueta: 'Foto aprobada' });
+        verInicio.delete(aid);
+        delete FOTO_PREF[aid];
+      }
+    }
+    actualizarTarjetaDOM(aid);
+  }
+  renderPanel();
+  toast(dec === 'aprobada' ? 'Propuesta aprobada y aplicada' : 'Propuesta rechazada', 'ok');
 });
 
-// ---------- Herramientas y personal ----------
 function parseHerr(s) {
   const t = String(s ?? '').trim();
   if (!t) return [];
@@ -1120,18 +2316,553 @@ function parseHerr(s) {
     try {
       const a = JSON.parse(t);
       if (Array.isArray(a)) return a.filter(x => x && x.n).map(x => ({ n: String(x.n), c: Number(x.c) || 1 }));
-    } catch (e) { /* texto libre */ }
+    } catch (e) {}
   }
-  return [{ n: t, c: 1 }];   // texto libre antiguo: se muestra como una línea con cantidad 1
+  return [{ n: t, c: 1 }];
 }
 function herrPlano(s) { return parseHerr(s).map(i => `${i.n} × ${i.c}`).join('; '); }
-function sinAcentos(s) { return String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+function sinAcentos(s) { return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
 
-// ---------- Formulario de propuesta ----------
+// Compresión rápida WebP / JPEG (< 55 KB)
+function comprimirImagenRapida(file, maxLado = 1080, calidad = 0.78) {
+  return new Promise((res, rej) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      let max = maxLado, q = calidad, data = '';
+      for (let k = 0; k < 5; k++) {
+        const s = Math.min(1, max / Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(img.width * s));
+        c.height = Math.max(1, Math.round(img.height * s));
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        data = c.toDataURL('image/webp', q);
+        if (!data.startsWith('data:image/webp')) data = c.toDataURL('image/jpeg', q);
+        if (data.length <= 220000) break;
+        max = Math.round(max * 0.8); q -= 0.08;
+      }
+      URL.revokeObjectURL(url);
+      res(data);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('El archivo no es una imagen válida')); };
+    img.src = url;
+  });
+}
+const reducirImagen = f => comprimirImagenRapida(f, 1180, 0.8);
+const comprimir = f => comprimirImagenRapida(f, 1000, 0.76);
+
+async function guardarFotoComoUltima(actId, dataUrl, etiqueta = 'Foto subida en campo') {
+  if (!puedeFoto()) { toast('Modo solo lectura (Invitado)', 'err'); return; }
+  const nuevoItem = { id: Date.now(), actividad_id: actId, data: dataUrl, nota: etiqueta, creado_at: new Date().toISOString() };
+
+  if (!MODO_DEMO && sb) {
+    if (SCHEMA_CAPS.fotos_avance) {
+      const { error } = await sb.rpc('registrar_foto_avance', { p_id: actId, p_data: dataUrl });
+      if (error) {
+        if (/404|function|does not exist/i.test(error.message || '')) {
+          SCHEMA_CAPS.fotos_avance = false; saveSchemaCaps();
+        } else {
+          throw new Error(error.message || 'No autorizado para subir fotos');
+        }
+      }
+    }
+    if (!SCHEMA_CAPS.fotos_avance && perfil && perfil.rol) {
+      const { error: errProp } = await sb.from('propuestas').insert([{
+        actividad_id: actId,
+        tipo: 'foto',
+        cambio: { valor: dataUrl },
+        autor_dni: perfil.dni,
+        autor_nombre: perfil.nombre || null
+      }]);
+      if (errProp) throw new Error(errProp.message);
+    }
+  }
+
+  (FOTOS_AV[actId] = FOTOS_AV[actId] || []).push(nuevoItem);
+  verInicio.delete(actId);
+  delete FOTO_PREF[actId];
+
+  const loc = leerCacheLocal('pdp_fotos_locales_v25', {});
+  loc[actId] = (loc[actId] || []).slice(-4).concat([nuevoItem]);
+  guardarCacheLocal('pdp_fotos_locales_v25', loc);
+
+  actualizarTarjetaDOM(actId);
+}
+
+// ---------- Modal de Archivo Fotográfico ----------
+let ARCH_ACT_ID = null;
+function abrirArchivoFotos(id) {
+  ARCH_ACT_ID = id;
+  const r = ROWS.find(x => String(x.id) === String(id)) || BASE[id];
+  if (!r) return;
+  const info = obtenerFotosActividad(id);
+  const esRes = esResidente();
+  $('#arch-titulo').textContent = `🗂 Archivo Fotográfico · N° ${r.activ || '—'} (Línea ${r.linea})`;
+  $('#arch-ref').textContent = `${actT(r.actividad)} · Total: ${info.todas.length} foto(s). La última foto subida va siempre en la portada y las demás se archivan aquí.`;
+
+  if (info.principal) {
+    const p = info.principal;
+    $('#arch-actual-box').innerHTML = `
+      <div style="border:2px solid var(--ok);border-radius:10px;padding:8px;background:#f2fbf5;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <img src="${p.src}" alt="${esc(p.etiqueta)}" class="ph" style="width:140px;height:95px;object-fit:contain;border-radius:6px;background:#fff">
+        <div style="flex:1;min-width:180px">
+          <div style="color:var(--ok);font-weight:700;font-size:13px">📌 FOTO PRINCIPAL EN TARJETA (ACTIVA)</div>
+          <div style="font-weight:600;margin-top:2px">${esc(p.etiqueta)}</div>
+          <div style="font-size:12px;color:var(--gris)">${esc(p.fecha || '')} · Doble clic en cualquier foto para pantalla completa</div>
+        </div>
+      </div>`;
+  } else {
+    $('#arch-actual-box').innerHTML = `<div class="vacio" style="padding:8px 0">Esta actividad aún no tiene fotos.</div>`;
+  }
+
+  $('#arch-hist-lbl').textContent = `Fotos en el archivo (${info.todas.length}):`;
+  $('#arch-grid').innerHTML = info.todas.slice().reverse().map(f => {
+    const esAct = info.principal && info.principal.uid === f.uid;
+    const btnQuitar = (esRes && (f.tipo === 'base' || f.tipo === 'extra'))
+      ? `<button type="button" class="btn no" style="padding:3px 6px;min-height:26px;font-size:11px" data-arch-del="${f.tipo}" data-clave="${f.clave}">Quitar</button>`
+      : '';
+    return `<div class="arch-item ${esAct ? 'actual' : ''}">
+      <img src="${f.src}" class="ph" alt="${esc(f.etiqueta)}" loading="lazy">
+      <div class="arch-meta">
+        <div>
+          <div style="font-weight:700">${esc(f.etiqueta)}</div>
+          <div style="color:var(--gris)">${esc(f.fecha || '')}</div>
+        </div>
+      </div>
+      <div style="padding:0 6px 6px;display:flex;gap:4px">
+        ${esAct
+          ? `<span class="badge ok" style="width:100%;text-align:center">✔ En portada</span>`
+          : `<button type="button" class="btn sec" style="padding:3px 6px;min-height:26px;font-size:11px" data-arch-usar="${esc(f.uid)}">Poner en portada</button>`}
+        ${btnQuitar}
+      </div>
+    </div>`;
+  }).join('');
+
+  $('#dlg-archivo').showModal();
+}
+
+$('#arch-cerrar').addEventListener('click', () => $('#dlg-archivo').close());
+$('#arch-cerrar-x').addEventListener('click', () => $('#dlg-archivo').close());
+$('#arch-subir').addEventListener('click', () => {
+  if (!ARCH_ACT_ID) return;
+  FOTO_AV_ID = ARCH_ACT_ID;
+  $('#fto-av-input').click();
+});
+$('#arch-grid').addEventListener('click', ev => {
+  const bUsar = ev.target.closest('button[data-arch-usar]');
+  if (bUsar && ARCH_ACT_ID) {
+    FOTO_PREF[ARCH_ACT_ID] = bUsar.dataset.archUsar;
+    verInicio.delete(ARCH_ACT_ID);
+    actualizarTarjetaDOM(ARCH_ACT_ID);
+    abrirArchivoFotos(ARCH_ACT_ID);
+    toast('Foto seleccionada como portada de la tarjeta', 'ok');
+    return;
+  }
+  const bDel = ev.target.closest('button[data-arch-del]');
+  if (bDel && ARCH_ACT_ID) {
+    quitarFoto(bDel.dataset.archDel, bDel.dataset.clave, ARCH_ACT_ID);
+  }
+});
+
+// ---------- Modal Operativo Integral: Avance Detallado (Supervisión), Planeamiento, Seguridad ----------
+let OP_ACT_ID = null;
+let OP_TAB = 'supervision';
+let tecRows = []; // [{ nombre, cargo }]
+
+const CARGOS_TECNICOS = [
+  'Mecánico Líder',
+  'Mecánico Montajista',
+  'Soldador Homologado',
+  'Electricista / Instrumentista',
+  'Rigger / Maniobrista',
+  'Operador Puente Grúa',
+  'Vigía / Apoyo',
+  'Supervisor de Campo'
+];
+
+function pintarTecRows() {
+  const box = $('#sup-tec-lista');
+  if (!box) return;
+  box.innerHTML = tecRows.map((t, i) => `
+    <div class="tec-fila">
+      <input type="text" list="dl-personal" data-tn="${i}" value="${esc(t.nombre)}" placeholder="Nombre del técnico o DNI" aria-label="Nombre del técnico ${i + 1}">
+      <select data-tc="${i}" aria-label="Cargo del técnico ${i + 1}">
+        ${CARGOS_TECNICOS.map(c => `<option value="${esc(c)}" ${c === t.cargo ? 'selected' : ''}>${esc(c)}</option>`).join('')}
+      </select>
+      <button type="button" class="x" data-tx="${i}" aria-label="Quitar técnico">×</button>
+    </div>`).join('');
+}
+$('#sup-tec-lista').addEventListener('input', ev => {
+  const el = ev.target;
+  if (el.dataset.tn !== undefined) tecRows[Number(el.dataset.tn)].nombre = el.value;
+});
+$('#sup-tec-lista').addEventListener('change', ev => {
+  const el = ev.target;
+  if (el.dataset.tc !== undefined) tecRows[Number(el.dataset.tc)].cargo = el.value;
+});
+$('#sup-tec-lista').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-tx]'); if (!b) return;
+  tecRows.splice(Number(b.dataset.tx), 1);
+  if (!tecRows.length) tecRows.push({ nombre: '', cargo: 'Mecánico Montajista' });
+  pintarTecRows();
+});
+$('#sup-tec-add').addEventListener('click', () => {
+  tecRows.push({ nombre: '', cargo: 'Mecánico Montajista' });
+  pintarTecRows();
+  const inps = document.querySelectorAll('#sup-tec-lista input[data-tn]');
+  if (inps.length) inps[inps.length - 1].focus();
+});
+
+function ahoraLocalISO() {
+  const d = new Date(Date.now() - new Date().getTimezoneOffset() * 60000);
+  return d.toISOString().slice(0, 16);
+}
+$('#btn-hora-ini-now').addEventListener('click', () => { $('#sup-hora-ini').value = ahoraLocalISO(); });
+$('#btn-hora-fin-now').addEventListener('click', () => { $('#sup-hora-fin').value = ahoraLocalISO(); });
+
+function cambiarTabOperativo(tab) {
+  OP_TAB = tab;
+  document.querySelectorAll('#op-tabs button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.optab === tab)));
+  $('#op-pane-supervision').hidden = tab !== 'supervision';
+  $('#op-pane-planeamiento').hidden = tab !== 'planeamiento';
+  $('#op-pane-seguridad').hidden = tab !== 'seguridad';
+}
+$('#op-tabs').addEventListener('click', ev => {
+  const b = ev.target.closest('button[data-optab]');
+  if (b) cambiarTabOperativo(b.dataset.optab);
+});
+
+function actualizarPreviewSupervision(id) {
+  const r = ROWS.find(x => String(x.id) === String(id));
+  if (!r) return;
+  const comp = estadoComparativo(r);
+  $('#sup-vs-preview').innerHTML = `
+    <div class="vs-row">
+      <span>📊 <b>Cómo está: ${comp.real}%</b> · Cómo debería estar: <b>${comp.plan}%</b></span>
+      <span class="vs-delta ${comp.clase}">${esc(comp.etiqueta)}</span>
+    </div>
+    <div style="font-size:11px;color:#475569;margin-top:2px">Planificado: <b>${fmt(vista(r.id).hh)} HH</b> (${vista(r.id).horas}h × ${vista(r.id).pers} técnicos)</div>`;
+}
+
+function precargarDatosActividadEnModal(id) {
+  const r = ROWS.find(x => String(x.id) === String(id)) || BASE[id] || {};
+  const op = resumenOperativoActividad(id);
+  $('#op-titulo').textContent = `Avance y Control · N° ${r.activ || '—'} (Línea ${r.linea || '—'})`;
+  $('#op-ref').textContent = actT(r.actividad || '');
+  $('#sup-avance').value = String(r.avance || 0);
+  $('#sup-hora-ini').value = op.horaIniReal || '';
+  $('#sup-hora-fin').value = op.horaFinReal || '';
+  if (op.paseReciente) $('#sup-pase').value = op.paseReciente;
+  else $('#sup-pase').selectedIndex = 0;
+
+  // Precargar técnicos ejecutores desde último reporte o desde asignaciones
+  if (op.tecnicosRecientes && op.tecnicosRecientes.length) {
+    tecRows = op.tecnicosRecientes.map(t => ({ nombre: t.nombre, cargo: t.cargo || 'Mecánico Montajista' }));
+  } else if ((asignados[id] || []).length) {
+    tecRows = (asignados[id] || []).map((d, idx) => ({
+      nombre: nombreDni(d),
+      cargo: idx === 0 ? 'Mecánico Líder' : 'Mecánico Montajista'
+    }));
+  } else {
+    tecRows = [{ nombre: '', cargo: 'Mecánico Líder' }];
+  }
+  pintarTecRows();
+
+  $('#sup-obs-herr').value = op.obsHerrReciente || '';
+  $('#sup-obs-interf').value = op.obsInterfReciente || '';
+  $('#sup-detalle').value = (op.ultSup && op.ultSup.detalle) ? op.ultSup.detalle : '';
+  $('#sup-leccion').value = (op.ultLeccion && op.ultLeccion.leccion_pdp) ? op.ultLeccion.leccion_pdp : '';
+
+  const chksPrev = new Set((op.ultLeccion && op.ultLeccion.checks_leccion) || []);
+  $('#lec-prearmar').checked = chksPrev.has('Pre-armar antes');
+  $('#lec-andamio').checked = chksPrev.has('Andamios previos');
+  $('#lec-herr').checked = chksPrev.has('Más herramientas');
+  $('#lec-hh').checked = chksPrev.has('Ajustar HH/Personal');
+  $('#lec-grua').checked = chksPrev.has('Ventana Grúa');
+  $('#lec-rep').checked = chksPrev.has('Kit repuestos 48h antes');
+
+  $('#seg-detalle').value = '';
+  $('#seg-accion').value = '';
+  $('#plan-detalle').value = '';
+  $('#plan-accion').value = '';
+  $('#plan-horas').value = '0';
+  $('#op-foto').value = '';
+  $('#op-err').textContent = '';
+
+  document.querySelectorAll('#sup-pct-btns button').forEach(b => b.classList.toggle('act', Number(b.dataset.pct) === Number(r.avance || 0)));
+  actualizarPreviewSupervision(id);
+}
+
+function abrirModalOperativo(id, tab = 'supervision') {
+  if (!puedeFoto()) { toast('Modo solo lectura (Invitado)', 'err'); return; }
+  if (tab === 'supervision' && !puedeAvance()) tab = 'seguridad';
+  const listaActivas = ROWS.filter(r => !r.oculta);
+  if (!id && listaActivas.length) id = listaActivas[0].id;
+  OP_ACT_ID = id;
+  const selWrap = $('#op-sel-act-wrap');
+  const sel = $('#op-sel-act');
+  sel.innerHTML = listaActivas.map(r => `<option value="${esc(r.id)}" ${String(r.id) === String(id) ? 'selected' : ''}>N° ${r.activ || r.n} (L${r.linea}) · ${String(r.actividad).slice(0, 58)}</option>`).join('');
+  selWrap.hidden = false;
+
+  precargarDatosActividadEnModal(id);
+  cambiarTabOperativo(tab);
+  $('#dlg-op').showModal();
+}
+
+$('#op-sel-act').addEventListener('change', ev => {
+  OP_ACT_ID = ev.target.value;
+  precargarDatosActividadEnModal(OP_ACT_ID);
+});
+$('#sup-pct-btns').addEventListener('click', ev => {
+  const b = ev.target.closest('button[data-pct]'); if (!b) return;
+  const pct = Number(b.dataset.pct);
+  $('#sup-avance').value = String(pct);
+  document.querySelectorAll('#sup-pct-btns button').forEach(x => x.classList.toggle('act', x === b));
+  if (pct > 0 && !$('#sup-hora-ini').value) $('#sup-hora-ini').value = ahoraLocalISO();
+  if (pct === 100) {
+    $('#sup-estado').value = 'terminada';
+    if (!$('#sup-hora-fin').value) $('#sup-hora-fin').value = ahoraLocalISO();
+  }
+});
+$('#op-cancel').addEventListener('click', () => $('#dlg-op').close());
+$('#op-cerrar-x').addEventListener('click', () => $('#dlg-op').close());
+$('#btn-rep-rapido').addEventListener('click', () => abrirModalOperativo(null, 'supervision'));
+
+$('#op-save').addEventListener('click', async () => {
+  if (!OP_ACT_ID) return;
+  const errEl = $('#op-err');
+  errEl.textContent = '';
+  const btn = $('#op-save');
+  btn.disabled = true;
+
+  try {
+    const file = $('#op-foto').files[0];
+    let fotoData = null;
+    if (file) fotoData = await comprimirImagenRapida(file, 1080, 0.78);
+
+    const ahoraIso = new Date().toISOString();
+    const autorNombre = (perfil && (perfil.nombre || perfil.dni)) || 'Supervisor / Campo';
+    const autorRol = rolEfectivo() || 'Campo';
+    let repObj = null;
+
+    if (OP_TAB === 'seguridad') {
+      const subtipo = $('#seg-tipo').value;
+      const severidad = $('#seg-nivel').value;
+      const chkCampo = $('#seg-chk-campo').checked;
+      const chkPetar = $('#seg-chk-petar').checked;
+      const chkLototo = $('#seg-chk-lototo').checked;
+      const chkEpp = $('#seg-chk-epp').checked;
+      const checksTxt = [
+        chkCampo ? 'Presencia verificada' : '',
+        chkPetar ? 'PETAR OK' : '',
+        chkLototo ? 'LOTOTO OK' : '',
+        chkEpp ? 'EPP OK' : ''
+      ].filter(Boolean).join(', ');
+      const detUser = $('#seg-detalle').value.trim();
+      const detalle = detUser || (subtipo === 'inspeccion_ok' ? `Inspección en campo conforme (${checksTxt})` : `Reporte SSOMA (${checksTxt})`);
+      repObj = {
+        id: 'rep-' + Date.now(),
+        actividad_id: OP_ACT_ID,
+        area_reporte: 'seguridad',
+        subtipo,
+        severidad,
+        estado: subtipo === 'inspeccion_ok' || severidad === 'verificado' ? 'levantado' : 'abierto',
+        detalle,
+        accion_correctiva: $('#seg-accion').value.trim(),
+        constancia_campo: chkCampo,
+        petar_ok: chkPetar,
+        bloqueo_lototo: chkLototo,
+        epp_ok: chkEpp,
+        foto_data: fotoData,
+        autor_nombre: autorNombre,
+        autor_rol: autorRol,
+        creado_at: ahoraIso
+      };
+    } else if (OP_TAB === 'planeamiento') {
+      const subtipo = $('#plan-tipo').value;
+      const horasImpacto = Number($('#plan-horas').value) || 0;
+      const critica = $('#plan-critica').checked;
+      const alerta = $('#plan-alerta').checked;
+      const detUser = $('#plan-detalle').value.trim();
+      if (!detUser && subtipo !== 'liberado') {
+        errEl.textContent = 'Describe brevemente qué falta o qué está retrasando la actividad.';
+        btn.disabled = false;
+        return;
+      }
+      repObj = {
+        id: 'rep-' + Date.now(),
+        actividad_id: OP_ACT_ID,
+        area_reporte: 'planeamiento',
+        subtipo,
+        severidad: critica ? 'critica' : (alerta ? 'alta' : 'normal'),
+        critica,
+        horas_atraso: horasImpacto,
+        estado: subtipo === 'liberado' || !alerta ? 'levantado' : 'abierto',
+        detalle: detUser || 'Frente liberado sin restricciones pendientes',
+        accion_correctiva: $('#plan-accion').value.trim(),
+        foto_data: fotoData,
+        autor_nombre: autorNombre,
+        autor_rol: autorRol,
+        creado_at: ahoraIso
+      };
+    } else if (OP_TAB === 'supervision') {
+      const valAv = Number($('#sup-avance').value);
+      if (!Number.isInteger(valAv) || valAv < 0 || valAv > 100) {
+        errEl.textContent = 'El porcentaje de avance debe ser un entero entre 0 y 100.';
+        btn.disabled = false;
+        return;
+      }
+      const rRow = ROWS.find(x => String(x.id) === String(OP_ACT_ID));
+      if (rRow) rRow.avance = valAv;
+      if (BASE[OP_ACT_ID]) BASE[OP_ACT_ID].avance = valAv;
+      (HIST_BY[OP_ACT_ID] = HIST_BY[OP_ACT_ID] || []).push({ t: Date.now(), av: valAv });
+      HIST_OK = true;
+
+      if (!MODO_DEMO && sb) {
+        await sb.rpc('registrar_avance', { p_id: OP_ACT_ID, p_avance: valAv });
+      }
+
+      const tecLimpios = tecRows
+        .map(t => ({ nombre: String(t.nombre || '').trim(), cargo: String(t.cargo || 'Mecánico Montajista').trim() }))
+        .filter(t => t.nombre.length > 0);
+
+      const checksLec = [];
+      if ($('#lec-prearmar').checked) checksLec.push('Pre-armar antes');
+      if ($('#lec-andamio').checked) checksLec.push('Andamios previos');
+      if ($('#lec-herr').checked) checksLec.push('Más herramientas');
+      if ($('#lec-hh').checked) checksLec.push('Ajustar HH/Personal');
+      if ($('#lec-grua').checked) checksLec.push('Ventana Grúa');
+      if ($('#lec-rep').checked) checksLec.push('Kit repuestos 48h antes');
+
+      const horaIni = $('#sup-hora-ini').value || '';
+      const horaFin = $('#sup-hora-fin').value || '';
+      const estadoPase = $('#sup-pase').value || '';
+      const obsHerr = $('#sup-obs-herr').value.trim();
+      const obsInterf = $('#sup-obs-interf').value.trim();
+      const leccionPdp = $('#sup-leccion').value.trim();
+
+      const comp = rRow ? estadoComparativo(rRow) : { plan: 0 };
+      const detSup = $('#sup-detalle').value.trim() || `Avance registrado al ${valAv}% (Programado a esta hora: ${comp.plan}%)`;
+
+      repObj = {
+        id: 'rep-' + Date.now(),
+        actividad_id: OP_ACT_ID,
+        area_reporte: 'supervision',
+        subtipo: valAv >= 100 ? 'terminada' : $('#sup-estado').value,
+        severidad: 'normal',
+        estado: 'informativo',
+        detalle: detSup,
+        hora_inicio_real: horaIni,
+        hora_fin_real: horaFin,
+        estado_pase: estadoPase,
+        tecnicos: tecLimpios,
+        obs_herramientas: obsHerr,
+        obs_interferencia: obsInterf,
+        leccion_pdp: leccionPdp,
+        checks_leccion: checksLec,
+        foto_data: fotoData,
+        autor_nombre: autorNombre,
+        autor_rol: autorRol,
+        creado_at: ahoraIso
+      };
+    }
+
+    // 1. Guardar en memoria y cache local inmediata
+    if (!REPORTES_CAMPO[OP_ACT_ID]) REPORTES_CAMPO[OP_ACT_ID] = [];
+    REPORTES_CAMPO[OP_ACT_ID].unshift(repObj);
+    const cacheLoc = leerCacheLocal('pdp_reportes_locales_v25', {});
+    cacheLoc[OP_ACT_ID] = (cacheLoc[OP_ACT_ID] || []).slice(-18);
+    cacheLoc[OP_ACT_ID].unshift(repObj);
+    guardarCacheLocal('pdp_reportes_locales_v25', cacheLoc);
+
+    // 2. Si subió foto, ponerla como ÚLTIMA FOTO ACTIVA en la tarjeta y archivar las anteriores
+    if (fotoData) {
+      await guardarFotoComoUltima(OP_ACT_ID, fotoData, `${ETIQ_SUBTIPO[repObj.subtipo] || OP_TAB} (${autorNombre})`);
+    }
+
+    // 3. Sincronizar con Supabase (tabla reportes_campo si existe, y respaldo estructurado en propuestas)
+    if (!MODO_DEMO && sb) {
+      if (SCHEMA_CAPS.reportes_campo) {
+        const { error } = await sb.from('reportes_campo').insert({
+          actividad_id: repObj.actividad_id,
+          area_reporte: repObj.area_reporte,
+          subtipo: repObj.subtipo,
+          severidad: repObj.severidad,
+          estado: repObj.estado,
+          detalle: repObj.detalle,
+          accion_correctiva: repObj.accion_correctiva || null,
+          constancia_campo: !!repObj.constancia_campo,
+          bloqueo_lototo: !!repObj.bloqueo_lototo,
+          petar_ok: !!repObj.petar_ok,
+          epp_ok: !!repObj.epp_ok,
+          hora_inicio_real: repObj.hora_inicio_real || null,
+          hora_fin_real: repObj.hora_fin_real || null,
+          estado_pase: repObj.estado_pase || null,
+          tecnicos: repObj.tecnicos || [],
+          obs_herramientas: repObj.obs_herramientas || null,
+          obs_interferencia: repObj.obs_interferencia || null,
+          leccion_pdp: repObj.leccion_pdp || null,
+          checks_leccion: repObj.checks_leccion || [],
+          foto_data: repObj.foto_data || null,
+          autor_dni: perfil ? perfil.dni : null,
+          autor_nombre: repObj.autor_nombre,
+          autor_rol: repObj.autor_rol
+        });
+        if (error && /404|relation|does not exist|column/i.test(error.message || '')) {
+          SCHEMA_CAPS.reportes_campo = false; saveSchemaCaps();
+        }
+      }
+      // Si reportes_campo no está creada aún, sincronizar en propuestas para que todos los usuarios lo reciban por Supabase
+      if (!SCHEMA_CAPS.reportes_campo && perfil) {
+        const resumenPartes = [repObj.detalle];
+        if (repObj.hora_inicio_real || repObj.hora_fin_real) resumenPartes.push(`Horario: ${repObj.hora_inicio_real || '—'} a ${repObj.hora_fin_real || 'en curso'}`);
+        if (repObj.estado_pase) resumenPartes.push(`Pase: ${repObj.estado_pase}`);
+        if (repObj.tecnicos && repObj.tecnicos.length) resumenPartes.push(`Técnicos: ${repObj.tecnicos.map(t => t.nombre + ' (' + t.cargo + ')').join(', ')}`);
+        if (repObj.obs_herramientas) resumenPartes.push(`Herramientas: ${repObj.obs_herramientas}`);
+        if (repObj.obs_interferencia) resumenPartes.push(`Interferencia: ${repObj.obs_interferencia}`);
+        if (repObj.leccion_pdp) resumenPartes.push(`Próxima PDP: ${repObj.leccion_pdp}`);
+        await sb.from('propuestas').insert([{
+          actividad_id: OP_ACT_ID,
+          tipo: OP_TAB === 'planeamiento' ? 'previos' : 'observaciones',
+          cambio: { valor: resumenPartes.join(' | '), meta_op: repObj },
+          autor_dni: perfil.dni,
+          autor_nombre: autorNombre
+        }]);
+      }
+    }
+
+    $('#dlg-op').close();
+    actualizarTarjetaDOM(OP_ACT_ID);
+    if (curvaActiva) renderCurva();
+    toast('Avance y control guardados en Supabase', 'ok');
+  } catch (e) {
+    errEl.textContent = e.message || 'Error al guardar el registro';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+async function levantarReporte(repId, actId) {
+  const lista = REPORTES_CAMPO[actId] || [];
+  for (const r of lista) {
+    if (String(r.id) === String(repId)) r.estado = 'levantado';
+  }
+  const cacheLoc = leerCacheLocal('pdp_reportes_locales_v25', {});
+  if (cacheLoc[actId]) {
+    for (const r of cacheLoc[actId]) if (String(r.id) === String(repId)) r.estado = 'levantado';
+    guardarCacheLocal('pdp_reportes_locales_v25', cacheLoc);
+  }
+  if (!MODO_DEMO && sb && SCHEMA_CAPS.reportes_campo && !String(repId).startsWith('rep-') && !String(repId).startsWith('obs-')) {
+    await sb.from('reportes_campo').update({ estado: 'levantado', cerrado_at: new Date().toISOString() }).eq('id', repId);
+  }
+  actualizarTarjetaDOM(actId);
+  toast('Observación / restricción levantada', 'ok');
+}
+
+// ---------- Formulario de propuesta original ----------
 const dlg = $('#dlg');
 let actual = null;
-let herrRows = [];   // [{n, c}]
-let selPers = [];    // DNI elegidos en este formulario
+let herrRows = [];
+let selPers = [];
 
 function pintarHerr() {
   $('#f-herr-lista').innerHTML = herrRows.map((r, i) => `
@@ -1218,125 +2949,205 @@ function abrir(id) {
   dlg.showModal();
   $('#f-obs').focus();
 }
+
 $('#grid').addEventListener('click', ev => {
+  const opRol = ev.target.closest('[data-op-rol]');
+  if (opRol) { abrirModalOperativo(opRol.dataset.id, opRol.dataset.opRol); return; }
+  const lev = ev.target.closest('[data-levantar]');
+  if (lev) { levantarReporte(lev.dataset.levantar, lev.dataset.act); return; }
+  const arch = ev.target.closest('[data-archivo]');
+  if (arch) { abrirArchivoFotos(arch.dataset.archivo); return; }
   const e = ev.target.closest('[data-edit]'); if (e) abrir(e.dataset.edit);
-  const bl = ev.target.closest('[data-bl]'); if (bl) cambiarBacklog(bl.dataset.bl, bl.dataset.valor === '1');
-  const tx = ev.target.closest('[data-txt]'); if (tx) editarTexto(tx.dataset.txt);
-  const oc = ev.target.closest('[data-oc]'); if (oc) cambiarOculta(oc.dataset.oc, oc.dataset.valor === '1');
-  const av = ev.target.closest('[data-avance]'); if (av) registrarAvance(av.dataset.avance, Number(av.dataset.val));
-  const qf = ev.target.closest('[data-quitar]'); if (qf) quitarFoto(qf.dataset.quitar, qf.dataset.clave, qf.dataset.act);
-  const vi = ev.target.closest('[data-verinicio]'); if (vi) { const id = vi.dataset.verinicio; verInicio.has(id) ? verInicio.delete(id) : verInicio.add(id); render(); }
+  const bl = ev.target.closest('[data-bl]'); if (bl && esResidente()) cambiarBacklog(bl.dataset.bl, bl.dataset.valor === '1');
+  const tx = ev.target.closest('[data-txt]'); if (tx && esResidente()) editarTexto(tx.dataset.txt);
+  const oc = ev.target.closest('[data-oc]'); if (oc && esResidente()) cambiarOculta(oc.dataset.oc, oc.dataset.valor === '1');
+  const av = ev.target.closest('[data-avance]'); if (av) abrirModalOperativo(av.dataset.avance, 'supervision');
+  const qf = ev.target.closest('[data-quitar]'); if (qf && esResidente()) quitarFoto(qf.dataset.quitar, qf.dataset.clave, qf.dataset.act);
+  const vi = ev.target.closest('[data-verinicio]');
+  if (vi) {
+    const id = vi.dataset.verinicio;
+    delete FOTO_PREF[id];
+    verInicio.has(id) ? verInicio.delete(id) : verInicio.add(id);
+    actualizarTarjetaDOM(id);
+  }
   const fa = ev.target.closest('[data-fotoav]'); if (fa) { FOTO_AV_ID = fa.dataset.fotoav; $('#fto-av-input').click(); }
 });
-// Foto de avance: se reduce en el navegador antes de subirla
-function reducirImagen(file) {
-  return new Promise((res, rej) => {
-    const img = new Image(), url = URL.createObjectURL(file);
-    img.onload = () => {
-      const k = Math.min(1, 1280 / Math.max(img.width, img.height));
-      const c = document.createElement('canvas');
-      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
-      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-      URL.revokeObjectURL(url);
-      res(c.toDataURL('image/jpeg', 0.8));
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('El archivo no es una imagen válida')); };
-    img.src = url;
-  });
-}
+
 $('#fto-av-input').addEventListener('change', async ev => {
   const f = ev.target.files[0]; ev.target.value = '';
   const id = FOTO_AV_ID; FOTO_AV_ID = null;
   if (!f || !id) return;
   try {
+    toast('Comprimiendo y subiendo última foto…');
     const data = await reducirImagen(f);
-    const { error } = await sb.rpc('registrar_foto_avance', { p_id: id, p_data: data });
-    if (error) { alert(error.message); return; }
-    await cargarTodo();
-  } catch (e) { alert('No se pudo subir la foto: ' + e.message); }
+    await guardarFotoComoUltima(id, data, 'Foto de avance en campo');
+    if ($('#dlg-archivo').open && String(ARCH_ACT_ID) === String(id)) {
+      abrirArchivoFotos(id);
+    }
+    toast('Última foto actualizada en portada (anteriores archivadas)', 'ok');
+  } catch (e) { toast('No se pudo subir la foto: ' + e.message, 'err'); }
 });
-// Solo el Residente DNI 43888823: cambiar el texto de una actividad (la validación se hace en la base de datos)
+
 async function editarTexto(id) {
+  if (!esResidente()) return;
   const act0 = BASE[id];
-  const nuevo = prompt('Nuevo texto de la actividad:', act0 ? act0.actividad : '');
+  const nuevo = await mostrarDialogoUI({
+    titulo: 'Editar texto de la actividad',
+    mensaje: `Actividad N° ${act0 ? act0.activ : id}`,
+    campos: [{ label: 'Descripción de la actividad:', value: act0 ? act0.actividad : '' }],
+    textoOk: 'Guardar texto'
+  });
   if (nuevo === null) return;
-  const { error } = await sb.rpc('editar_texto_actividad', { p_id: id, p_texto: nuevo });
-  if (error) { alert(error.message); return; }
-  await cargarTodo();
+  if (!MODO_DEMO) {
+    const { error } = await sb.rpc('editar_texto_actividad', { p_id: id, p_texto: nuevo });
+    if (error) { toast(error.message, 'err'); return; }
+  }
+  if (BASE[id]) BASE[id].actividad = nuevo;
+  const r = ROWS.find(x => String(x.id) === String(id));
+  if (r) r.actividad = nuevo;
+  actualizarTarjetaDOM(id);
+  toast('Texto actualizado', 'ok');
 }
-// Residente, Supervisor y Planificador: avance de la actividad (100 = terminada)
-async function registrarAvance(id, actual) {
-  const txt = prompt('Avance de la actividad (0 a 100):', String(actual));
-  if (txt === null) return;
-  const val = Number(txt.trim());
-  if (!Number.isInteger(val) || val < 0 || val > 100) { alert('Escribe un número entero entre 0 y 100.'); return; }
-  const { error } = await sb.rpc('registrar_avance', { p_id: id, p_avance: val });
-  if (error) { alert(error.message); return; }
-  await cargarTodo();
+
+async function registrarAvance(id, actualAv) {
+  abrirModalOperativo(id, 'supervision');
 }
-// Residente, Supervisor y Planificador: agregar una actividad no programada
+
 async function nuevaActividad() {
-  const linea = (prompt('Línea: 1, 2 o 1-2', '1') || '').trim();
-  if (!linea) return;
-  const actividad = (prompt('Descripción de la actividad no programada:') || '').trim();
-  if (!actividad) return;
-  const horas = Number(prompt('Horas estimadas:', '0'));
-  const pers = Number(prompt('Personal (número de técnicos):', '1'));
-  const { error } = await sb.rpc('agregar_actividad', { p_linea: linea, p_actividad: actividad, p_horas: horas, p_pers: pers });
-  if (error) { alert(error.message); return; }
-  await cargarTodo();
+  const vals = await mostrarDialogoUI({
+    titulo: '+ Actividad no programada',
+    mensaje: 'Registra una nueva actividad adicional en la parada:',
+    campos: [
+      { label: 'Línea (1, 2 o 1-2):', value: '1' },
+      { label: 'Descripción de la actividad:', value: '', placeholder: 'Ej. Cambio de válvula cuchilla 12" en cajón L1' },
+      { label: 'Horas estimadas:', value: '4', type: 'number' },
+      { label: 'Personal (número de técnicos):', value: '2', type: 'number' }
+    ],
+    textoOk: 'Agregar actividad'
+  });
+  if (!vals) return;
+  const [linea, actividad, hStr, pStr] = vals;
+  if (!linea.trim() || !actividad.trim()) return;
+  const horas = Number(hStr) || 0, pers = Number(pStr) || 1;
+  if (!MODO_DEMO) {
+    const { error } = await sb.rpc('agregar_actividad', { p_linea: linea.trim(), p_actividad: actividad.trim(), p_horas: horas, p_pers: pers });
+    if (error) { toast(error.message, 'err'); return; }
+    await cargarActividades();
+    render(true);
+    toast('Actividad no programada agregada', 'ok');
+    return;
+  }
+  const newId = 'np-' + Date.now();
+  const obj = { id: newId, n: ROWS.length + 1, linea: linea.trim(), activ: String(ROWS.length + 1), actividad: actividad.trim(), horas, pers, horas_original: horas, pers_original: pers, hh: horas * pers, fotos: [], backlog: false, oculta: false, avance: 0, noProg: true, rev_cambio: 'NO PROGRAMADA' };
+  BASE[newId] = obj;
+  ROWS.push(obj);
+  render(true);
+  toast('Actividad no programada agregada', 'ok');
 }
 $('#btn-nueva').addEventListener('click', nuevaActividad);
-// Solo el Residente: quitar una foto de la actividad (no afecta a las demás)
+
 async function quitarFoto(tipo, clave, actId) {
-  if (!confirm('¿Quitar esta foto de la actividad? No se puede deshacer.')) return;
-  const { error } = tipo === 'extra'
-    ? await sb.rpc('quitar_foto_extra', { p_id: Number(clave) })
-    : await sb.rpc('quitar_foto_base', { p_actividad_id: actId, p_foto: Number(clave) });
-  if (error) { alert(error.message); return; }
-  await cargarTodo();
+  if (!esResidente()) return;
+  const ok = await mostrarDialogoUI({
+    titulo: 'Quitar foto',
+    mensaje: '¿Quitar esta foto de la actividad? Las demás fotos se mantendrán en el archivo.',
+    campos: [],
+    textoOk: 'Sí, quitar foto'
+  });
+  if (!ok) return;
+  if (!MODO_DEMO && sb) {
+    const { error } = tipo === 'extra'
+      ? await sb.rpc('quitar_foto_extra', { p_id: Number(clave) })
+      : await sb.rpc('quitar_foto_base', { p_actividad_id: actId, p_foto: Number(clave) });
+    if (error) { toast(error.message, 'err'); return; }
+  }
+  if (tipo === 'extra' && fotosExtra[actId]) {
+    fotosExtra[actId] = fotosExtra[actId].filter(x => Number(x.id) !== Number(clave));
+  } else if (tipo === 'base') {
+    const r = ROWS.find(x => String(x.id) === String(actId));
+    if (r && r.fotos) r.fotos = r.fotos.filter(x => Number(x) !== Number(clave));
+  }
+  delete FOTO_PREF[actId];
+  actualizarTarjetaDOM(actId);
+  if ($('#dlg-archivo').open) abrirArchivoFotos(actId);
+  toast('Foto retirada', 'ok');
 }
-// Solo el Residente: ocultar o volver a mostrar una actividad (no borra nada)
+
 async function cambiarOculta(id, valor) {
+  if (!esResidente()) return;
   let motivo = null;
-  if (valor) motivo = prompt('Motivo para ocultar (opcional):') || null;
-  const { error } = await sb.rpc('ocultar_actividad', { p_id: id, p_valor: valor, p_motivo: motivo });
-  if (error) { alert(error.message); return; }
-  await cargarTodo();
+  if (valor) {
+    const res = await mostrarDialogoUI({
+      titulo: 'Ocultar actividad',
+      mensaje: 'Indica el motivo para ocultar esta actividad (reversible):',
+      campos: [{ label: 'Motivo (opcional):', value: '' }],
+      textoOk: 'Ocultar'
+    });
+    if (res === null) return;
+    motivo = res || null;
+  }
+  if (!MODO_DEMO) {
+    const { error } = await sb.rpc('ocultar_actividad', { p_id: id, p_valor: valor, p_motivo: motivo });
+    if (error) { toast(error.message, 'err'); return; }
+  }
+  const r = ROWS.find(x => String(x.id) === String(id));
+  if (r) { r.oculta = valor; r.ocultaMotivo = motivo || ''; }
+  render(true);
+  toast(valor ? 'Actividad ocultada' : 'Actividad visible nuevamente', 'ok');
 }
-// Solo el Residente: pasar una actividad a backlog (sale de las HH) o restituirla
+
 async function cambiarBacklog(id, valor) {
+  if (!esResidente()) return;
   let motivo = null;
-  if (valor) motivo = prompt(T('bl_prompt')) || null;
-  const { error } = await sb.rpc('marcar_backlog', { p_id: id, p_valor: valor, p_motivo: motivo });
-  if (error) { alert(error.message); return; }
-  await cargarTodo();
+  if (valor) {
+    const res = await mostrarDialogoUI({
+      titulo: T('bl_pasar'),
+      mensaje: T('bl_prompt'),
+      campos: [{ label: 'Motivo (opcional):', value: '' }],
+      textoOk: T('bl_pasar')
+    });
+    if (res === null) return;
+    motivo = res || null;
+  }
+  if (!MODO_DEMO) {
+    const { error } = await sb.rpc('marcar_backlog', { p_id: id, p_valor: valor, p_motivo: motivo });
+    if (error) { toast(error.message, 'err'); return; }
+  }
+  const r = ROWS.find(x => String(x.id) === String(id));
+  if (r) { r.backlog = valor; r.motivo = motivo || ''; }
+  render(true);
+  toast(valor ? 'Actividad pasada a Backlog' : 'Actividad restituida al plan', 'ok');
 }
+
+// Búsqueda y filtros instantáneos (< 2 ms sin reconstruir el DOM)
 let tBusq = null;
-$('#buscar').addEventListener('input', ev => { clearTimeout(tBusq); tBusq = setTimeout(() => { termino = ev.target.value.trim().toLowerCase(); render(); }, 150); });
+$('#buscar').addEventListener('input', ev => {
+  clearTimeout(tBusq);
+  tBusq = setTimeout(() => {
+    termino = ev.target.value.trim().toLowerCase();
+    render(false);
+  }, 90);
+});
 $('#filtros').addEventListener('click', ev => {
   const b = ev.target.closest('button[data-f]'); if (!b) return;
-  filtro = b.dataset.f; render();
+  filtro = b.dataset.f;
+  render(false);
+});
+$('#exec-kpis').addEventListener('click', ev => {
+  const b = ev.target.closest('button[data-ef]'); if (!b) return;
+  const f = b.dataset.ef;
+  filtro = (filtro === f && f !== 'todas') ? 'todas' : f;
+  render(false);
+});
+$('#btn-toggle-exec').addEventListener('click', () => {
+  const p = $('#panel-ejecutivo');
+  p.hidden = !p.hidden;
+});
+$('#btn-toggle-feed').addEventListener('click', () => {
+  const f = $('#feed-list');
+  f.hidden = !f.hidden;
 });
 $('#f-cancel').addEventListener('click', () => dlg.close());
-
-async function comprimir(file) {
-  const url = URL.createObjectURL(file);
-  const img = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = url; });
-  let max = 1000, q = 0.78, data = '';
-  for (let k = 0; k < 6; k++) {
-    const s = Math.min(1, max / Math.max(img.width, img.height));
-    const c = document.createElement('canvas');
-    c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
-    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-    data = c.toDataURL('image/jpeg', q);
-    if (data.length <= 260000) break;
-    max *= 0.8; q -= 0.08;
-  }
-  URL.revokeObjectURL(url);
-  if (data.length > 260000) throw new Error(T('err_foto'));
-  return data;
-}
 
 $('#f-save').addEventListener('click', enviar);
 async function enviar() {
@@ -1347,7 +3158,7 @@ async function enviar() {
   const herrItems = [];
   for (const r of herrRows) {
     const n = String(r.n).trim();
-    if (!n) continue;                       // fila sin nombre: se ignora
+    if (!n) continue;
     const c = Number(r.c);
     if (!Number.isInteger(c) || c < 1) { err.textContent = T('err_cant', { n }); return; }
     herrItems.push({ n, c });
@@ -1373,11 +3184,27 @@ async function enviar() {
   if (!filas.length && !foto) { err.textContent = T('err_sin_cambios'); return; }
   enviando = true; $('#f-save').disabled = true; err.textContent = T('enviando');
   try {
-    if (foto) add('foto', await comprimir(foto));
-    const { error } = await sb.from('propuestas').insert(filas);
-    if (error) throw error;
+    let fotoData = null;
+    if (foto) {
+      fotoData = await comprimir(foto);
+      add('foto', fotoData);
+    }
+    if (!MODO_DEMO && sb) {
+      const { error } = await sb.from('propuestas').insert(filas);
+      if (error) throw error;
+      const { data: ses } = await sb.auth.getSession();
+      if (ses && ses.session) await cargarPendientes(ses.session.user.id);
+    } else {
+      filas.forEach((f, idx) => pendientes.push(Object.assign({ id: 'p-' + Date.now() + '-' + idx, estado: 'pendiente', creado_at: new Date().toISOString() }, f)));
+    }
+    if (fotoData) {
+      await guardarFotoComoUltima(actual, fotoData, 'Foto enviada en propuesta');
+    }
     dlg.close();
-    await cargarTodo();
+    actualizarTarjetaDOM(actual);
+    renderPanel();
+    renderMias();
+    toast('Propuesta enviada correctamente', 'ok');
   } catch (e) {
     err.textContent = e.message || T('err_enviar');
   } finally {
@@ -1385,27 +3212,202 @@ async function enviar() {
   }
 }
 
-// ---------- Exportar herramientas y equipos (CSV para Excel) ----------
+// ---------- Exportar Herramientas y Reporte Gerencial + Lecciones Aprendidas (CSV para Excel) ----------
+function descargarCSV(nombreArchivo, filas) {
+  const csv = filas.map(f => f.map(x => `"${String(x ?? '').replace(/"/g, '""')}"`).join(';')).join('\r\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = nombreArchivo;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
 function exportarHerramientas() {
-  const filas = [[T('csv_1'), T('csv_2'), 'OT SAP', T('csv_3'), T('csv_4'), T('csv_5')]];
+  const filas = [[T('csv_1'), T('csv_2'), 'OT SAP', T('csv_3'), T('csv_4'), T('csv_5'), 'Obs. / Herramientas Faltantes en Ejecución']];
   for (const r of ROWS) {
     if (r.oculta) continue;
     const v = vista(r.id);
     const b = BASE[r.id] || {};
-    for (const i of parseHerr(v.herr)) filas.push([r.activ || '', r.linea, b.ot || '', r.actividad, i.n, i.c]);
+    const op = resumenOperativoActividad(r.id);
+    for (const i of parseHerr(v.herr)) filas.push([r.activ || '', r.linea, b.ot || '', r.actividad, i.n, i.c, op.obsHerrReciente || '']);
   }
-  if (filas.length === 1) { alert(T('exp_sin')); return; }
-  const csv = filas.map(f => f.map(x => `"${String(x ?? '').replace(/"/g, '""')}"`).join(';')).join('\r\n');
-  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'PDP_herramientas_equipos.csv';
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  if (filas.length === 1) { toast(T('exp_sin'), 'err'); return; }
+  descargarCSV('PDP_herramientas_equipos.csv', filas);
+}
+function exportarReporteGerencial() {
+  const filas = [[
+    'N° Actividad', 'Línea', 'OT SAP', '6 Dígitos', 'Actividad',
+    'Avance Real (%)', 'Debería Llevar (%)', 'Desviación (%)', 'Estado Cronograma',
+    'Hora Inicio Real', 'Hora Final Real', 'Estado del Pase',
+    'Técnicos Ejecutores y Cargo',
+    'Horas Plan', 'Personal Plan', 'HH Totales',
+    'Observación de Herramientas / Faltantes', 'Interferencias / Cuellos de Botella', 'Ruta Crítica',
+    'Acciones Próxima Parada', 'Recomendación / Lección Próxima Parada',
+    'Estado Seguridad (SSOMA)', 'Constancia Campo',
+    'Observaciones Base', 'Previos Necesarios'
+  ]];
+  for (const r of ROWS) {
+    if (r.oculta) continue;
+    const v = vista(r.id);
+    const b = BASE[r.id] || {};
+    const comp = estadoComparativo(r);
+    const op = resumenOperativoActividad(r.id);
+    const segTxt = op.alertaSeg ? `ALERTA: ${op.alertaSeg.detalle}` : (op.ultSeg ? `OK: ${op.ultSeg.detalle}` : 'Pendiente inspección');
+    const constTxt = op.ultSeg && op.ultSeg.constancia_campo ? `Verificado (${op.ultSeg.autor_nombre || 'SSOMA'})` : '—';
+    const intTxt = op.interfActiva ? `${ETIQ_SUBTIPO[op.interfActiva.subtipo] || 'Restricción'}: ${op.interfActiva.detalle}` : (op.obsInterfReciente || 'Sin restricciones');
+    const tecsTxt = (op.tecnicosRecientes || []).map(t => `${t.nombre} (${t.cargo})`).join('; ');
+    const chksLecTxt = op.ultLeccion && op.ultLeccion.checks_leccion ? op.ultLeccion.checks_leccion.join(', ') : '';
+    const lecTxt = op.ultLeccion ? (op.ultLeccion.leccion_pdp || '') : '';
+    filas.push([
+      r.activ || r.n, r.linea, b.ot || '', r.seis || '', r.actividad,
+      comp.real, comp.plan, comp.delta, r.backlog ? 'Backlog' : comp.etiqueta,
+      op.horaIniReal || '', op.horaFinReal || '', op.paseReciente || '',
+      tecsTxt,
+      v.horas, v.pers, v.hh,
+      op.obsHerrReciente || '', intTxt, op.esCritica ? 'SÍ' : 'NO',
+      chksLecTxt, lecTxt,
+      segTxt, constTxt,
+      v.obs, v.prev
+    ]);
+  }
+  descargarCSV('PDP_Control_Total_y_Proxima_Parada_v26.csv', filas);
+  toast('Reporte Gerencial y Mapeo de Próxima Parada exportado (Excel)', 'ok');
 }
 $('#btn-exp').addEventListener('click', exportarHerramientas);
+$('#btn-exp-gerencial').addEventListener('click', exportarReporteGerencial);
 
-// ---------- Inicio ----------
+// ---------- Sesión y Modo Simulación Inmediata ----------
+$('#login-form').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  initSb();
+  const dni = $('#l-dni').value.trim(), pin = $('#l-pin').value;
+  $('#l-err').textContent = '';
+  if (!/^\d{8}$/.test(dni)) { $('#l-err').textContent = T('err_dni'); return; }
+  if (!sb) { $('#l-err').textContent = 'Sin conexión a Supabase. Usa el Modo Simulación.'; return; }
+  $('#l-btn').disabled = true; $('#l-btn').textContent = T('entrando');
+  const { error } = await sb.auth.signInWithPassword({ email: dni + '@sgmc.local', password: pin });
+  $('#l-btn').disabled = false; $('#l-btn').textContent = T('entrar');
+  if (error) { $('#l-err').textContent = T('err_login'); return; }
+  $('#l-pin').value = '';
+  MODO_DEMO = false;
+  await cargarTodo();
+});
+
+$('#l-invitado').addEventListener('click', async () => {
+  initSb();
+  $('#l-err').textContent = '';
+  if (!sb) { activarModoDemo(); return; }
+  try {
+    const { error } = await sb.auth.signInAnonymously();
+    if (error) { $('#l-err').textContent = T('err_login'); return; }
+    MODO_DEMO = false;
+    await cargarTodo();
+  } catch (e) {
+    activarModoDemo();
+  }
+});
+
+function activarModoDemo() {
+  MODO_DEMO = true;
+  perfil = { dni: '41143369', nombre: 'Sup. Juan Rodríguez', rol: 'Supervisor' };
+  personal = {
+    '41143369': { dni: '41143369', nombre: 'RODRIGUEZ QUISPE JUAN', area: 'Mecánica' },
+    '43888823': { dni: '43888823', nombre: 'HUARANCA CRISTHIAN', area: 'Residencia' },
+    '45219874': { dni: '45219874', nombre: 'MENDOZA VARGAS LUIS', area: 'Seguridad SSOMA' },
+    '46881203': { dni: '46881203', nombre: 'CASTRO PEREZ MIGUEL', area: 'Planeamiento' },
+    '47910234': { dni: '47910234', nombre: 'QUISPE MAMANI CARLOS', area: 'Soldadura' }
+  };
+  const demoActs = [
+    { id: 'a223', n: 1, linea: '1-2', ot: '140193724', seis: '463-013', activ: '223', actividad: 'TRASLADO DE EQUIPOS, HERRAMIENTAS Y MANIOBRAS CON EL PUENTE GRUA 463-013', horas: 66, pers: 1, horas_original: 72, pers_original: 1, avance: 35, fotos: [10, 11], obs: 'Coordinación continua con ambos frentes', prev: 'Check list de puente grúa 463-013', herr: '[{"n":"Eslingas 10T","c":4},{"n":"Grilletes 1 pulg","c":6}]', progIni: Date.parse('2026-10-21T01:00:00-05:00'), progFin: Date.parse('2026-10-22T18:00:00-05:00') },
+    { id: 'a236', n: 2, linea: '2', ot: '110024974', seis: '—', activ: '236', actividad: 'CAMBIO DE TUBERIAS -05 28" DE LINEA 1 LLEGADA AL CAJON DE COLAS NIVEL 0 L1', horas: 6, pers: 4, horas_original: 6, pers_original: 4, avance: 25, fotos: [15, 16, 17, 18], obs: 'Se retiró tecle cadena de 3 toneladas en mal estado', prev: 'Drenaje de línea 28" y bloqueo LOTOTO', herr: '[{"n":"Tecle cadena 5T","c":2},{"n":"Llave de golpe 1-1/2","c":2}]', progIni: Date.parse('2026-10-21T02:00:00-05:00'), progFin: Date.parse('2026-10-21T12:00:00-05:00') },
+    { id: 'a316', n: 3, linea: '2', ot: '140193771', seis: '041-021', activ: '316', actividad: 'APERTURA Y CIERRE DE TAPA MANHOLE DE ACONDICIONADOR 2001', horas: 3, pers: 4, horas_original: 3, pers_original: 4, avance: 65, fotos: [22, 23], obs: 'Cambio de empaquetadura de goma', prev: 'Permiso PETAR espacio confinado y lavado de tanque', herr: '[{"n":"Pistola neumática 3/4","c":1}]', progIni: Date.parse('2026-10-21T05:00:00-05:00'), progFin: Date.parse('2026-10-21T13:00:00-05:00') },
+    { id: 'a225', n: 4, linea: '1', ot: '140193726', seis: '—', activ: '225', actividad: 'CAMBIO DE VALVULA MARIPOSA DE 14" NV 0 L1', horas: 4, pers: 3, horas_original: 4, pers_original: 3, avance: 100, fotos: [31], obs: 'Trabajo concluido y entregado a operaciones', prev: 'Línea despresurizada', herr: '[{"n":"Torquímetro","c":1}]', progIni: Date.parse('2026-10-21T01:00:00-05:00'), progFin: Date.parse('2026-10-21T08:00:00-05:00') }
+  ];
+  ROWS = demoActs.map(a => Object.assign({}, a, { hh: a.horas * a.pers, backlog: false, oculta: false, noProg: false }));
+  BASE = {}; ROWS.forEach(a => BASE[a.id] = a);
+  act = BASE;
+  REPORTES_CAMPO = {
+    a236: [
+      {
+        id: 'd-sup-236',
+        actividad_id: 'a236',
+        area_reporte: 'supervision',
+        subtipo: 'lenta',
+        severidad: 'alta',
+        estado: 'informativo',
+        detalle: 'Desmontaje de brida 28" en curso al 25%. Retraso inicial por cambio de tecle de 3T.',
+        hora_inicio_real: '2026-10-21T07:30',
+        hora_fin_real: '',
+        estado_pase: 'Demora en pase de Operaciones',
+        tecnicos: [
+          { nombre: 'RODRIGUEZ QUISPE JUAN', cargo: 'Mecánico Líder' },
+          { nombre: 'QUISPE MAMANI CARLOS', cargo: 'Soldador Homologado' }
+        ],
+        obs_herramientas: 'Se retiró tecle cadena de 3T con freno desgastado; faltó 1 tecle de 5T adicional y llave de golpe 2-1/4.',
+        obs_interferencia: 'Demora de 40 min en drenaje de cajón de colas por Operaciones y espera de puente grúa.',
+        leccion_pdp: 'Para la próxima parada: inspeccionar y certificar tecles 48h antes, dejar pre-instalado cáncamo superior de 5T y exigir drenaje de cajón en el primer corte.',
+        checks_leccion: ['Más herramientas', 'Ventana Grúa', 'Kit repuestos 48h antes'],
+        autor_nombre: 'Sup. Juan Rodríguez',
+        creado_at: '2026-10-21T09:30:00'
+      },
+      {
+        id: 'd-seg-236',
+        actividad_id: 'a236',
+        area_reporte: 'seguridad',
+        subtipo: 'inspeccion_ok',
+        severidad: 'verificado',
+        estado: 'levantado',
+        detalle: 'Constancia de inspección SSOMA: Se verificó retiro de tecle defectuoso, bloqueo LOTOTO activo y zona demarcada.',
+        constancia_campo: true,
+        petar_ok: true,
+        bloqueo_lototo: true,
+        epp_ok: true,
+        autor_nombre: 'Ing. Luis Mendoza (SSOMA)',
+        creado_at: '2026-10-21T09:40:00'
+      }
+    ],
+    a316: [
+      {
+        id: 'd-sup-316',
+        actividad_id: 'a316',
+        area_reporte: 'supervision',
+        subtipo: 'adelantada',
+        severidad: 'normal',
+        estado: 'informativo',
+        detalle: 'Tapa manhole abierta e inspección interna completada al 65%.',
+        hora_inicio_real: '2026-10-21T06:15',
+        hora_fin_real: '',
+        estado_pase: 'Pase conforme y a tiempo',
+        tecnicos: [{ nombre: 'CASTRO PEREZ MIGUEL', cargo: 'Mecánico Montajista' }],
+        obs_herramientas: 'Pistola neumática 3/4 funcionó sin inconvenientes.',
+        leccion_pdp: 'Tener empaquetadura de manhole pre-cortada antes de abrir.',
+        checks_leccion: ['Pre-armar antes'],
+        autor_nombre: 'Sup. Juan Rodríguez',
+        creado_at: '2026-10-21T09:15:00'
+      }
+    ]
+  };
+  cargarTodo();
+  toast('Simulación activa como Supervisor (nota que Backlog, Ocultar y Editar texto están ocultos; puedes cambiar de Rol arriba)', 'ok');
+}
+$('#l-demo').addEventListener('click', activarModoDemo);
+
+$('#btn-salir').addEventListener('click', async () => {
+  if (!MODO_DEMO && sb) await sb.auth.signOut();
+  MODO_DEMO = false;
+  location.reload();
+});
+
+async function comprobarVersion() {
+  const msg = $('#ver');
+  msg.textContent = T('ver_buscando');
+  await cargarTodo();
+  msg.textContent = T('ver_al_dia', { v: VERSION });
+  toast('Datos sincronizados con Supabase', 'ok');
+}
+$('#btn-refrescar').addEventListener('click', comprobarVersion);
+
+// ---------- Inicio inmediato ----------
 aplicarIdioma();
 cargarTodo().finally(() => { const a = document.getElementById('arranque'); if (a) a.remove(); });
 </script>
@@ -1414,7 +3416,7 @@ cargarTodo().finally(() => { const a = document.getElementById('arranque'); if (
   <img id="visor-img" alt="">
 </div>
 <script>
-// Foto a pantalla completa: doble clic o doble toque sobre la foto
+// Foto a pantalla completa: doble clic o doble toque sobre cualquier foto
 (function () {
   const visor = document.getElementById('visor'), img = document.getElementById('visor-img');
   function fotoDe(el) {
@@ -1422,18 +3424,18 @@ cargarTodo().finally(() => { const a = document.getElementById('arranque'); if (
     const m = getComputedStyle(el).backgroundImage.match(/url\(["']?([^"')]+)["']?\)/);
     return m ? m[1] : null;
   }
-  function abrir(src) { if (!src) return; img.src = src; visor.hidden = false; }
-  function cerrar() { visor.hidden = true; img.removeAttribute('src'); }
+  function abrirVisor(src) { if (!src) return; img.src = src; visor.hidden = false; }
+  function cerrarVisor() { visor.hidden = true; img.removeAttribute('src'); }
   let ultimo = { t: 0, el: null };
   document.addEventListener('click', ev => {
     const el = ev.target.closest('.ph, img.valor');
     if (!el || !visor.hidden) return;
     const ahora = Date.now();
-    if (ultimo.el === el && ahora - ultimo.t < 400) { ultimo = { t: 0, el: null }; abrir(fotoDe(el)); }
+    if (ultimo.el === el && ahora - ultimo.t < 400) { ultimo = { t: 0, el: null }; abrirVisor(fotoDe(el)); }
     else ultimo = { t: ahora, el };
   }, true);
-  visor.addEventListener('click', cerrar);
-  document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !visor.hidden) cerrar(); });
+  visor.addEventListener('click', cerrarVisor);
+  document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !visor.hidden) cerrarVisor(); });
 })();
 </script>
 </body>

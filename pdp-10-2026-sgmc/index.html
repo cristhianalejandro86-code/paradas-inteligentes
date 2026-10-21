@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="robots" content="noindex,nofollow">
-<meta name="app-version" content="2026-10-19 18:45 · v19">
+<meta name="app-version" content="2026-10-21 08:30 · v20">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Parada de planta Beijing · Actividades</title>
 <style>
@@ -64,6 +64,11 @@ img.ph { width:100%; height:100%; object-fit:contain; display:block; }
 .badges { display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end; }
 .badge { font-size:12px; border-radius:999px; padding:2px 8px; background:#e8f0f8; color:var(--azul); white-space:nowrap; }
 .badge.ok { background:#e5f5ea; color:var(--ok); }
+.avance { height:8px; background:#e3e8ef; border-radius:999px; overflow:hidden; margin:6px 0 2px; }
+.avance > div { height:100%; background:var(--ok); }
+.sello { display:inline-block; border:2px solid var(--ok); color:var(--ok); border-radius:6px; padding:2px 10px; font-weight:700; font-size:14px; letter-spacing:.5px; transform:rotate(-2deg); margin-bottom:6px; }
+.card.terminada { border-color:var(--ok); }
+.card.terminada .act { color:#4b5563; }
 .badge.warn { background:#fff1dc; color:var(--warn); }
 .meta { display:flex; flex-wrap:wrap; gap:2px 12px; font-size:13px; color:#333; }
 .act { font-size:15px; font-weight:600; line-height:1.3; }
@@ -241,7 +246,7 @@ textarea { min-height:64px; resize:vertical; }
     <button data-f="ocultas" aria-pressed="false" id="f-ocultas" hidden>Ocultas <small id="c-ocultas"></small></button>
   </nav>
 
-  <div class="barra"><button type="button" class="btn sec" id="btn-exp" style="flex:0 0 auto" data-i18n="exp">Exportar herramientas y equipos (Excel)</button></div>
+  <div class="barra"><button type="button" class="btn sec" id="btn-exp" style="flex:0 0 auto" data-i18n="exp">Exportar herramientas y equipos (Excel)</button> <button type="button" class="btn sec" id="btn-nueva" style="flex:0 0 auto" hidden>+ Actividad no programada</button></div>
   <main class="grid" id="grid"></main>
 </div>
 
@@ -722,7 +727,7 @@ async function cargarTodo() {
   }
   perfil = perf.data;
   document.body.classList.toggle('solo-lectura', !(perfil && perfil.rol));
-  ROWS = acts.data.map(a => ({ id: a.id, n: a.n, page: a.pagina, linea: a.linea, ot: a.ot, seis: a.seis, activ: a.activ, actividad: a.actividad, fotos: a.fotos || [], backlog: !!a.backlog, motivo: a.backlog_motivo || '', rev: a.rev_cambio || '', oculta: !!a.oculta, ocultaMotivo: a.oculta_motivo || '' }));
+  ROWS = acts.data.map(a => ({ id: a.id, n: a.n, page: a.pagina, linea: a.linea, ot: a.ot, seis: a.seis, activ: a.activ, actividad: a.actividad, fotos: a.fotos || [], backlog: !!a.backlog, motivo: a.backlog_motivo || '', rev: a.rev_cambio || '', oculta: !!a.oculta, ocultaMotivo: a.oculta_motivo || '', avance: Number(a.avance) || 0, noProg: (a.rev_cambio || '').startsWith('NO PROGRAMADA') }));
   BASE = {}; acts.data.forEach(a => BASE[a.id] = a);
   act = BASE;
   fotosExtra = {}; fx.data.forEach(f => (fotosExtra[f.actividad_id] = fotosExtra[f.actividad_id] || []).push({ id: f.id, data: f.data }));
@@ -734,6 +739,7 @@ async function cargarTodo() {
   $('#usuario').textContent = perfil.rol ? `${perfil.nombre || perfil.dni} · ${perfil.rol}` : T('solo_ver');
   $('#panel-res').hidden = perfil.rol !== 'Residente';
   $('#f-ocultas').hidden = perfil.rol !== 'Residente';
+  $('#btn-nueva').hidden = !puedeAvance();
   render(); renderPanel(); renderMias();
   if (!canal) {
     canal = sb.channel('pdp-cambios')
@@ -756,6 +762,15 @@ function renderMias() {
 }
 
 // ---------- Render ----------
+// Orden visible: en proceso primero, luego pendientes, backlog y terminadas al final
+function grupoOrden(r) {
+  if (r.avance >= 100) return 3;
+  if (r.backlog) return 2;
+  if (r.avance > 0) return 0;
+  return 1;
+}
+const ROLES_AVANCE = ['Residente', 'Supervisor', 'Planificador'];
+function puedeAvance() { return !!(perfil && ROLES_AVANCE.includes(perfil.rol)); }
 function render() {
   numInt = {}; let kInt = 0;
   for (const r of ROWS) if (!r.oculta) numInt[r.id] = ++kInt;
@@ -785,7 +800,7 @@ function render() {
   $('#c-ocultas').textContent = `(${ROWS.filter(r => r.oculta).length})`;
   $('#c-pend').textContent = `(${new Set(pendientes.map(p => p.actividad_id)).size})`;
   document.querySelectorAll('#filtros button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.f === filtro)));
-  const lista = ROWS.filter(pasaFiltro);
+  const lista = ROWS.filter(pasaFiltro).sort((a, b) => grupoOrden(a) - grupoOrden(b) || a.n - b.n);
   $('#grid').innerHTML = lista.length ? lista.map(tarjeta).join('') : '<p class="vacio">' + T('no_act') + '</p>';
 }
 
@@ -804,7 +819,8 @@ function tarjeta(r) {
   const linea = r.linea === '1-2' ? T('lineas_fmt') : T('linea_fmt', { l: esc(r.linea) });
   const badges = [];
   if (r.linea === '1-2') badges.push('<span class="badge">' + T('ambas') + '</span>');
-  if (r.rev) {
+  if (r.noProg) badges.unshift('<span class="badge">➕ No programada</span>');
+  if (r.rev && !r.noProg) {
     const noEsta = /No aparece/.test(r.rev);
     badges.unshift(`<span class="badge ${noEsta ? 'warn' : 'chg'}" title="${esc(r.rev)}">${noEsta ? '⚠ ' + esc(T('rev_noesta')) : '🔄 ' + esc(T('rev_badge'))}</span>`);
   }
@@ -826,18 +842,22 @@ function tarjeta(r) {
   if (r.oculta) badges.unshift('<span class="badge warn">Oculta' + (r.ocultaMotivo ? ': ' + esc(r.ocultaMotivo) : '') + '</span>');
   const btnBl = perfil && perfil.rol === 'Residente'
     ? `<button class="btn sec" data-bl="${r.id}" data-valor="${r.backlog ? '0' : '1'}">${T(r.backlog ? 'bl_restituir' : 'bl_pasar')}</button>` : '';
+  const btnAv = puedeAvance() ? `<button class="btn sec" data-avance="${r.id}" data-val="${r.avance}">Avance</button>` : '';
   // Solo el Residente: ocultar una actividad que ya no va (reversible)
   const btnOc = perfil && perfil.rol === 'Residente'
     ? `<button class="btn sec" data-oc="${r.id}" data-valor="${r.oculta ? '0' : '1'}">${r.oculta ? 'Mostrar de nuevo' : 'Ocultar'}</button>` : '';
   // Solo el Residente con DNI 43888823: corregir el texto de la actividad
   const btnTxt = perfil && perfil.rol === 'Residente' && perfil.dni === '43888823'
     ? `<button class="btn sec" data-txt="${r.id}">Editar texto</button>` : '';
-  return `<article class="card${r.backlog ? ' backlog' : ''}${r.rev && !/No aparece/.test(r.rev) ? ' rev-cambio' : ''}">
+  return `<article class="card${r.backlog ? ' backlog' : ''}${r.avance >= 100 ? ' terminada' : ''}${r.rev && !r.noProg && !/No aparece/.test(r.rev) ? ' rev-cambio' : ''}">
     ${media}
     <div class="info">
+      ${r.avance >= 100 ? '<div class="sello">✔ TERMINADA · 100%</div>' : ''}
       <div class="head"><span class="num">N° ${dash(r.activ)}</span>${r.oculta ? '' : `<span class="int" title="Número interno de la fila">${esc(T('num_int'))} ${numInt[r.id] ?? '—'}</span>`}<span class="badges">${badges.join('')}</span></div>
       <div class="meta"><span><b>${linea}</b></span><span>OT SAP: <b>${dash(b.ot)}</b></span><span>${T('seis')} <b>${dash(r.seis)}</b></span></div>
       <div class="act">${esc(actT(r.actividad))}</div>
+      ${r.avance >= 100 ? '' : `<div class="meta2">Avance: <b>${r.avance}%</b></div>`}
+      <div class="avance" aria-label="Avance ${r.avance}%"><div style="width:${r.avance}%"></div></div>
       <div class="hh">
         <div><span>${T('horas')}</span><b>${horasHtml}</b></div>
         <div><span>${T('personal')}</span><b>${persHtml}</b></div>
@@ -848,6 +868,7 @@ function tarjeta(r) {
         <button class="btn" data-edit="${r.id}">${T('proponer')}</button>
         ${btnBl}
         ${btnOc}
+        ${btnAv}
         ${btnTxt}
       </div>
     </div>
@@ -1016,6 +1037,7 @@ $('#grid').addEventListener('click', ev => {
   const bl = ev.target.closest('[data-bl]'); if (bl) cambiarBacklog(bl.dataset.bl, bl.dataset.valor === '1');
   const tx = ev.target.closest('[data-txt]'); if (tx) editarTexto(tx.dataset.txt);
   const oc = ev.target.closest('[data-oc]'); if (oc) cambiarOculta(oc.dataset.oc, oc.dataset.valor === '1');
+  const av = ev.target.closest('[data-avance]'); if (av) registrarAvance(av.dataset.avance, Number(av.dataset.val));
   const qf = ev.target.closest('[data-quitar]'); if (qf) quitarFoto(qf.dataset.quitar, qf.dataset.clave, qf.dataset.act);
 });
 // Solo el Residente DNI 43888823: cambiar el texto de una actividad (la validación se hace en la base de datos)
@@ -1027,6 +1049,29 @@ async function editarTexto(id) {
   if (error) { alert(error.message); return; }
   await cargarTodo();
 }
+// Residente, Supervisor y Planificador: avance de la actividad (100 = terminada)
+async function registrarAvance(id, actual) {
+  const txt = prompt('Avance de la actividad (0 a 100):', String(actual));
+  if (txt === null) return;
+  const val = Number(txt.trim());
+  if (!Number.isInteger(val) || val < 0 || val > 100) { alert('Escribe un número entero entre 0 y 100.'); return; }
+  const { error } = await sb.rpc('registrar_avance', { p_id: id, p_avance: val });
+  if (error) { alert(error.message); return; }
+  await cargarTodo();
+}
+// Residente, Supervisor y Planificador: agregar una actividad no programada
+async function nuevaActividad() {
+  const linea = (prompt('Línea: 1, 2 o 1-2', '1') || '').trim();
+  if (!linea) return;
+  const actividad = (prompt('Descripción de la actividad no programada:') || '').trim();
+  if (!actividad) return;
+  const horas = Number(prompt('Horas estimadas:', '0'));
+  const pers = Number(prompt('Personal (número de técnicos):', '1'));
+  const { error } = await sb.rpc('agregar_actividad', { p_linea: linea, p_actividad: actividad, p_horas: horas, p_pers: pers });
+  if (error) { alert(error.message); return; }
+  await cargarTodo();
+}
+$('#btn-nueva').addEventListener('click', nuevaActividad);
 // Solo el Residente: quitar una foto de la actividad (no afecta a las demás)
 async function quitarFoto(tipo, clave, actId) {
   if (!confirm('¿Quitar esta foto de la actividad? No se puede deshacer.')) return;
